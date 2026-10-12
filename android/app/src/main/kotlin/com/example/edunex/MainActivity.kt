@@ -1,0 +1,5 @@
+package com.example.edunex
+
+import io.flutter.embedding.android.FlutterActivity
+
+class MainActivity : FlutterActivity()
