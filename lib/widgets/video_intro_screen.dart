@@ -1,3 +1,5 @@
+import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
 import '../theme/app_colors.dart';
@@ -12,254 +14,174 @@ class VideoIntroScreen extends StatefulWidget {
 }
 
 class _VideoIntroScreenState extends State<VideoIntroScreen> {
-  late VideoPlayerController _controller;
+  VideoPlayerController? _controller;
   bool _isInitialized = false;
-  bool _hasError = false;
-  bool _isMuted = false;
-  bool _showControls = true;
   bool _hasTriggeredCompletion = false;
+  bool _isMuted = true; // Iniciamos silenciado para garantizar autoplay en web
+  Timer? _safetyTimeoutTimer;
+  Timer? _durationTimer;
 
   @override
   void initState() {
     super.initState();
-    _initializeVideo();
+    _startSafetyTimer();
+    _initAndPlayVideo();
   }
 
-  Future<void> _initializeVideo() async {
-    try {
-      _controller = VideoPlayerController.asset('assets/edunex.mp4');
-      await _controller.initialize();
-      _controller.addListener(_videoListener);
+  /// Timer de seguridad: Si en 4 segundos el video no inicializa por cualquier razón
+  /// (políticas de navegador, codec, etc.), pasa directamente al Login para nunca trabarse.
+  void _startSafetyTimer() {
+    _safetyTimeoutTimer = Timer(const Duration(seconds: 4), () {
+      if (!_isInitialized && !_hasTriggeredCompletion) {
+        debugPrint('Timeout al cargar video: pasando al login');
+        _completeIntro();
+      }
+    });
+  }
 
-      // En web y navegadores, autoplay con audio a veces requiere iniciar silenciado
-      // o permitir al usuario desmutear.
-      await _controller.setLooping(false);
-      await _controller.play();
+  Future<void> _initAndPlayVideo() async {
+    try {
+      final controller = VideoPlayerController.asset(
+        'assets/edunex.mp4',
+        videoPlayerOptions: VideoPlayerOptions(mixWithOthers: true),
+      );
+
+      _controller = controller;
+
+      await controller.initialize();
+      _safetyTimeoutTimer?.cancel();
+
+      if (!mounted) return;
+
+      controller.addListener(_checkVideoProgress);
+      await controller.setLooping(false);
+
+      // En la web los navegadores exigen que el video esté silenciado para autorizar el autoplay
+      if (kIsWeb) {
+        await controller.setVolume(0.0);
+        _isMuted = true;
+      } else {
+        try {
+          await controller.setVolume(1.0);
+          _isMuted = false;
+        } catch (_) {
+          await controller.setVolume(0.0);
+          _isMuted = true;
+        }
+      }
+
+      await controller.play();
 
       if (mounted) {
         setState(() {
           _isInitialized = true;
         });
+
+        // Temporizador de duración exacta para asegurar transición cuando termine
+        final duration = controller.value.duration;
+        if (duration > Duration.zero) {
+          _durationTimer = Timer(
+            duration + const Duration(milliseconds: 200),
+            () => _completeIntro(),
+          );
+        }
       }
     } catch (e) {
-      debugPrint('Error al inicializar video: $e');
-      if (mounted) {
-        setState(() {
-          _hasError = true;
-        });
-      }
+      debugPrint('No se pudo reproducir el video, pasando al login: $e');
+      _completeIntro();
     }
   }
 
-  void _videoListener() {
-    if (!mounted || !_isInitialized) return;
+  void _checkVideoProgress() {
+    if (!mounted || _hasTriggeredCompletion || _controller == null) return;
 
-    final position = _controller.value.position;
-    final duration = _controller.value.duration;
+    final value = _controller!.value;
 
     // Detectar cuando el video finaliza
-    if (!_hasTriggeredCompletion &&
-        duration > Duration.zero &&
-        position >= duration) {
-      _hasTriggeredCompletion = true;
-      widget.onFinished();
-    } else {
-      setState(() {});
+    if (value.isCompleted ||
+        (value.duration > Duration.zero &&
+            value.position >= value.duration - const Duration(milliseconds: 250))) {
+      _completeIntro();
     }
   }
 
-  void _togglePlayPause() {
-    if (!_isInitialized) return;
-    setState(() {
-      if (_controller.value.isPlaying) {
-        _controller.pause();
-      } else {
-        if (_controller.value.position >= _controller.value.duration) {
-          _controller.seekTo(Duration.zero);
-        }
-        _controller.play();
-      }
-    });
+  void _completeIntro() {
+    if (_hasTriggeredCompletion) return;
+    _hasTriggeredCompletion = true;
+
+    _safetyTimeoutTimer?.cancel();
+    _durationTimer?.cancel();
+
+    if (_controller != null) {
+      _controller!.removeListener(_checkVideoProgress);
+      _controller!.pause();
+    }
+
+    if (mounted) {
+      widget.onFinished();
+    }
   }
 
-  void _toggleMute() {
-    if (!_isInitialized) return;
+  void _toggleMute() async {
+    if (_controller == null || !_isInitialized) return;
     setState(() {
       _isMuted = !_isMuted;
-      _controller.setVolume(_isMuted ? 0.0 : 1.0);
     });
-  }
-
-  String _formatDuration(Duration d) {
-    final minutes = d.inMinutes.remainder(60).toString().padLeft(2, '0');
-    final seconds = d.inSeconds.remainder(60).toString().padLeft(2, '0');
-    return '$minutes:$seconds';
+    try {
+      await _controller!.setVolume(_isMuted ? 0.0 : 1.0);
+    } catch (e) {
+      debugPrint('Error al cambiar volumen: $e');
+    }
   }
 
   @override
   void dispose() {
-    if (_isInitialized) {
-      _controller.removeListener(_videoListener);
-      _controller.dispose();
+    _safetyTimeoutTimer?.cancel();
+    _durationTimer?.cancel();
+    if (_controller != null) {
+      _controller!.removeListener(_checkVideoProgress);
+      _controller!.dispose();
     }
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    final size = MediaQuery.of(context).size;
-
     return Scaffold(
       backgroundColor: AppColors.navyDark,
       body: Stack(
         fit: StackFit.expand,
         children: [
-          // Fondo con sutil resplandor de marca
+          // Fondo cinematográfico
           Container(
-            decoration: const BoxDecoration(
-              gradient: RadialGradient(
-                center: Alignment.center,
-                radius: 1.2,
-                colors: [
-                  Color(0xFF143A7B),
-                  AppColors.navyDark,
-                ],
-              ),
-            ),
+            color: AppColors.navyDark,
           ),
 
-          // Reproductor de video centrado
-          if (_isInitialized)
+          // Video centrado y adaptativo
+          if (_isInitialized && _controller != null)
             Center(
               child: AspectRatio(
-                aspectRatio: _controller.value.aspectRatio > 0
-                    ? _controller.value.aspectRatio
+                aspectRatio: _controller!.value.aspectRatio > 0
+                    ? _controller!.value.aspectRatio
                     : (16 / 9),
-                child: GestureDetector(
-                  onTap: () {
-                    setState(() {
-                      _showControls = !_showControls;
-                    });
-                  },
-                  child: Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      VideoPlayer(_controller),
-                      if (!_controller.value.isPlaying)
-                        Container(
-                          decoration: BoxDecoration(
-                            color: Colors.black.withValues(alpha: 0.35),
-                            shape: BoxShape.circle,
-                          ),
-                          child: IconButton(
-                            iconSize: 64,
-                            icon: const Icon(
-                              Icons.play_arrow_rounded,
-                              color: Colors.white,
-                            ),
-                            onPressed: _togglePlayPause,
-                          ),
-                        ),
-                    ],
-                  ),
-                ),
-              ),
-            )
-          else if (_hasError)
-            Center(
-              child: Container(
-                margin: const EdgeInsets.all(24),
-                padding: const EdgeInsets.all(28),
-                constraints: const BoxConstraints(maxWidth: 480),
-                decoration: BoxDecoration(
-                  color: AppColors.surfaceWhite,
-                  borderRadius: BorderRadius.circular(20),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.3),
-                      blurRadius: 20,
-                      offset: const Offset(0, 10),
-                    ),
-                  ],
-                ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(
-                      Icons.play_circle_outline_rounded,
-                      size: 64,
-                      color: AppColors.electricBlue,
-                    ),
-                    const SizedBox(height: 16),
-                    const Text(
-                      'Video Institucional EDUNEX',
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.navyDark,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    const Text(
-                      'No se pudo reproducir el video automáticamente en este entorno.',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(color: AppColors.slateGray),
-                    ),
-                    const SizedBox(height: 24),
-                    ElevatedButton.icon(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.electricBlue,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 24,
-                          vertical: 14,
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      onPressed: widget.onFinished,
-                      icon: const Icon(Icons.arrow_forward_rounded),
-                      label: const Text(
-                        'Continuar al Inicio de Sesión',
-                        style: TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                    ),
-                  ],
-                ),
+                child: VideoPlayer(_controller!),
               ),
             )
           else
             const Center(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  CircularProgressIndicator(
-                    valueColor: AlwaysStoppedAnimation<Color>(
-                      AppColors.cyanLight,
-                    ),
-                  ),
-                  SizedBox(height: 16),
-                  Text(
-                    'Cargando presentación de EDUNEX...',
-                    style: TextStyle(
-                      color: Colors.white70,
-                      fontSize: 15,
-                      letterSpacing: 0.5,
-                    ),
-                  ),
-                ],
+              child: CircularProgressIndicator(
+                valueColor: AlwaysStoppedAnimation<Color>(AppColors.cyanLight),
               ),
             ),
 
-          // Barra superior: Logo texto y Botón "Saltar Video"
+          // Barra superior: Logo texto y Botón "Saltar"
           SafeArea(
             child: Align(
               alignment: Alignment.topCenter,
               child: Padding(
                 padding: const EdgeInsets.symmetric(
                   horizontal: 24,
-                  vertical: 16,
+                  vertical: 18,
                 ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -271,13 +193,14 @@ class _VideoIntroScreenState extends State<VideoIntroScreen> {
                         vertical: 8,
                       ),
                       decoration: BoxDecoration(
-                        color: Colors.black.withValues(alpha: 0.4),
+                        color: Colors.black.withValues(alpha: 0.5),
                         borderRadius: BorderRadius.circular(30),
                         border: Border.all(
-                          color: Colors.white.withValues(alpha: 0.15),
+                          color: Colors.white.withValues(alpha: 0.2),
                         ),
                       ),
                       child: const Row(
+                        mainAxisSize: MainAxisSize.min,
                         children: [
                           Icon(
                             Icons.school_rounded,
@@ -298,34 +221,31 @@ class _VideoIntroScreenState extends State<VideoIntroScreen> {
                       ),
                     ),
 
-                    // Botón elegante "Saltar video"
-                    ElevatedButton.icon(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor:
-                            Colors.white.withValues(alpha: 0.95),
+                    // Botón para saltar directamente al login si el usuario lo desea
+                    TextButton.icon(
+                      style: TextButton.styleFrom(
+                        backgroundColor: Colors.white.withValues(alpha: 0.9),
                         foregroundColor: AppColors.navyPrimary,
-                        elevation: 4,
-                        padding: EdgeInsets.symmetric(
-                          horizontal: size.width > 600 ? 20 : 14,
-                          vertical: 12,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 10,
                         ),
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(24),
+                          borderRadius: BorderRadius.circular(20),
                         ),
                       ),
-                      onPressed: widget.onFinished,
+                      onPressed: _completeIntro,
                       icon: const Text(
-                        'Saltar al Login',
+                        'Saltar intro',
                         style: TextStyle(
-                          fontWeight: FontWeight.w700,
+                          fontWeight: FontWeight.bold,
                           fontSize: 13,
-                          letterSpacing: 0.3,
                         ),
                       ),
                       label: const Icon(
                         Icons.arrow_forward_ios_rounded,
-                        size: 14,
-                        color: AppColors.accentGreen,
+                        size: 13,
+                        color: AppColors.navyPrimary,
                       ),
                     ),
                   ],
@@ -334,92 +254,72 @@ class _VideoIntroScreenState extends State<VideoIntroScreen> {
             ),
           ),
 
-          // Barra inferior de controles
-          if (_isInitialized && _showControls)
+          // Barra inferior: progreso y control de audio
+          if (_isInitialized && _controller != null)
             SafeArea(
               child: Align(
                 alignment: Alignment.bottomCenter,
-                child: Container(
-                  margin: const EdgeInsets.symmetric(
-                    horizontal: 20,
-                    vertical: 16,
-                  ),
+                child: Padding(
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 12,
+                    horizontal: 24,
+                    vertical: 20,
                   ),
-                  decoration: BoxDecoration(
-                    color: Colors.black.withValues(alpha: 0.65),
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
-                      color: Colors.white.withValues(alpha: 0.1),
-                    ),
-                  ),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
+                  child: Row(
                     children: [
-                      // Barra de progreso interactiva
-                      VideoProgressIndicator(
-                        _controller,
-                        allowScrubbing: true,
-                        colors: const VideoProgressColors(
-                          playedColor: AppColors.electricBlue,
-                          bufferedColor: Colors.white24,
-                          backgroundColor: Colors.white12,
-                        ),
-                        padding: const EdgeInsets.symmetric(vertical: 8),
-                      ),
-                      Row(
-                        children: [
-                          IconButton(
-                            icon: Icon(
-                              _controller.value.isPlaying
-                                  ? Icons.pause_rounded
-                                  : Icons.play_arrow_rounded,
-                              color: Colors.white,
-                            ),
-                            onPressed: _togglePlayPause,
-                            tooltip: _controller.value.isPlaying
-                                ? 'Pausar'
-                                : 'Reproducir',
+                      // Botón para activar/desactivar audio
+                      InkWell(
+                        onTap: _toggleMute,
+                        borderRadius: BorderRadius.circular(20),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 8,
                           ),
-                          IconButton(
-                            icon: Icon(
-                              _isMuted
-                                  ? Icons.volume_off_rounded
-                                  : Icons.volume_up_rounded,
-                              color: Colors.white,
-                            ),
-                            onPressed: _toggleMute,
-                            tooltip: _isMuted ? 'Activar sonido' : 'Silenciar',
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            '${_formatDuration(_controller.value.position)} / ${_formatDuration(_controller.value.duration)}',
-                            style: const TextStyle(
-                              color: Colors.white70,
-                              fontSize: 12,
-                              fontFeatures: [],
+                          decoration: BoxDecoration(
+                            color: Colors.black.withValues(alpha: 0.6),
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(
+                              color: Colors.white.withValues(alpha: 0.2),
                             ),
                           ),
-                          const Spacer(),
-                          TextButton.icon(
-                            onPressed: widget.onFinished,
-                            icon: const Icon(
-                              Icons.login_rounded,
-                              size: 16,
-                              color: AppColors.cyanLight,
-                            ),
-                            label: const Text(
-                              'Iniciar Sesión',
-                              style: TextStyle(
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                _isMuted
+                                    ? Icons.volume_off_rounded
+                                    : Icons.volume_up_rounded,
                                 color: Colors.white,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 13,
+                                size: 18,
                               ),
+                              const SizedBox(width: 8),
+                              Text(
+                                _isMuted ? 'Activar sonido' : 'Silenciar',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      // Barra de progreso del video
+                      Expanded(
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(4),
+                          child: VideoProgressIndicator(
+                            _controller!,
+                            allowScrubbing: false,
+                            colors: const VideoProgressColors(
+                              playedColor: AppColors.electricBlue,
+                              bufferedColor: Colors.white24,
+                              backgroundColor: Colors.white12,
                             ),
                           ),
-                        ],
+                        ),
                       ),
                     ],
                   ),
