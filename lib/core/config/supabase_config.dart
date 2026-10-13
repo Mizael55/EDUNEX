@@ -5,7 +5,7 @@ class SupabaseConfig {
   /// URL del proyecto Supabase (puede inyectarse con --dart-define=SUPABASE_URL=...)
   static const String supabaseUrl = String.fromEnvironment(
     'SUPABASE_URL',
-    defaultValue: 'https://xyzcompany.supabase.co',
+    defaultValue: 'https://dnlwcixmlwqjsutmrvkl.supabase.co',
   );
 
   /// Clave pública anon de Supabase (puede inyectarse con --dart-define=SUPABASE_ANON_KEY=...)
