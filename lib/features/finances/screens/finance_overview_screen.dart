@@ -27,46 +27,9 @@ class FinanceOverviewScreen extends StatefulWidget {
 
 class _FinanceOverviewScreenState extends State<FinanceOverviewScreen> {
   bool _isLoading = true;
-  final double _totalCobrado = 145000.0;
-  double _totalPorCobrar = 42500.0;
-  final List<Map<String, dynamic>> _transacciones = [
-    {
-      'id': 'REC-2026-0089',
-      'entidad': 'Familia Pérez González',
-      'concepto': 'Colegiatura Mensual (Febrero 2026)',
-      'monto': 12500.00,
-      'metodo': 'Transferencia Banco Popular',
-      'fecha': '12 Feb 2026',
-      'estado': 'Aprobado',
-    },
-    {
-      'id': 'REC-2026-0088',
-      'entidad': 'Familia Ramírez Méndez',
-      'concepto': 'Servicio Cuido Vespertino (3:00 - 6:00 PM)',
-      'monto': 3500.00,
-      'metodo': 'Tarjeta de Crédito VISA',
-      'fecha': '11 Feb 2026',
-      'estado': 'Aprobado',
-    },
-    {
-      'id': 'REC-2026-0087',
-      'entidad': 'Familia Gómez Marte',
-      'concepto': 'Matrícula Anual & Seguro Escolar',
-      'monto': 25000.00,
-      'metodo': 'Transferencia Banreservas',
-      'fecha': '10 Feb 2026',
-      'estado': 'Aprobado',
-    },
-    {
-      'id': 'REC-2026-0086',
-      'entidad': 'Familia Castillo Rosario',
-      'concepto': 'Ruta de Transporte Escolar Naco',
-      'monto': 4000.00,
-      'metodo': 'Efectivo en Caja',
-      'fecha': '09 Feb 2026',
-      'estado': 'Aprobado',
-    },
-  ];
+  final double _totalCobrado = 0.0;
+  double _totalPorCobrar = 0.0;
+  final List<Map<String, dynamic>> _transacciones = [];
 
   @override
   void initState() {
@@ -270,6 +233,34 @@ class _FinanceOverviewScreenState extends State<FinanceOverviewScreen> {
                   const SizedBox(height: 12),
                   if (_isLoading)
                     const Center(child: Padding(padding: EdgeInsets.all(30), child: CircularProgressIndicator()))
+                  else if (_transacciones.isEmpty)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 32),
+                      child: Center(
+                        child: Column(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(14),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFF1F5F9),
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(Icons.receipt_long_rounded, size: 32, color: Color(0xFF94A3B8)),
+                            ),
+                            const SizedBox(height: 12),
+                            const Text(
+                              'No hay transacciones registradas',
+                              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: AppColors.navyPrimary),
+                            ),
+                            const SizedBox(height: 4),
+                            const Text(
+                              'Los cobros, matrículas y mensualidades registrados aparecerán aquí.',
+                              style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                            ),
+                          ],
+                        ),
+                      ),
+                    )
                   else
                     ListView.separated(
                       shrinkWrap: true,

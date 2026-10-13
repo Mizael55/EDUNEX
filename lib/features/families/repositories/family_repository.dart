@@ -19,9 +19,12 @@ class FamilyRepository {
   }
 
   final SupabaseClient? _supabaseClient;
+  final bool _useDemoFallback;
 
-  FamilyRepository({SupabaseClient? supabaseClient})
-      : _supabaseClient = supabaseClient ?? _resolveClient();
+  FamilyRepository({
+    SupabaseClient? supabaseClient,
+    this._useDemoFallback = false,
+  }) : _supabaseClient = supabaseClient ?? _resolveClient();
 
   /// Lista de familias de demostración (coincidentes con los datos sembrados en la base de datos)
   static final List<Family> _demoFamilies = [
@@ -201,10 +204,10 @@ class FamilyRepository {
             .toList();
       } catch (e) {
         debugPrint('Aviso: Usando datos de respaldo para familias: $e');
-        families = List<Family>.from(_demoFamilies);
+        families = _useDemoFallback ? List<Family>.from(_demoFamilies) : [];
       }
     } else {
-      families = List<Family>.from(_demoFamilies);
+      families = _useDemoFallback ? List<Family>.from(_demoFamilies) : [];
     }
 
     if (_customFamilies.isNotEmpty) {

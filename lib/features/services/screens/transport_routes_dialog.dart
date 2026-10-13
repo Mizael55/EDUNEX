@@ -40,38 +40,7 @@ class TransportRoutesDialog extends StatefulWidget {
 }
 
 class _TransportRoutesDialogState extends State<TransportRoutesDialog> {
-  final List<BusRouteItem> _routes = [
-    BusRouteItem(
-      id: 'ruta-1',
-      name: 'Ruta 1 - Naco / Piantini / Serrallés',
-      driverName: 'Ramón Bautista',
-      driverPhone: '809-555-7711',
-      vehicleInfo: 'Autobús Escolar Toyota Coaster (Ficha #04)',
-      assignedStudents: 16,
-      capacity: 22,
-      status: 'En Ruta',
-    ),
-    BusRouteItem(
-      id: 'ruta-2',
-      name: 'Ruta 2 - Bella Vista / Mirador Sur',
-      driverName: 'José Almonte',
-      driverPhone: '809-555-8822',
-      vehicleInfo: 'Minibús Hyundai County (Ficha #07)',
-      assignedStudents: 14,
-      capacity: 18,
-      status: 'En Espera',
-    ),
-    BusRouteItem(
-      id: 'ruta-3',
-      name: 'Ruta 3 - Arroyo Hondo / Los Ríos',
-      driverName: 'Héctor Rosario',
-      driverPhone: '809-555-9933',
-      vehicleInfo: 'Autobús Escolar Mercedes-Benz (Ficha #02)',
-      assignedStudents: 20,
-      capacity: 25,
-      status: 'Completada',
-    ),
-  ];
+  final List<BusRouteItem> _routes = [];
 
   void _toggleStatus(BusRouteItem route) {
     setState(() {
@@ -149,9 +118,50 @@ class _TransportRoutesDialogState extends State<TransportRoutesDialog> {
               ),
             ),
             Expanded(
-              child: ListView.separated(
-                padding: const EdgeInsets.all(18),
-                itemCount: _routes.length,
+              child: _routes.isEmpty
+                  ? Center(
+                      child: Padding(
+                        padding: const EdgeInsets.all(24.0),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                color: AppColors.navyPrimary.withValues(alpha: 0.08),
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(
+                                Icons.directions_bus_rounded,
+                                size: 36,
+                                color: AppColors.navyPrimary,
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            const Text(
+                              'No hay rutas de transporte configuradas',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 15,
+                                color: AppColors.navyPrimary,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            const Text(
+                              'Cuando se configuren autobuses y paradas escolares aparecerán listadas aquí.',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: AppColors.textSecondary,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    )
+                  : ListView.separated(
+                      padding: const EdgeInsets.all(18),
+                      itemCount: _routes.length,
                 separatorBuilder: (_, _) => const SizedBox(height: 12),
                 itemBuilder: (context, index) {
                   final r = _routes[index];

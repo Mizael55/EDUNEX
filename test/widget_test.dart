@@ -66,9 +66,13 @@ void main() {
       apellidos: 'Pérez',
     );
 
+    final demoFamilyRepo = FamilyRepository(useDemoFallback: true);
     await tester.pumpWidget(
       MaterialApp(
-        home: MainShell(userProfile: parentProfile),
+        home: MainShell(
+          userProfile: parentProfile,
+          familyRepository: demoFamilyRepo,
+        ),
       ),
     );
     await tester.pumpAndSettle();
@@ -79,7 +83,7 @@ void main() {
   });
 
   test('FamilyRepository loads pilot families correctly', () async {
-    final repo = FamilyRepository();
+    final repo = FamilyRepository(useDemoFallback: true);
     final families = await repo.getFamilies();
 
     expect(families.isNotEmpty, isTrue);

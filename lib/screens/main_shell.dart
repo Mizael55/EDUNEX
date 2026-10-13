@@ -16,10 +16,14 @@ import 'login_screen.dart';
 /// Shell principal responsivo de EDUNEX con navegación adaptativa
 class MainShell extends StatefulWidget {
   final UserProfile userProfile;
+  final FamilyRepository? familyRepository;
+  final SchoolRepository? schoolRepository;
 
   const MainShell({
     super.key,
     required this.userProfile,
+    this.familyRepository,
+    this.schoolRepository,
   });
 
   @override
@@ -36,8 +40,8 @@ class _MainShellState extends State<MainShell> {
   @override
   void initState() {
     super.initState();
-    _familyRepository = FamilyRepository();
-    _schoolRepository = SchoolRepository();
+    _familyRepository = widget.familyRepository ?? FamilyRepository();
+    _schoolRepository = widget.schoolRepository ?? SchoolRepository();
     _loadSchoolName();
   }
 

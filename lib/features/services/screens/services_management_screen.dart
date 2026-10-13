@@ -72,7 +72,7 @@ class ServicesManagementScreen extends StatelessWidget {
                 Expanded(
                   child: _buildMetricCard(
                     title: 'Alumnos Inscritos',
-                    value: '18',
+                    value: '0',
                     subtitle: 'Capacidad de sala: 30',
                     icon: Icons.groups_rounded,
                     color: AppColors.electricBlue,
@@ -82,7 +82,7 @@ class ServicesManagementScreen extends StatelessWidget {
                 Expanded(
                   child: _buildMetricCard(
                     title: 'En Sala Ahora',
-                    value: '2',
+                    value: '0',
                     subtitle: 'Asistencia en tiempo real',
                     icon: Icons.child_care_rounded,
                     color: AppColors.accentGreen,
@@ -92,7 +92,7 @@ class ServicesManagementScreen extends StatelessWidget {
                 Expanded(
                   child: _buildMetricCard(
                     title: 'Tarifa Mensual',
-                    value: 'RD\$ 3,500',
+                    value: 'RD\$ 0.00',
                     subtitle: 'Facturado con colegiatura',
                     icon: Icons.receipt_long_rounded,
                     color: AppColors.navyPrimary,
@@ -174,8 +174,8 @@ class ServicesManagementScreen extends StatelessWidget {
                 Expanded(
                   child: _buildMetricCard(
                     title: 'Rutas Activas',
-                    value: '3',
-                    subtitle: 'Zonas: Naco, Piantini, Mirador',
+                    value: '0',
+                    subtitle: 'Zonas escolares',
                     icon: Icons.map_rounded,
                     color: const Color(0xFFB45309),
                   ),
@@ -184,8 +184,8 @@ class ServicesManagementScreen extends StatelessWidget {
                 Expanded(
                   child: _buildMetricCard(
                     title: 'Alumnos Transportados',
-                    value: '50',
-                    subtitle: '76% capacidad vehicular ocupada',
+                    value: '0',
+                    subtitle: 'Capacidad vehicular',
                     icon: Icons.groups_rounded,
                     color: AppColors.navyPrimary,
                   ),
@@ -194,7 +194,7 @@ class ServicesManagementScreen extends StatelessWidget {
                 Expanded(
                   child: _buildMetricCard(
                     title: 'Seguridad en Ruta',
-                    value: '100% OK',
+                    value: 'Sin rutas',
                     subtitle: 'Monitoreo activo',
                     icon: Icons.shield_rounded,
                     color: AppColors.accentGreen,
@@ -228,13 +228,7 @@ class ServicesManagementScreen extends StatelessWidget {
   }
 
   Widget _buildTiendaView(BuildContext context) {
-    final productos = [
-      {'nombre': 'Polo Institucional Blanco', 'tallas': '6, 8, 10, 12, S, M, L', 'precio': 850.0, 'stock': 120, 'cat': 'Uniforme Diario'},
-      {'nombre': 'Pantalón / Falda Escolar Azul Marino', 'tallas': '6, 8, 10, 12, 14, 16', 'precio': 1200.0, 'stock': 85, 'cat': 'Uniforme Diario'},
-      {'nombre': 'Polo Deportivo Amarillo EDUNEX', 'tallas': '6, 8, 10, 12, S, M', 'precio': 900.0, 'stock': 65, 'cat': 'Educación Física'},
-      {'nombre': 'Pantalón Deportivo (Buzo)', 'tallas': '6, 8, 10, 12, S, M', 'precio': 1100.0, 'stock': 70, 'cat': 'Educación Física'},
-      {'nombre': 'Mochila Institucional con Refuerzo', 'tallas': 'Estándar', 'precio': 1500.0, 'stock': 40, 'cat': 'Accesorios'},
-    ];
+    final productos = <Map<String, dynamic>>[];
 
     return Scaffold(
       backgroundColor: AppColors.backgroundLight,
@@ -282,10 +276,55 @@ class ServicesManagementScreen extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 24),
-            ListView.separated(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: productos.length,
+            if (productos.isEmpty)
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(36),
+                decoration: BoxDecoration(
+                  color: AppColors.surfaceWhite,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: const Color(0xFFE2E8F0)),
+                ),
+                child: Column(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: AppColors.navyPrimary.withValues(alpha: 0.08),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.shopping_bag_outlined,
+                        size: 36,
+                        color: AppColors.navyPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    const Text(
+                      'No hay productos registrados en inventario',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                        color: AppColors.navyPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    const Text(
+                      'Cuando se registren uniformes, textos o útiles escolares aparecerán listados aquí.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+              )
+            else
+              ListView.separated(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: productos.length,
               separatorBuilder: (_, _) => const SizedBox(height: 12),
               itemBuilder: (context, index) {
                 final p = productos[index];

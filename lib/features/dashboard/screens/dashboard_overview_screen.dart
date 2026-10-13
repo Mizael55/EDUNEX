@@ -152,6 +152,10 @@ class _DashboardOverviewScreenState extends State<DashboardOverviewScreen> {
               builder: (context, constraints) {
                 final isWide = constraints.maxWidth >= 900;
                 final crossAxisCount = isWide ? 4 : (constraints.maxWidth >= 550 ? 2 : 1);
+                final totalEstudiantes = _recentFamilies.fold<int>(0, (sum, f) => sum + f.estudiantes.length);
+                final totalFamilias = _recentFamilies.length;
+                final totalBalance = _recentFamilies.fold<double>(0.0, (sum, f) => sum + f.balancePendiente);
+                
                 return GridView.count(
                   crossAxisCount: crossAxisCount,
                   shrinkWrap: true,
@@ -162,29 +166,29 @@ class _DashboardOverviewScreenState extends State<DashboardOverviewScreen> {
                   children: [
                     _buildKpiCard(
                       title: 'Estudiantes Activos',
-                      value: '342',
-                      subtitle: '+14 nuevos este ciclo',
+                      value: '$totalEstudiantes',
+                      subtitle: totalEstudiantes == 0 ? 'Sin alumnos registrados' : '$totalEstudiantes matriculados',
                       icon: Icons.school_rounded,
                       color: AppColors.navyPrimary,
                     ),
                     _buildKpiCard(
                       title: 'Cuentas Familiares',
-                      value: '186',
-                      subtitle: '98% con tutor principal verificado',
+                      value: '$totalFamilias',
+                      subtitle: totalFamilias == 0 ? 'Sin familias registradas' : '$totalFamilias cuentas activas',
                       icon: Icons.family_restroom_rounded,
                       color: AppColors.electricBlue,
                     ),
                     _buildKpiCard(
-                      title: 'Cobranza del Mes',
-                      value: 'RD\$ 1.28M',
-                      subtitle: '91.4% de recaudación al día',
+                      title: 'Por Cobrar',
+                      value: 'RD\$ ${totalBalance.toStringAsFixed(2)}',
+                      subtitle: totalBalance == 0.0 ? 'Sin cuentas pendientes' : 'Balance acumulado',
                       icon: Icons.monetization_on_rounded,
                       color: AppColors.accentGreen,
                     ),
                     _buildKpiCard(
                       title: 'Servicios Activos',
-                      value: '52',
-                      subtitle: '38 en Cuido • 14 en Transporte',
+                      value: '0',
+                      subtitle: 'Cuido y Transporte escolar',
                       icon: Icons.alt_route_rounded,
                       color: AppColors.amberAccent,
                     ),
@@ -284,6 +288,51 @@ class _DashboardOverviewScreenState extends State<DashboardOverviewScreen> {
                 child: Padding(
                   padding: EdgeInsets.all(32.0),
                   child: CircularProgressIndicator(color: AppColors.navyPrimary),
+                ),
+              )
+            else if (_recentFamilies.isEmpty)
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(32),
+                decoration: BoxDecoration(
+                  color: AppColors.surfaceWhite,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: const Color(0xFFE2E8F0)),
+                ),
+                child: Column(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: AppColors.navyPrimary.withValues(alpha: 0.08),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.family_restroom_rounded,
+                        color: AppColors.navyPrimary,
+                        size: 36,
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    const Text(
+                      'No hay familias registradas todavía',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.navyPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    const Text(
+                      'Esta institución se encuentra vacía y lista para pruebas.\nPuede matricular alumnos o crear nuevas familias usando las acciones rápidas.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: AppColors.textSecondary,
+                        height: 1.4,
+                      ),
+                    ),
+                  ],
                 ),
               )
             else

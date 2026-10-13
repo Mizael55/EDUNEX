@@ -17,9 +17,12 @@ class SchoolRepository {
   }
 
   final SupabaseClient? _supabaseClient;
+  final bool _useDemoFallback;
 
-  SchoolRepository({SupabaseClient? supabaseClient})
-      : _supabaseClient = supabaseClient ?? _resolveClient();
+  SchoolRepository({
+    SupabaseClient? supabaseClient,
+    this._useDemoFallback = false,
+  }) : _supabaseClient = supabaseClient ?? _resolveClient();
 
   /// Lista de colegios de demostración para pruebas fuera de línea
   static final List<School> _demoSchools = [
@@ -86,11 +89,11 @@ class SchoolRepository {
             .toList();
       } catch (e) {
         debugPrint('Aviso: Error consultando colegios en Supabase: $e');
-        schools = [];
+        schools = _useDemoFallback ? List<School>.from(_demoSchools) : [];
       }
     } else {
       // Modo desconectado o pruebas unitarias sin Supabase configurado
-      schools = List<School>.from(_demoSchools);
+      schools = _useDemoFallback ? List<School>.from(_demoSchools) : [];
     }
 
     // Filtrar por término de búsqueda

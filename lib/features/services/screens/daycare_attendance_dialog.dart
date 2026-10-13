@@ -40,34 +40,7 @@ class DaycareAttendanceDialog extends StatefulWidget {
 }
 
 class _DaycareAttendanceDialogState extends State<DaycareAttendanceDialog> {
-  final List<DaycareRecord> _records = [
-    DaycareRecord(
-      id: 'cuido-1',
-      studentName: 'Mateo Pérez González',
-      grade: '1ro de Primaria',
-      parentContact: '809-555-0150 (Roberto Pérez)',
-      checkInTime: '03:15 PM',
-      isCheckedOut: false,
-    ),
-    DaycareRecord(
-      id: 'cuido-2',
-      studentName: 'Sofía Pérez González',
-      grade: 'Kinder A',
-      parentContact: '809-555-0150 (Carmen González)',
-      checkInTime: '03:10 PM',
-      checkOutTime: '05:30 PM',
-      pickedUpBy: 'Carmen González (Madre)',
-      isCheckedOut: true,
-    ),
-    DaycareRecord(
-      id: 'cuido-3',
-      studentName: 'Lucas Castillo Rosario',
-      grade: '2do de Primaria',
-      parentContact: '809-555-0899 (Laura Rosario)',
-      checkInTime: '03:00 PM',
-      isCheckedOut: false,
-    ),
-  ];
+  final List<DaycareRecord> _records = [];
 
   void _recordCheckout(DaycareRecord record) {
     final nameCtrl = TextEditingController(text: 'Tutor Autorizado');
@@ -254,9 +227,49 @@ class _DaycareAttendanceDialogState extends State<DaycareAttendanceDialog> {
             ),
             const Divider(height: 1, color: Color(0xFFE2E8F0)),
             Expanded(
-              child: ListView.separated(
-                padding: const EdgeInsets.all(16),
-                itemCount: _records.length,
+              child: _records.isEmpty
+                  ? Center(
+                      child: Padding(
+                        padding: const EdgeInsets.all(24.0),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                color: AppColors.electricBlue.withValues(alpha: 0.1),
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(
+                                Icons.child_care_rounded,
+                                size: 36,
+                                color: AppColors.electricBlue,
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            const Text(
+                              'No hay alumnos en la sala de cuido hoy',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 15,
+                                color: AppColors.navyPrimary,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            const Text(
+                              'Pulse "+ Registrar Entrada" para registrar la llegada de un estudiante.',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: AppColors.textSecondary,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    )
+                  : ListView.separated(
+                      padding: const EdgeInsets.all(16),
+                      itemCount: _records.length,
                 separatorBuilder: (_, _) => const SizedBox(height: 10),
                 itemBuilder: (context, index) {
                   final r = _records[index];
