@@ -35,6 +35,7 @@ class Student {
   });
 
   String get nombreCompleto => '$nombres $apellidos'.trim();
+  String get gradoYSeccion => '${gradoNombre ?? "Sin grado"} ${seccionNombre ?? ""}'.trim();
 
   int get edad {
     final now = DateTime.now();

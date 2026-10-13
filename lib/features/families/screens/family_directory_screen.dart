@@ -3,6 +3,8 @@ import '../../../theme/app_colors.dart';
 import '../models/family.dart';
 import '../repositories/family_repository.dart';
 import 'family_detail_dialog.dart';
+import 'create_family_dialog.dart';
+import '../../finances/screens/record_payment_dialog.dart';
 
 /// Pantalla del Directorio de Cuentas Familiares en EDUNEX
 class FamilyDirectoryScreen extends StatefulWidget {
@@ -92,11 +94,10 @@ class _FamilyDirectoryScreenState extends State<FamilyDirectoryScreen> {
                 ),
                 ElevatedButton.icon(
                   onPressed: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Formulario para registrar nueva Familia en EDUNEX'),
-                        backgroundColor: AppColors.navyPrimary,
-                      ),
+                    CreateFamilyDialog.show(
+                      context,
+                      repository: widget.repository,
+                      onFamilyCreated: (_) => _loadFamilies(),
                     );
                   },
                   icon: const Icon(Icons.add_rounded, size: 20),
@@ -404,7 +405,28 @@ class _FamilyDirectoryScreenState extends State<FamilyDirectoryScreen> {
                   ],
                 ),
 
-                const SizedBox(width: 16),
+                const SizedBox(width: 12),
+                ElevatedButton.icon(
+                  onPressed: () {
+                    RecordPaymentDialog.show(
+                      context,
+                      repository: widget.repository,
+                      initialFamily: family,
+                      onPaymentRecorded: () => _loadFamilies(),
+                    );
+                  },
+                  icon: const Icon(Icons.receipt_long_rounded, size: 14),
+                  label: const Text('Cobrar', style: TextStyle(fontSize: 12)),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.accentGreen,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    visualDensity: VisualDensity.compact,
+                  ),
+                ),
+
+                const SizedBox(width: 12),
                 const Icon(Icons.chevron_right_rounded, color: Color(0xFF94A3B8)),
               ],
             ),

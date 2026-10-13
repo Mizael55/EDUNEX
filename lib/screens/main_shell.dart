@@ -8,6 +8,9 @@ import '../features/dashboard/screens/dashboard_overview_screen.dart';
 import '../features/parent_portal/screens/parent_portal_screen.dart';
 import '../features/superadmin/repositories/school_repository.dart';
 import '../features/superadmin/screens/superadmin_dashboard_screen.dart';
+import '../features/superadmin/models/school.dart';
+import '../features/finances/screens/finance_overview_screen.dart';
+import '../features/services/screens/services_management_screen.dart';
 import 'login_screen.dart';
 
 /// Shell principal responsivo de EDUNEX con navegación adaptativa
@@ -28,6 +31,7 @@ class _MainShellState extends State<MainShell> {
   late final FamilyRepository _familyRepository;
   late final SchoolRepository _schoolRepository;
   String _schoolName = 'Colegio Cliente EDUNEX';
+  School? _inspectedSchool;
 
   @override
   void initState() {
@@ -132,22 +136,32 @@ class _MainShellState extends State<MainShell> {
           return SuperAdminDashboardScreen(
             schoolRepository: _schoolRepository,
             onSelectSchoolToInspect: (school) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text('Inspeccionando datos de: ${school.nombre}'),
-                  backgroundColor: AppColors.navyPrimary,
-                ),
-              );
-              setState(() => _selectedIndex = 2);
+              setState(() {
+                _inspectedSchool = school;
+                _selectedIndex = 2;
+              });
             },
           );
         case 2:
           return DashboardOverviewScreen(
             familyRepository: _familyRepository,
+            schoolName: _inspectedSchool?.nombre,
+            onReturnToSuperAdmin: _inspectedSchool != null
+                ? () => setState(() {
+                      _inspectedSchool = null;
+                      _selectedIndex = 0;
+                    })
+                : null,
             onNavigateToFamilies: () => setState(() => _selectedIndex = 3),
           );
         case 3:
           return FamilyDirectoryScreen(repository: _familyRepository);
+        case 4:
+          return FinanceOverviewScreen(
+            isSuperAdmin: true,
+            familyRepository: _familyRepository,
+            schoolRepository: _schoolRepository,
+          );
         default:
           return _buildPlaceholderScreen(_navItems[_selectedIndex].title);
       }
@@ -160,19 +174,41 @@ class _MainShellState extends State<MainShell> {
             userProfile: widget.userProfile,
             familyRepository: _familyRepository,
           );
+        case 1:
+          return FinanceOverviewScreen(
+            isSuperAdmin: false,
+            familyRepository: _familyRepository,
+          );
+        case 2:
+          return const ServicesManagementScreen(moduleType: ServiceModuleType.cuido);
+        case 3:
+          return const ServicesManagementScreen(moduleType: ServiceModuleType.tienda);
         default:
           return _buildPlaceholderScreen(_navItems[_selectedIndex].title);
       }
     }
 
+    // Administrador de Colegio (Director / Personal Escolar)
     switch (_selectedIndex) {
       case 0:
         return DashboardOverviewScreen(
           familyRepository: _familyRepository,
+          schoolName: _schoolName,
           onNavigateToFamilies: () => setState(() => _selectedIndex = 1),
         );
       case 1:
         return FamilyDirectoryScreen(repository: _familyRepository);
+      case 2:
+        return FinanceOverviewScreen(
+          isSuperAdmin: false,
+          familyRepository: _familyRepository,
+        );
+      case 3:
+        return const ServicesManagementScreen(moduleType: ServiceModuleType.cuido);
+      case 4:
+        return const ServicesManagementScreen(moduleType: ServiceModuleType.transporte);
+      case 5:
+        return const ServicesManagementScreen(moduleType: ServiceModuleType.tienda);
       default:
         return _buildPlaceholderScreen(_navItems[_selectedIndex].title);
     }

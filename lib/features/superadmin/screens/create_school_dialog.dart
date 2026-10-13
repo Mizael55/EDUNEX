@@ -60,6 +60,10 @@ class _CreateSchoolDialogState extends State<CreateSchoolDialog> {
   bool _obscurePassword = false;
 
   bool _isLoading = false;
+  School? _createdSchool;
+  String? _createdDirectorEmail;
+  String? _createdDirectorPassword;
+  String? _createdDirectorName;
 
   @override
   void dispose() {
@@ -100,23 +104,20 @@ class _CreateSchoolDialogState extends State<CreateSchoolDialog> {
       final newSchool = result['school'] as School;
 
       if (mounted) {
-        // Cerrar modal de formulario
-        Navigator.of(context).pop();
+        setState(() {
+          _createdSchool = newSchool;
+          _createdDirectorEmail = _directorEmailController.text.trim();
+          _createdDirectorPassword = _directorPasswordController.text.trim();
+          _createdDirectorName = '${_directorNombresController.text.trim()} ${_directorApellidosController.text.trim()}'.trim();
+          _isLoading = false;
+        });
 
-        // Notificar callback
+        // Notificar callback para actualizar la lista en el dashboard del dueño
         widget.onSchoolCreated?.call(newSchool);
-
-        // Abrir modal de éxito con credenciales listas para copiar
-        _showSuccessCredentialsDialog(
-          context,
-          school: newSchool,
-          email: _directorEmailController.text.trim(),
-          password: _directorPasswordController.text.trim(),
-          directorName: '${_directorNombresController.text.trim()} ${_directorApellidosController.text.trim()}'.trim(),
-        );
       }
     } catch (e) {
       if (mounted) {
+        setState(() => _isLoading = false);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             backgroundColor: Colors.red.shade800,
@@ -124,92 +125,149 @@ class _CreateSchoolDialogState extends State<CreateSchoolDialog> {
           ),
         );
       }
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
     }
   }
 
-  void _showSuccessCredentialsDialog(
-    BuildContext context, {
-    required School school,
-    required String email,
-    required String password,
-    required String directorName,
-  }) {
-    showDialog(
-      context: context,
-      builder: (dialogCtx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: const BoxDecoration(
-                color: Color(0xFFDCFCE7),
-                shape: BoxShape.circle,
+  Widget _buildSuccessContent(BuildContext context) {
+    final school = _createdSchool!;
+    final email = _createdDirectorEmail ?? '';
+    final password = _createdDirectorPassword ?? '';
+    final directorName = _createdDirectorName ?? 'Director';
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          padding: const EdgeInsets.all(22),
+          decoration: const BoxDecoration(
+            color: Color(0xFF166534),
+            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+          ),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(Icons.check_circle_rounded, color: Colors.white, size: 28),
               ),
-              child: const Icon(Icons.check_circle_rounded, color: AppColors.accentGreen, size: 28),
-            ),
-            const SizedBox(width: 12),
-            const Expanded(
-              child: Text(
-                '¡Colegio & Director Habilitados!',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.navyPrimary),
-              ),
-            ),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'La institución "${school.nombre}" ya está registrada y su Administrador Escolar puede ingresar de inmediato.',
-              style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
-            ),
-            const SizedBox(height: 16),
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: AppColors.backgroundLight,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: const Color(0xFFE2E8F0)),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Row(
-                    children: [
-                      Icon(Icons.vpn_key_rounded, size: 16, color: AppColors.navyPrimary),
-                      SizedBox(width: 6),
-                      Text(
-                        'Credenciales de Acceso para el Director:',
-                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: AppColors.navyPrimary),
+              const SizedBox(width: 14),
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '¡Colegio & Director Habilitados!',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
                       ),
-                    ],
-                  ),
-                  const SizedBox(height: 10),
-                  Text('👤 Director: $directorName', style: const TextStyle(fontSize: 13)),
-                  const SizedBox(height: 4),
-                  Text('📧 Correo: $email', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 4),
-                  Text('🔑 Contraseña: $password', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppColors.navyPrimary)),
-                  const SizedBox(height: 4),
-                  const Text('🛡️ Rol: Administrador del Colegio (admin_colegio)', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
-                ],
+                    ),
+                    SizedBox(height: 2),
+                    Text(
+                      'La institución ha sido dada de alta y sus credenciales están listas.',
+                      style: TextStyle(color: Colors.white70, fontSize: 12),
+                    ),
+                  ],
+                ),
               ),
-            ),
-            const SizedBox(height: 12),
-            const Text(
-              '💡 El director ya puede iniciar sesión en la pantalla de Login con estas credenciales y tendrá acceso completo a su colegio.',
-              style: TextStyle(fontSize: 11, color: AppColors.textSecondary, fontStyle: FontStyle.italic),
-            ),
-          ],
+              IconButton(
+                icon: const Icon(Icons.close_rounded, color: Colors.white),
+                onPressed: () => Navigator.of(context).pop(),
+              ),
+            ],
+          ),
         ),
-        actions: [
-          TextButton.icon(
-            onPressed: () {
-              final text = '''
+        Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF0FDF4),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: const Color(0xFFBBF7D0)),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.domain_rounded, color: Color(0xFF166534), size: 28),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            school.nombre,
+                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Color(0xFF166534)),
+                          ),
+                          Text(
+                            'RNC: ${school.rnc ?? "N/D"} • Plan ${school.planName} (${school.maxEstudiantes} Alumnos) • Estado: ACTIVO',
+                            style: const TextStyle(fontSize: 12, color: Color(0xFF15803D)),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 18),
+              Container(
+                padding: const EdgeInsets.all(18),
+                decoration: BoxDecoration(
+                  color: AppColors.backgroundLight,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: const Color(0xFFCBD5E1)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Row(
+                      children: [
+                        Icon(Icons.vpn_key_rounded, size: 18, color: AppColors.navyPrimary),
+                        SizedBox(width: 8),
+                        Text(
+                          'Credenciales Generadas para el Director Escolar:',
+                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppColors.navyPrimary),
+                        ),
+                      ],
+                    ),
+                    const Divider(height: 20, color: Color(0xFFE2E8F0)),
+                    Text('👤 Nombre: $directorName', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                    const SizedBox(height: 6),
+                    Text('📧 Correo: $email', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppColors.navyPrimary)),
+                    const SizedBox(height: 6),
+                    Text('🔑 Contraseña: $password', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFFB45309))),
+                    const SizedBox(height: 6),
+                    const Text('🛡️ Perfil de Acceso: Administrador de Colegio (admin_colegio)', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 14),
+              const Text(
+                '💡 El director ya puede ingresar al sistema utilizando estas credenciales y tendrá acceso total al colegio.',
+                style: TextStyle(fontSize: 12, color: AppColors.textSecondary, fontStyle: FontStyle.italic),
+              ),
+            ],
+          ),
+        ),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+          decoration: const BoxDecoration(
+            color: Color(0xFFF8FAFC),
+            border: Border(top: BorderSide(color: Color(0xFFE2E8F0))),
+            borderRadius: BorderRadius.vertical(bottom: Radius.circular(20)),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              OutlinedButton.icon(
+                onPressed: () {
+                  final text = '''
 *Credenciales de Acceso a EDUNEX*
 Colegio: ${school.nombre}
 Director: $directorName
@@ -217,27 +275,37 @@ URL: https://edunexdev.netlify.app
 Correo: $email
 Contraseña: $password
 ''';
-              Clipboard.setData(ClipboardData(text: text));
-              ScaffoldMessenger.of(dialogCtx).showSnackBar(
-                const SnackBar(
-                  content: Text('Credenciales copiadas al portapapeles.'),
-                  backgroundColor: AppColors.navyPrimary,
+                  Clipboard.setData(ClipboardData(text: text));
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Credenciales copiadas al portapapeles.'),
+                      backgroundColor: AppColors.navyPrimary,
+                    ),
+                  );
+                },
+                icon: const Icon(Icons.copy_rounded, size: 16),
+                label: const Text('Copiar Credenciales'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: AppColors.navyPrimary,
+                  side: const BorderSide(color: AppColors.navyPrimary),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                 ),
-              );
-            },
-            icon: const Icon(Icons.copy_rounded, size: 16),
-            label: const Text('Copiar Credenciales'),
+              ),
+              const SizedBox(width: 12),
+              ElevatedButton(
+                onPressed: () => Navigator.of(context).pop(),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.navyPrimary,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 12),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                ),
+                child: const Text('Entendido y Ver en Panel'),
+              ),
+            ],
           ),
-          ElevatedButton(
-            onPressed: () => Navigator.of(dialogCtx).pop(),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.navyPrimary,
-              foregroundColor: Colors.white,
-            ),
-            child: const Text('Entendido y Cerrar'),
-          ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
@@ -248,9 +316,11 @@ Contraseña: $password
       backgroundColor: AppColors.surfaceWhite,
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 720, maxHeight: 850),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
+        child: _createdSchool != null
+            ? _buildSuccessContent(context)
+            : Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
             // Header del Modal
             Container(
               padding: const EdgeInsets.all(22),

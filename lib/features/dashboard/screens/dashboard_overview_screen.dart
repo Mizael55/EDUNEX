@@ -3,16 +3,24 @@ import '../../../theme/app_colors.dart';
 import '../../families/models/family.dart';
 import '../../families/repositories/family_repository.dart';
 import '../../families/screens/family_detail_dialog.dart';
+import '../../families/screens/enroll_student_dialog.dart';
+import '../../finances/screens/record_payment_dialog.dart';
+import '../../services/screens/daycare_attendance_dialog.dart';
+import '../../services/screens/transport_routes_dialog.dart';
 
 /// Pantalla Principal del Dashboard de EDUNEX
 class DashboardOverviewScreen extends StatefulWidget {
   final FamilyRepository familyRepository;
   final VoidCallback onNavigateToFamilies;
+  final String? schoolName;
+  final VoidCallback? onReturnToSuperAdmin;
 
   const DashboardOverviewScreen({
     super.key,
     required this.familyRepository,
     required this.onNavigateToFamilies,
+    this.schoolName,
+    this.onReturnToSuperAdmin,
   });
 
   @override
@@ -52,6 +60,39 @@ class _DashboardOverviewScreenState extends State<DashboardOverviewScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            if (widget.onReturnToSuperAdmin != null) ...[
+              Container(
+                margin: const EdgeInsets.only(bottom: 16),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                decoration: BoxDecoration(
+                  color: AppColors.navyPrimary.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: AppColors.navyPrimary.withValues(alpha: 0.2)),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.remove_red_eye_rounded, color: AppColors.navyPrimary, size: 20),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        'MODO AUDITORÍA SAAS: Inspeccionando la institución "${widget.schoolName ?? "Colegio Cliente"}"',
+                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppColors.navyPrimary),
+                      ),
+                    ),
+                    TextButton.icon(
+                      onPressed: widget.onReturnToSuperAdmin,
+                      icon: const Icon(Icons.arrow_back_rounded, size: 16),
+                      label: const Text('Volver al Panel Maestro'),
+                      style: TextButton.styleFrom(
+                        foregroundColor: AppColors.navyPrimary,
+                        textStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+
             // Cabecera de bienvenida
             Row(
               children: [
@@ -69,7 +110,7 @@ class _DashboardOverviewScreenState extends State<DashboardOverviewScreen> {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        'Colegio Bilingüe EDUNEX Piloto • Período Escolar 2026',
+                        '${widget.schoolName ?? "Colegio Bilingüe EDUNEX Piloto"} • Período Escolar 2026',
                         style: TextStyle(
                           fontSize: 14,
                           color: AppColors.textSecondary.withValues(alpha: 0.9),
@@ -173,11 +214,10 @@ class _DashboardOverviewScreenState extends State<DashboardOverviewScreen> {
                   label: 'Matricular Alumno',
                   color: AppColors.navyPrimary,
                   onTap: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Abriendo asistente de matrícula escolar'),
-                        backgroundColor: AppColors.navyPrimary,
-                      ),
+                    EnrollStudentDialog.show(
+                      context,
+                      repository: widget.familyRepository,
+                      onStudentEnrolled: (_) => _loadData(),
                     );
                   },
                 ),
@@ -186,11 +226,10 @@ class _DashboardOverviewScreenState extends State<DashboardOverviewScreen> {
                   label: 'Registrar Pago',
                   color: AppColors.accentGreen,
                   onTap: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Abriendo caja para registro de cobros'),
-                        backgroundColor: AppColors.accentGreen,
-                      ),
+                    RecordPaymentDialog.show(
+                      context,
+                      repository: widget.familyRepository,
+                      onPaymentRecorded: () => _loadData(),
                     );
                   },
                 ),
@@ -199,12 +238,7 @@ class _DashboardOverviewScreenState extends State<DashboardOverviewScreen> {
                   label: 'Asistencia Cuido',
                   color: AppColors.electricBlue,
                   onTap: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Abriendo control de asistencia en cuido vespertino'),
-                        backgroundColor: AppColors.electricBlue,
-                      ),
-                    );
+                    DaycareAttendanceDialog.show(context);
                   },
                 ),
                 _buildQuickAction(
@@ -212,12 +246,7 @@ class _DashboardOverviewScreenState extends State<DashboardOverviewScreen> {
                   label: 'Rutas Transporte',
                   color: const Color(0xFFB45309),
                   onTap: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Abriendo monitoreo de rutas de transporte escolar'),
-                        backgroundColor: Color(0xFFB45309),
-                      ),
-                    );
+                    TransportRoutesDialog.show(context);
                   },
                 ),
               ],

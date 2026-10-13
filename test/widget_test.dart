@@ -139,4 +139,49 @@ void main() {
     expect(director['email'], 'director.exp@edunex.edu');
     expect(director['rol'], 'admin_colegio');
   });
+
+  test('FamilyRepository createFamily, recordPayment and enrollStudent work end-to-end', () async {
+    final repo = FamilyRepository();
+    final newFamily = await repo.createFamily(
+      colegioId: 'col-test',
+      nombreFamilia: 'Familia Méndez Peña',
+      tutorNombres: 'Julio',
+      tutorApellidos: 'Méndez',
+      tutorEmail: 'julio.mendez@test.com',
+      tutorTelefono: '809-555-9000',
+      balanceInicial: 10000.0,
+      estudianteNombres: 'Camila',
+      gradoNombre: '2do de Primaria',
+    );
+
+    expect(newFamily.nombreFamilia, 'Familia Méndez Peña');
+    expect(newFamily.balancePendiente, 10000.0);
+    expect(newFamily.estudiantes.length, 1);
+    expect(newFamily.estudiantes.first.nombres, 'Camila');
+
+    // Registrar pago / abono
+    await repo.recordPayment(
+      familiaId: newFamily.id,
+      monto: 4000.0,
+      concepto: 'Abono Colegiatura',
+      metodo: 'Transferencia',
+    );
+
+    final updated = await repo.getFamilyById(newFamily.id);
+    expect(updated, isNotNull);
+    expect(updated!.balancePendiente, 6000.0);
+
+    // Matricular segundo hijo
+    final newStudent = await repo.enrollStudent(
+      familiaId: newFamily.id,
+      colegioId: 'col-test',
+      nombres: 'Diego',
+      apellidos: 'Méndez',
+      gradoNombre: 'Kinder',
+    );
+
+    expect(newStudent.nombreCompleto, 'Diego Méndez');
+    final familyWithTwo = await repo.getFamilyById(newFamily.id);
+    expect(familyWithTwo!.estudiantes.length, 2);
+  });
 }

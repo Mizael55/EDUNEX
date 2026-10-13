@@ -207,6 +207,16 @@ class FamilyRepository {
       families = List<Family>.from(_demoFamilies);
     }
 
+    if (_customFamilies.isNotEmpty) {
+      // Evitar duplicados por ID
+      final existingIds = families.map((f) => f.id).toSet();
+      for (final cf in _customFamilies) {
+        if (!existingIds.contains(cf.id)) {
+          families.insert(0, cf);
+        }
+      }
+    }
+
     // Filtrar según query
     if (searchQuery != null && searchQuery.trim().isNotEmpty) {
       final q = searchQuery.trim().toLowerCase();
@@ -254,5 +264,246 @@ class FamilyRepository {
     }
     // Retorna la primera familia disponible
     return list.first;
+  }
+
+  /// Lista en memoria para familias creadas durante la sesión
+  static final List<Family> _customFamilies = [];
+
+  /// Registra una nueva familia con su tutor y estudiante inicial
+  Future<Family> createFamily({
+    required String colegioId,
+    required String nombreFamilia,
+    required String tutorNombres,
+    required String tutorApellidos,
+    required String tutorEmail,
+    required String tutorTelefono,
+    String? parentesco,
+    String? cedula,
+    String? direccion,
+    double balanceInicial = 0.0,
+    String? estudianteNombres,
+    String? estudianteApellidos,
+    String? gradoNombre,
+  }) async {
+    final now = DateTime.now();
+    final uniqueSuffix = now.millisecondsSinceEpoch.toString().substring(8);
+    final codigoFamilia = 'FAM-${now.year}-$uniqueSuffix';
+    final familyId = 'fam-${now.millisecondsSinceEpoch}';
+    final tutorId = 'tut-${now.millisecondsSinceEpoch}';
+    final studentId = 'est-${now.millisecondsSinceEpoch}';
+
+    final newTutor = Tutor(
+      id: tutorId,
+      familiaId: familyId,
+      nombres: tutorNombres,
+      apellidos: tutorApellidos,
+      parentesco: parentesco ?? 'Tutor Legal',
+      cedulaOPasaporte: cedula,
+      telefono: tutorTelefono,
+      email: tutorEmail,
+      esContactoPrincipal: true,
+      autorizadoRecoger: true,
+    );
+
+    List<Student> students = [];
+    if (estudianteNombres != null && estudianteNombres.trim().isNotEmpty) {
+      students.add(
+        Student(
+          id: studentId,
+          colegioId: colegioId,
+          familiaId: familyId,
+          matricula: 'EST-${now.year}-$uniqueSuffix',
+          nombres: estudianteNombres.trim(),
+          apellidos: (estudianteApellidos != null && estudianteApellidos.trim().isNotEmpty)
+              ? estudianteApellidos.trim()
+              : tutorApellidos,
+          fechaNacimiento: DateTime(now.year - 8, 1, 1),
+          genero: 'No especificado',
+          gradoNombre: gradoNombre ?? '1ro de Primaria',
+          seccionNombre: 'Sección A',
+        ),
+      );
+    }
+
+    final newFamily = Family(
+      id: familyId,
+      colegioId: colegioId,
+      codigoFamilia: codigoFamilia,
+      nombreFamilia: nombreFamilia,
+      balancePendiente: balanceInicial,
+      telefonoPrincipal: tutorTelefono,
+      emailPrincipal: tutorEmail,
+      direccion: direccion,
+      activo: true,
+      tutores: [newTutor],
+      estudiantes: students,
+    );
+
+    if (_supabaseClient != null && SupabaseConfig.isConfigured) {
+      try {
+        final familyData = await _supabaseClient.from('familias').insert({
+          'colegio_id': colegioId,
+          'codigo_familia': codigoFamilia,
+          'nombre_familia': nombreFamilia,
+          'balance_pendiente': balanceInicial,
+          'telefono_principal': tutorTelefono,
+          'email_principal': tutorEmail,
+          'direccion': direccion,
+          'activo': true,
+        }).select().single();
+
+        final createdFamilyId = familyData['id'] as String;
+
+        await _supabaseClient.from('tutores').insert({
+          'familia_id': createdFamilyId,
+          'nombres': tutorNombres,
+          'apellidos': tutorApellidos,
+          'parentesco': parentesco ?? 'Tutor Legal',
+          'cedula_o_pasaporte': cedula,
+          'telefono': tutorTelefono,
+          'email': tutorEmail,
+          'es_contacto_principal': true,
+          'autorizado_recoger': true,
+        });
+
+        if (students.isNotEmpty) {
+          await _supabaseClient.from('estudiantes').insert({
+            'colegio_id': colegioId,
+            'familia_id': createdFamilyId,
+            'matricula': 'EST-${now.year}-$uniqueSuffix',
+            'nombres': estudianteNombres!.trim(),
+            'apellidos': (estudianteApellidos != null && estudianteApellidos.trim().isNotEmpty)
+                ? estudianteApellidos.trim()
+                : tutorApellidos,
+            'fecha_nacimiento': DateTime(now.year - 8, 1, 1).toIso8601String().split('T').first,
+            'genero': 'No especificado',
+            'activo': true,
+          });
+        }
+      } catch (e) {
+        debugPrint('Aviso: Guardando familia localmente tras error Supabase: $e');
+      }
+    }
+
+    _customFamilies.insert(0, newFamily);
+    return newFamily;
+  }
+
+  /// Registra un abono o pago a una familia
+  Future<void> recordPayment({
+    required String familiaId,
+    required double monto,
+    required String concepto,
+    required String metodo,
+    String? referencia,
+  }) async {
+    if (_supabaseClient != null && SupabaseConfig.isConfigured) {
+      try {
+        await _supabaseClient.from('pagos').insert({
+          'familia_id': familiaId,
+          'monto_total': monto,
+          'metodo': metodo.toLowerCase(),
+          'referencia': referencia ?? 'REC-${DateTime.now().millisecondsSinceEpoch}',
+          'estado': 'aprobado',
+          'notas': concepto,
+        });
+      } catch (e) {
+        debugPrint('Aviso: Pago registrado localmente: $e');
+      }
+    }
+
+    // Actualizar balance en memoria
+    for (int i = 0; i < _customFamilies.length; i++) {
+      if (_customFamilies[i].id == familiaId) {
+        final f = _customFamilies[i];
+        final newBal = (f.balancePendiente - monto).clamp(0.0, double.infinity);
+        _customFamilies[i] = Family(
+          id: f.id,
+          colegioId: f.colegioId,
+          codigoFamilia: f.codigoFamilia,
+          nombreFamilia: f.nombreFamilia,
+          balancePendiente: newBal,
+          telefonoPrincipal: f.telefonoPrincipal,
+          emailPrincipal: f.emailPrincipal,
+          direccion: f.direccion,
+          activo: f.activo,
+          tutores: f.tutores,
+          estudiantes: f.estudiantes,
+        );
+        break;
+      }
+    }
+  }
+
+  /// Matricula un nuevo alumno en una familia
+  Future<Student> enrollStudent({
+    required String familiaId,
+    required String colegioId,
+    required String nombres,
+    required String apellidos,
+    required String gradoNombre,
+    String? seccionNombre,
+    DateTime? fechaNacimiento,
+    String? genero,
+    List<String> servicios = const [],
+  }) async {
+    final now = DateTime.now();
+    final uniqueSuffix = now.millisecondsSinceEpoch.toString().substring(8);
+    final matricula = 'EST-${now.year}-$uniqueSuffix';
+    final studentId = 'est-${now.millisecondsSinceEpoch}';
+
+    final student = Student(
+      id: studentId,
+      colegioId: colegioId,
+      familiaId: familiaId,
+      matricula: matricula,
+      nombres: nombres,
+      apellidos: apellidos,
+      fechaNacimiento: fechaNacimiento ?? DateTime(now.year - 7, 1, 1),
+      genero: genero ?? 'No especificado',
+      gradoNombre: gradoNombre,
+      seccionNombre: seccionNombre ?? 'Sección A',
+      serviciosActivos: servicios,
+    );
+
+    if (_supabaseClient != null && SupabaseConfig.isConfigured) {
+      try {
+        await _supabaseClient.from('estudiantes').insert({
+          'colegio_id': colegioId,
+          'familia_id': familiaId,
+          'matricula': matricula,
+          'nombres': nombres,
+          'apellidos': apellidos,
+          'fecha_nacimiento': (fechaNacimiento ?? DateTime(now.year - 7, 1, 1)).toIso8601String().split('T').first,
+          'genero': genero ?? 'No especificado',
+          'activo': true,
+        });
+      } catch (e) {
+        debugPrint('Aviso: Estudiante guardado localmente tras error Supabase: $e');
+      }
+    }
+
+    // Actualizar familia en memoria
+    for (int i = 0; i < _customFamilies.length; i++) {
+      if (_customFamilies[i].id == familiaId) {
+        final f = _customFamilies[i];
+        _customFamilies[i] = Family(
+          id: f.id,
+          colegioId: f.colegioId,
+          codigoFamilia: f.codigoFamilia,
+          nombreFamilia: f.nombreFamilia,
+          balancePendiente: f.balancePendiente,
+          telefonoPrincipal: f.telefonoPrincipal,
+          emailPrincipal: f.emailPrincipal,
+          direccion: f.direccion,
+          activo: f.activo,
+          tutores: f.tutores,
+          estudiantes: [...f.estudiantes, student],
+        );
+        break;
+      }
+    }
+
+    return student;
   }
 }
