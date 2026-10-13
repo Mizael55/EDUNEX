@@ -5,17 +5,33 @@
 // gestures. You can also use WidgetTester to find child widgets in the widget
 // tree, read text, and verify that the values of widget properties are correct.
 
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-
 import 'package:edunex/main.dart';
 
 void main() {
-  testWidgets('EdunexApp smoke test', (WidgetTester tester) async {
+  testWidgets('EdunexApp desktop smoke test', (WidgetTester tester) async {
+    tester.view.physicalSize = const Size(1280, 900);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+
     // Build our app and trigger a frame.
     await tester.pumpWidget(const EdunexApp());
 
-    // Verify that the app mounts
-    expect(find.byType(EdunexApp), findsOneWidget);
+    // Verify that the login form is rendered
+    expect(find.text('Iniciar Sesión'), findsOneWidget);
+  });
+
+  testWidgets('EdunexApp mobile smoke test', (WidgetTester tester) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+
+    // Build our app and trigger a frame.
+    await tester.pumpWidget(const EdunexApp());
+
+    // Verify that the login form is rendered
+    expect(find.text('Iniciar Sesión'), findsOneWidget);
   });
 }
 
