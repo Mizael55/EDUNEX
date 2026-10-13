@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import '../features/auth/models/user_role.dart';
+import '../features/auth/repositories/auth_repository.dart';
 import '../theme/app_colors.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -11,7 +13,7 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
   final _userController = TextEditingController(text: 'admin@edunex.edu');
-  final _passwordController = TextEditingController(text: '********');
+  final _passwordController = TextEditingController(text: '123456');
 
   bool _obscurePassword = true;
   bool _rememberMe = true;
@@ -20,19 +22,25 @@ class _LoginScreenState extends State<LoginScreen> {
 
   final List<Map<String, dynamic>> _roles = [
     {
+      'role': UserRole.adminColegio,
       'name': 'Administrador',
-      'icon': Icons.admin_panel_settings_rounded,
-      'color': AppColors.navyPrimary,
+      'email': 'admin@edunex.edu',
+      'icon': UserRole.adminColegio.icon,
+      'color': UserRole.adminColegio.color,
     },
     {
+      'role': UserRole.docente,
       'name': 'Docente',
-      'icon': Icons.menu_book_rounded,
-      'color': AppColors.electricBlue,
+      'email': 'docente@edunex.edu',
+      'icon': UserRole.docente.icon,
+      'color': UserRole.docente.color,
     },
     {
+      'role': UserRole.tutorFamiliar,
       'name': 'Estudiante / Tutor',
-      'icon': Icons.family_restroom_rounded,
-      'color': AppColors.accentGreen,
+      'email': 'familia@edunex.edu',
+      'icon': UserRole.tutorFamiliar.icon,
+      'color': UserRole.tutorFamiliar.color,
     },
   ];
 
@@ -43,6 +51,13 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
+  void _onRoleChanged(int index) {
+    setState(() {
+      _selectedRoleIndex = index;
+      _userController.text = _roles[index]['email'] as String;
+    });
+  }
+
   void _handleLogin() async {
     if (!_formKey.currentState!.validate()) return;
 
@@ -50,34 +65,63 @@ class _LoginScreenState extends State<LoginScreen> {
       _isLoading = true;
     });
 
-    // Simulación de autenticación institucional
-    await Future.delayed(const Duration(milliseconds: 1000));
+    try {
+      final selectedRole = _roles[_selectedRoleIndex]['role'] as UserRole;
+      final profile = await AuthRepository().signInWithPassword(
+        email: _userController.text.trim(),
+        password: _passwordController.text,
+        preferredRole: selectedRole,
+      );
 
-    if (!mounted) return;
+      if (!mounted) return;
 
-    setState(() {
-      _isLoading = false;
-    });
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        backgroundColor: AppColors.navyPrimary,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        content: Row(
-          children: [
-            const Icon(Icons.check_circle_rounded, color: AppColors.accentGreen),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                '¡Bienvenido a EDUNEX CRM! Sesión iniciada como ${_roles[_selectedRoleIndex]['name']}.',
-                style: const TextStyle(fontWeight: FontWeight.w600),
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          backgroundColor: AppColors.navyPrimary,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          content: Row(
+            children: [
+              const Icon(Icons.check_circle_rounded, color: AppColors.accentGreen),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  '¡Bienvenido/a ${profile.nombreCompleto}! Acceso concedido como ${profile.rol.displayName}.',
+                  style: const TextStyle(fontWeight: FontWeight.w600),
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
-      ),
-    );
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          backgroundColor: Colors.red.shade800,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          content: Row(
+            children: [
+              const Icon(Icons.error_outline_rounded, color: Colors.white),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  e.toString().replaceAll('Exception: ', ''),
+                  style: const TextStyle(fontWeight: FontWeight.w600),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
   }
 
   @override
@@ -421,11 +465,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 final role = _roles[index];
                 return Expanded(
                   child: InkWell(
-                    onTap: () {
-                      setState(() {
-                        _selectedRoleIndex = index;
-                      });
-                    },
+                    onTap: () => _onRoleChanged(index),
                     borderRadius: BorderRadius.circular(10),
                     child: Container(
                       padding: const EdgeInsets.symmetric(vertical: 8),
