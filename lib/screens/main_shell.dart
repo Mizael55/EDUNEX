@@ -1,0 +1,520 @@
+import 'package:flutter/material.dart';
+import '../theme/app_colors.dart';
+import '../features/auth/models/user_profile.dart';
+import '../features/auth/models/user_role.dart';
+import '../features/families/repositories/family_repository.dart';
+import '../features/families/screens/family_directory_screen.dart';
+import '../features/dashboard/screens/dashboard_overview_screen.dart';
+import '../features/parent_portal/screens/parent_portal_screen.dart';
+import 'login_screen.dart';
+
+/// Shell principal responsivo de EDUNEX con navegación adaptativa
+class MainShell extends StatefulWidget {
+  final UserProfile userProfile;
+
+  const MainShell({
+    super.key,
+    required this.userProfile,
+  });
+
+  @override
+  State<MainShell> createState() => _MainShellState();
+}
+
+class _MainShellState extends State<MainShell> {
+  int _selectedIndex = 0;
+  late final FamilyRepository _familyRepository;
+
+  @override
+  void initState() {
+    super.initState();
+    _familyRepository = FamilyRepository();
+  }
+
+  bool get _isParent => widget.userProfile.rol == UserRole.tutorFamiliar;
+
+  List<NavigationItem> get _navItems {
+    if (_isParent) {
+      return [
+        const NavigationItem(
+          title: 'Mi Familia & Hijos',
+          icon: Icons.family_restroom_rounded,
+        ),
+        const NavigationItem(
+          title: 'Pagos & Recibos',
+          icon: Icons.receipt_long_rounded,
+        ),
+        const NavigationItem(
+          title: 'Servicios (Cuido & Rutas)',
+          icon: Icons.child_care_rounded,
+        ),
+        const NavigationItem(
+          title: 'Tienda Escolar',
+          icon: Icons.shopping_bag_rounded,
+        ),
+      ];
+    }
+
+    return [
+      const NavigationItem(
+        title: 'Panel de Control',
+        icon: Icons.dashboard_rounded,
+      ),
+      const NavigationItem(
+        title: 'Cuentas Familiares',
+        icon: Icons.people_alt_rounded,
+      ),
+      const NavigationItem(
+        title: 'Finanzas & Cobranzas',
+        icon: Icons.account_balance_wallet_rounded,
+      ),
+      const NavigationItem(
+        title: 'Servicios de Cuido',
+        icon: Icons.child_care_rounded,
+      ),
+      const NavigationItem(
+        title: 'Transporte Escolar',
+        icon: Icons.directions_bus_rounded,
+      ),
+      const NavigationItem(
+        title: 'Tienda & Uniformes',
+        icon: Icons.shopping_bag_rounded,
+      ),
+    ];
+  }
+
+  Widget _buildBody() {
+    if (_isParent) {
+      switch (_selectedIndex) {
+        case 0:
+          return ParentPortalScreen(
+            userProfile: widget.userProfile,
+            familyRepository: _familyRepository,
+          );
+        default:
+          return _buildPlaceholderScreen(_navItems[_selectedIndex].title);
+      }
+    }
+
+    switch (_selectedIndex) {
+      case 0:
+        return DashboardOverviewScreen(
+          familyRepository: _familyRepository,
+          onNavigateToFamilies: () => setState(() => _selectedIndex = 1),
+        );
+      case 1:
+        return FamilyDirectoryScreen(repository: _familyRepository);
+      default:
+        return _buildPlaceholderScreen(_navItems[_selectedIndex].title);
+    }
+  }
+
+  Widget _buildPlaceholderScreen(String title) {
+    return Scaffold(
+      backgroundColor: AppColors.backgroundLight,
+      body: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(32.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: AppColors.navyPrimary.withValues(alpha: 0.08),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.construction_rounded,
+                  size: 48,
+                  color: AppColors.navyPrimary,
+                ),
+              ),
+              const SizedBox(height: 20),
+              Text(
+                title,
+                style: const TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.navyPrimary,
+                ),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'Módulo conectado al esquema central de base de datos de Supabase.',
+                style: TextStyle(color: AppColors.textSecondary),
+              ),
+              const SizedBox(height: 24),
+              ElevatedButton.icon(
+                onPressed: () => setState(() => _selectedIndex = 0),
+                icon: const Icon(Icons.arrow_back_rounded, size: 18),
+                label: const Text('Volver al Inicio'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.navyPrimary,
+                  foregroundColor: AppColors.surfaceWhite,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _logout() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Cerrar Sesión'),
+        content: const Text('¿Estás seguro de que deseas salir de EDUNEX?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cancelar'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+              Navigator.of(context).pushAndRemoveUntil(
+                MaterialPageRoute(builder: (_) => const LoginScreen()),
+                (route) => false,
+              );
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red.shade700,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Cerrar Sesión'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final size = MediaQuery.of(context).size;
+    final isDesktop = size.width >= 900;
+
+    if (!isDesktop) {
+      return Scaffold(
+        appBar: AppBar(
+          backgroundColor: AppColors.navyPrimary,
+          foregroundColor: AppColors.surfaceWhite,
+          elevation: 0,
+          title: Row(
+            children: [
+              Image.asset('assets/logo.jpg', height: 28, errorBuilder: (context, error, stackTrace) => const SizedBox.shrink()),
+              const SizedBox(width: 8),
+              const Text('EDUNEX', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+            ],
+          ),
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.logout_rounded),
+              tooltip: 'Cerrar Sesión',
+              onPressed: _logout,
+            ),
+          ],
+        ),
+        drawer: Drawer(
+          child: Column(
+            children: [
+              UserAccountsDrawerHeader(
+                decoration: const BoxDecoration(color: AppColors.navyPrimary),
+                accountName: Text(
+                  widget.userProfile.nombreCompleto,
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
+                accountEmail: Text(widget.userProfile.email),
+                currentAccountPicture: CircleAvatar(
+                  backgroundColor: AppColors.surfaceWhite,
+                  child: Text(
+                    widget.userProfile.nombres.isNotEmpty ? widget.userProfile.nombres[0] : 'U',
+                    style: const TextStyle(color: AppColors.navyPrimary, fontWeight: FontWeight.bold, fontSize: 22),
+                  ),
+                ),
+              ),
+              Expanded(
+                child: ListView.builder(
+                  itemCount: _navItems.length,
+                  itemBuilder: (context, index) {
+                    final item = _navItems[index];
+                    return ListTile(
+                      leading: Icon(
+                        item.icon,
+                        color: _selectedIndex == index ? AppColors.navyPrimary : AppColors.textSecondary,
+                      ),
+                      title: Text(
+                        item.title,
+                        style: TextStyle(
+                          color: _selectedIndex == index ? AppColors.navyPrimary : AppColors.textPrimary,
+                          fontWeight: _selectedIndex == index ? FontWeight.bold : FontWeight.normal,
+                        ),
+                      ),
+                      selected: _selectedIndex == index,
+                      onTap: () {
+                        setState(() => _selectedIndex = index);
+                        Navigator.of(context).pop();
+                      },
+                    );
+                  },
+                ),
+              ),
+              ListTile(
+                leading: const Icon(Icons.logout_rounded, color: Colors.red),
+                title: const Text('Cerrar Sesión', style: TextStyle(color: Colors.red)),
+                onTap: _logout,
+              ),
+              const SizedBox(height: 12),
+            ],
+          ),
+        ),
+        body: _buildBody(),
+        bottomNavigationBar: BottomNavigationBar(
+          currentIndex: _selectedIndex < 4 ? _selectedIndex : 0,
+          onTap: (index) => setState(() => _selectedIndex = index),
+          selectedItemColor: AppColors.navyPrimary,
+          unselectedItemColor: AppColors.textSecondary,
+          type: BottomNavigationBarType.fixed,
+          items: _navItems.take(4).map((item) {
+            return BottomNavigationBarItem(
+              icon: Icon(item.icon),
+              label: item.title.split(' ').first,
+            );
+          }).toList(),
+        ),
+      );
+    }
+
+    // Layout de Escritorio con Sidebar elegante
+    return Scaffold(
+      backgroundColor: AppColors.backgroundLight,
+      body: Row(
+        children: [
+          // Sidebar Fija
+          Container(
+            width: 270,
+            decoration: const BoxDecoration(
+              color: AppColors.navyPrimary,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black12,
+                  blurRadius: 10,
+                  offset: Offset(2, 0),
+                ),
+              ],
+            ),
+            child: Column(
+              children: [
+                // Cabecera del Sidebar con Logo
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: BoxDecoration(
+                          color: AppColors.surfaceWhite,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Image.asset(
+                          'assets/logo.jpg',
+                          width: 32,
+                          height: 32,
+                          errorBuilder: (context, error, stackTrace) => const Icon(
+                            Icons.school_rounded,
+                            color: AppColors.navyPrimary,
+                            size: 28,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      const Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'EDUNEX',
+                            style: TextStyle(
+                              color: AppColors.surfaceWhite,
+                              fontWeight: FontWeight.w900,
+                              fontSize: 20,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                          Text(
+                            'CRM ESCOLAR',
+                            style: TextStyle(
+                              color: AppColors.amberAccent,
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 1.2,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+
+                // Badge de Institución
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: AppColors.surfaceWhite.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: AppColors.surfaceWhite.withValues(alpha: 0.12)),
+                    ),
+                    child: const Row(
+                      children: [
+                        Icon(Icons.location_city_rounded, color: AppColors.surfaceWhite, size: 16),
+                        SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'Colegio Bilingüe EDUNEX Piloto',
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: AppColors.surfaceWhite,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: 16),
+                const Divider(color: Colors.white12, height: 1),
+                const SizedBox(height: 12),
+
+                // Items de Navegación
+                Expanded(
+                  child: ListView.builder(
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    itemCount: _navItems.length,
+                    itemBuilder: (context, index) {
+                      final item = _navItems[index];
+                      final isSelected = _selectedIndex == index;
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 6),
+                        child: Material(
+                          color: isSelected ? AppColors.electricBlue : Colors.transparent,
+                          borderRadius: BorderRadius.circular(12),
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(12),
+                            onTap: () => setState(() => _selectedIndex = index),
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    item.icon,
+                                    size: 20,
+                                    color: isSelected ? AppColors.surfaceWhite : Colors.white70,
+                                  ),
+                                  const SizedBox(width: 14),
+                                  Expanded(
+                                    child: Text(
+                                      item.title,
+                                      style: TextStyle(
+                                        color: isSelected ? AppColors.surfaceWhite : Colors.white70,
+                                        fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                                        fontSize: 13,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+
+                // Perfil de Usuario y Logout
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  margin: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: AppColors.surfaceWhite.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: AppColors.surfaceWhite.withValues(alpha: 0.1)),
+                  ),
+                  child: Row(
+                    children: [
+                      CircleAvatar(
+                        radius: 18,
+                        backgroundColor: widget.userProfile.rol.color,
+                        child: Text(
+                          widget.userProfile.nombres.isNotEmpty ? widget.userProfile.nombres[0] : 'U',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              widget.userProfile.nombreCompleto,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                color: AppColors.surfaceWhite,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 13,
+                              ),
+                            ),
+                            Text(
+                              widget.userProfile.rol.displayName,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                color: widget.userProfile.rol.color,
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.logout_rounded, color: Colors.white70, size: 20),
+                        tooltip: 'Cerrar Sesión',
+                        onPressed: _logout,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          // Área de Contenido Principal
+          Expanded(
+            child: _buildBody(),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class NavigationItem {
+  final String title;
+  final IconData icon;
+
+  const NavigationItem({
+    required this.title,
+    required this.icon,
+  });
+}

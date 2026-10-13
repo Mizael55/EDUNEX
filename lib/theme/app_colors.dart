@@ -28,6 +28,13 @@ class AppColors {
   static const Color slateLight = Color(0xFFE2E8F0);
   static const Color borderLight = Color(0xFFCBD5E1);
 
+  // Aliases semánticos para textos y acentos
+  static const Color textPrimary = slateDark;
+  static const Color textSecondary = slateGray;
+  static const Color textLight = Color(0xFFE2E8F0);
+  static const Color navySecondary = navyLight;
+  static const Color amberAccent = accentOrange;
+
   // Degradados corporativos
   static const LinearGradient primaryGradient = LinearGradient(
     colors: [navyPrimary, electricBlue],

@@ -11,7 +11,7 @@ class SupabaseConfig {
   /// Clave pública anon de Supabase (puede inyectarse con --dart-define=SUPABASE_ANON_KEY=...)
   static const String supabaseAnonKey = String.fromEnvironment(
     'SUPABASE_ANON_KEY',
-    defaultValue: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.dummy',
+    defaultValue: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRubHdjaXhtbHdxanN1dG1ydmtsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTE4ODk4NzMsImV4cCI6MjEwNzQ2NTg3M30.T7i8SzRvXQW8o-XuFhFlx160vF2oVcfckrpbqLBy1G8',
   );
 
   /// Verifica si las credenciales actuales corresponden a un proyecto real configurado

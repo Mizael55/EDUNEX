@@ -1,13 +1,10 @@
-// This is a basic Flutter widget test.
-//
-// To perform an interaction with a widget in your test, use the WidgetTester
-// utility in the flutter_test package. For example, you can send tap and scroll
-// gestures. You can also use WidgetTester to find child widgets in the widget
-// tree, read text, and verify that the values of widget properties are correct.
-
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:edunex/main.dart';
+import 'package:edunex/features/auth/models/user_profile.dart';
+import 'package:edunex/features/auth/models/user_role.dart';
+import 'package:edunex/features/families/repositories/family_repository.dart';
+import 'package:edunex/screens/main_shell.dart';
 
 void main() {
   testWidgets('EdunexApp desktop smoke test', (WidgetTester tester) async {
@@ -15,10 +12,7 @@ void main() {
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.resetPhysicalSize);
 
-    // Build our app and trigger a frame.
     await tester.pumpWidget(const EdunexApp());
-
-    // Verify that the login form is rendered
     expect(find.text('Iniciar Sesión'), findsOneWidget);
   });
 
@@ -27,11 +21,72 @@ void main() {
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.resetPhysicalSize);
 
-    // Build our app and trigger a frame.
     await tester.pumpWidget(const EdunexApp());
-
-    // Verify that the login form is rendered
     expect(find.text('Iniciar Sesión'), findsOneWidget);
   });
-}
 
+  testWidgets('MainShell renders admin portal and KPIs on desktop', (WidgetTester tester) async {
+    tester.view.physicalSize = const Size(1280, 900);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+
+    final adminProfile = UserProfile(
+      id: 'admin-1',
+      colegioId: 'col-1',
+      rol: UserRole.adminColegio,
+      email: 'director@edunex.edu',
+      nombres: 'Carlos',
+      apellidos: 'Gómez',
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: MainShell(userProfile: adminProfile),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Panel de Control Institucional'), findsOneWidget);
+    expect(find.text('Cuentas Familiares'), findsWidgets);
+    expect(find.text('Estudiantes Activos'), findsOneWidget);
+  });
+
+  testWidgets('MainShell renders parent portal for tutorFamiliar', (WidgetTester tester) async {
+    tester.view.physicalSize = const Size(1280, 900);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+
+    final parentProfile = UserProfile(
+      id: 'parent-1',
+      colegioId: 'col-1',
+      rol: UserRole.tutorFamiliar,
+      email: 'familia@edunex.edu',
+      nombres: 'Roberto',
+      apellidos: 'Pérez',
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: MainShell(userProfile: parentProfile),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('¡Hola, Roberto Pérez!'), findsOneWidget);
+    expect(find.text('PORTAL DE PADRES'), findsOneWidget);
+    expect(find.textContaining('Mis Hijos Matriculados'), findsOneWidget);
+  });
+
+  test('FamilyRepository loads pilot families correctly', () async {
+    final repo = FamilyRepository();
+    final families = await repo.getFamilies();
+
+    expect(families.isNotEmpty, isTrue);
+    final perezFamily = families.firstWhere((f) => f.codigoFamilia == 'FAM-2026-001');
+    expect(perezFamily.nombreFamilia, 'Familia Pérez González');
+    expect(perezFamily.estudiantes.length, 2);
+    expect(perezFamily.tutores.length, 2);
+    expect(perezFamily.balancePendiente, 7500.00);
+    expect(perezFamily.estaAlDia, isFalse);
+  });
+}

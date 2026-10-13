@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../features/auth/models/user_role.dart';
 import '../features/auth/repositories/auth_repository.dart';
 import '../theme/app_colors.dart';
+import 'main_shell.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -79,6 +80,7 @@ class _LoginScreenState extends State<LoginScreen> {
         SnackBar(
           backgroundColor: AppColors.navyPrimary,
           behavior: SnackBarBehavior.floating,
+          duration: const Duration(seconds: 2),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           content: Row(
             children: [
@@ -92,6 +94,13 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
             ],
           ),
+        ),
+      );
+
+      // Navegar al shell principal del SaaS EDUNEX
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(
+          builder: (_) => MainShell(userProfile: profile),
         ),
       );
     } catch (e) {
