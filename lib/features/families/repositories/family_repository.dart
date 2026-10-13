@@ -7,11 +7,21 @@ import '../models/tutor.dart';
 
 /// Repositorio de Cuentas Familiares y Estudiantes en EDUNEX
 class FamilyRepository {
+  static SupabaseClient? _resolveClient() {
+    try {
+      if (SupabaseConfig.isConfigured) {
+        return Supabase.instance.client;
+      }
+    } catch (_) {
+      return null;
+    }
+    return null;
+  }
+
   final SupabaseClient? _supabaseClient;
 
   FamilyRepository({SupabaseClient? supabaseClient})
-      : _supabaseClient = supabaseClient ??
-            (SupabaseConfig.isConfigured ? Supabase.instance.client : null);
+      : _supabaseClient = supabaseClient ?? _resolveClient();
 
   /// Lista de familias de demostración (coincidentes con los datos sembrados en la base de datos)
   static final List<Family> _demoFamilies = [
@@ -197,10 +207,6 @@ class FamilyRepository {
       families = List<Family>.from(_demoFamilies);
     }
 
-    if (families.isEmpty) {
-      families = List<Family>.from(_demoFamilies);
-    }
-
     // Filtrar según query
     if (searchQuery != null && searchQuery.trim().isNotEmpty) {
       final q = searchQuery.trim().toLowerCase();
@@ -235,8 +241,9 @@ class FamilyRepository {
   }
 
   /// Retorna la familia asociada al usuario autenticado (para portal de padres)
-  Future<Family> getFamilyForCurrentUser({String? email}) async {
+  Future<Family?> getFamilyForCurrentUser({String? email}) async {
     final list = await getFamilies();
+    if (list.isEmpty) return null;
     if (email != null && email.isNotEmpty) {
       try {
         return list.firstWhere(
@@ -245,7 +252,7 @@ class FamilyRepository {
         );
       } catch (_) {}
     }
-    // Retorna la familia por defecto (Familia Pérez González)
+    // Retorna la primera familia disponible
     return list.first;
   }
 }
