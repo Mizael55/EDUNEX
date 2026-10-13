@@ -2,9 +2,7 @@ import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
 
 class LoginScreen extends StatefulWidget {
-  final VoidCallback onReplayVideo;
-
-  const LoginScreen({super.key, required this.onReplayVideo});
+  const LoginScreen({super.key});
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
@@ -52,8 +50,8 @@ class _LoginScreenState extends State<LoginScreen> {
       _isLoading = true;
     });
 
-    // Simulación de autenticación
-    await Future.delayed(const Duration(milliseconds: 1200));
+    // Simulación de autenticación institucional
+    await Future.delayed(const Duration(milliseconds: 1000));
 
     if (!mounted) return;
 
@@ -72,7 +70,7 @@ class _LoginScreenState extends State<LoginScreen> {
             const SizedBox(width: 12),
             Expanded(
               child: Text(
-                '¡Bienvenido a EDUNEX CRM! Sesión iniciada con éxito.',
+                '¡Bienvenido a EDUNEX CRM! Sesión iniciada como ${_roles[_selectedRoleIndex]['name']}.',
                 style: const TextStyle(fontWeight: FontWeight.w600),
               ),
             ),
@@ -227,7 +225,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         icon: Icons.hub_rounded,
                         color: AppColors.electricBlue,
                         title: 'CONECTA',
-                        desc: 'Comunicación en tiempo real entre toda la comunidad escolar.',
+                        desc: 'Comunicación en tiempo real entre directivos, docentes y familias.',
                       ),
                       const SizedBox(height: 16),
                       _buildValueItem(
@@ -246,7 +244,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     ],
                   ),
 
-                  // Botón para volver a reproducir el video
+                  // Tarjeta inferior de seguridad y confianza
                   Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
@@ -265,7 +263,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             shape: BoxShape.circle,
                           ),
                           child: const Icon(
-                            Icons.play_arrow_rounded,
+                            Icons.security_rounded,
                             color: AppColors.navyPrimary,
                             size: 22,
                           ),
@@ -276,36 +274,20 @@ class _LoginScreenState extends State<LoginScreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               const Text(
-                                'Video de Presentación',
+                                'Acceso Institucional Seguro',
                                 style: TextStyle(
                                   color: Colors.white,
                                   fontWeight: FontWeight.bold,
-                                  fontSize: 14,
+                                  fontSize: 13,
                                 ),
                               ),
                               Text(
-                                'Conoce todas las funciones de EDUNEX',
+                                'Datos encriptados y respaldados para tu centro educativo.',
                                 style: TextStyle(
                                   color: Colors.white.withValues(alpha: 0.75),
                                   fontSize: 12,
                                 ),
                               ),
-                            ],
-                          ),
-                        ),
-                        TextButton(
-                          onPressed: widget.onReplayVideo,
-                          style: TextButton.styleFrom(
-                            foregroundColor: AppColors.cyanLight,
-                          ),
-                          child: const Row(
-                            children: [
-                              Text(
-                                'Ver video',
-                                style: TextStyle(fontWeight: FontWeight.bold),
-                              ),
-                              SizedBox(width: 4),
-                              Icon(Icons.arrow_forward_rounded, size: 16),
                             ],
                           ),
                         ),
@@ -591,10 +573,13 @@ class _LoginScreenState extends State<LoginScreen> {
           const SizedBox(height: 12),
 
           // Recordarme y Olvidé contraseña
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          Wrap(
+            alignment: WrapAlignment.spaceBetween,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            runSpacing: 8,
             children: [
               Row(
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   SizedBox(
                     height: 24,
@@ -706,34 +691,7 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
           ),
 
-          const SizedBox(height: 20),
-
-          // Botón secundario para volver a ver el video
-          OutlinedButton.icon(
-            onPressed: widget.onReplayVideo,
-            icon: const Icon(
-              Icons.play_circle_outline_rounded,
-              color: AppColors.navyPrimary,
-              size: 20,
-            ),
-            label: const Text(
-              'Reproducir video de presentación',
-              style: TextStyle(
-                fontWeight: FontWeight.w600,
-                color: AppColors.navyPrimary,
-                fontSize: 13,
-              ),
-            ),
-            style: OutlinedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(vertical: 13),
-              side: const BorderSide(color: AppColors.borderLight),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-            ),
-          ),
-
-          const SizedBox(height: 18),
+          const SizedBox(height: 24),
 
           // Pie con soporte y derechos
           Center(
