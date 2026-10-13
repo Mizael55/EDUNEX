@@ -89,4 +89,30 @@ void main() {
     expect(perezFamily.balancePendiente, 7500.00);
     expect(perezFamily.estaAlDia, isFalse);
   });
+
+  testWidgets('MainShell renders SaaS Master Panel for superadmin', (WidgetTester tester) async {
+    tester.view.physicalSize = const Size(1280, 900);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+
+    final superadminProfile = UserProfile(
+      id: 'superadmin-1',
+      colegioId: null,
+      rol: UserRole.superadmin,
+      email: 'admin@edunex.edu',
+      nombres: 'Administrador',
+      apellidos: 'SaaS EDUNEX',
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: MainShell(userProfile: superadminProfile),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Panel Maestro SaaS'), findsWidgets);
+    expect(find.text('Colegios Clientes'), findsWidgets);
+    expect(find.text('Red Central EDUNEX (SaaS)'), findsOneWidget);
+  });
 }

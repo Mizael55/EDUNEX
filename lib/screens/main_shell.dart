@@ -6,6 +6,8 @@ import '../features/families/repositories/family_repository.dart';
 import '../features/families/screens/family_directory_screen.dart';
 import '../features/dashboard/screens/dashboard_overview_screen.dart';
 import '../features/parent_portal/screens/parent_portal_screen.dart';
+import '../features/superadmin/repositories/school_repository.dart';
+import '../features/superadmin/screens/superadmin_dashboard_screen.dart';
 import 'login_screen.dart';
 
 /// Shell principal responsivo de EDUNEX con navegación adaptativa
@@ -24,16 +26,44 @@ class MainShell extends StatefulWidget {
 class _MainShellState extends State<MainShell> {
   int _selectedIndex = 0;
   late final FamilyRepository _familyRepository;
+  late final SchoolRepository _schoolRepository;
 
   @override
   void initState() {
     super.initState();
     _familyRepository = FamilyRepository();
+    _schoolRepository = SchoolRepository();
   }
 
+  bool get _isSuperAdmin => widget.userProfile.rol == UserRole.superadmin;
   bool get _isParent => widget.userProfile.rol == UserRole.tutorFamiliar;
 
   List<NavigationItem> get _navItems {
+    if (_isSuperAdmin) {
+      return [
+        const NavigationItem(
+          title: 'Panel Maestro SaaS',
+          icon: Icons.hub_rounded,
+        ),
+        const NavigationItem(
+          title: 'Colegios Clientes',
+          icon: Icons.domain_rounded,
+        ),
+        const NavigationItem(
+          title: 'Panel Escolar Piloto',
+          icon: Icons.dashboard_rounded,
+        ),
+        const NavigationItem(
+          title: 'Cuentas Familiares',
+          icon: Icons.people_alt_rounded,
+        ),
+        const NavigationItem(
+          title: 'Finanzas & Cobranzas',
+          icon: Icons.account_balance_wallet_rounded,
+        ),
+      ];
+    }
+
     if (_isParent) {
       return [
         const NavigationItem(
@@ -84,6 +114,34 @@ class _MainShellState extends State<MainShell> {
   }
 
   Widget _buildBody() {
+    if (_isSuperAdmin) {
+      switch (_selectedIndex) {
+        case 0:
+        case 1:
+          return SuperAdminDashboardScreen(
+            schoolRepository: _schoolRepository,
+            onSelectSchoolToInspect: (school) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('Inspeccionando datos de: ${school.nombre}'),
+                  backgroundColor: AppColors.navyPrimary,
+                ),
+              );
+              setState(() => _selectedIndex = 2);
+            },
+          );
+        case 2:
+          return DashboardOverviewScreen(
+            familyRepository: _familyRepository,
+            onNavigateToFamilies: () => setState(() => _selectedIndex = 3),
+          );
+        case 3:
+          return FamilyDirectoryScreen(repository: _familyRepository);
+        default:
+          return _buildPlaceholderScreen(_navItems[_selectedIndex].title);
+      }
+    }
+
     if (_isParent) {
       switch (_selectedIndex) {
         case 0:
@@ -368,15 +426,19 @@ class _MainShellState extends State<MainShell> {
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(color: AppColors.surfaceWhite.withValues(alpha: 0.12)),
                     ),
-                    child: const Row(
+                    child: Row(
                       children: [
-                        Icon(Icons.location_city_rounded, color: AppColors.surfaceWhite, size: 16),
-                        SizedBox(width: 8),
+                        Icon(
+                          _isSuperAdmin ? Icons.hub_rounded : Icons.location_city_rounded,
+                          color: _isSuperAdmin ? AppColors.amberAccent : AppColors.surfaceWhite,
+                          size: 16,
+                        ),
+                        const SizedBox(width: 8),
                         Expanded(
                           child: Text(
-                            'Colegio Bilingüe EDUNEX Piloto',
+                            _isSuperAdmin ? 'Red Central EDUNEX (SaaS)' : 'Colegio Bilingüe EDUNEX Piloto',
                             overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
+                            style: const TextStyle(
                               color: AppColors.surfaceWhite,
                               fontSize: 11,
                               fontWeight: FontWeight.w600,

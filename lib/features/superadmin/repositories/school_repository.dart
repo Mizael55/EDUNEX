@@ -1,0 +1,223 @@
+import 'package:flutter/foundation.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../../core/config/supabase_config.dart';
+import '../models/school.dart';
+
+/// Repositorio de Colegios y Clientes para el Dueño del Software (Superadmin)
+class SchoolRepository {
+  static SupabaseClient? _resolveClient() {
+    try {
+      if (SupabaseConfig.isConfigured) {
+        return Supabase.instance.client;
+      }
+    } catch (_) {
+      return null;
+    }
+    return null;
+  }
+
+  final SupabaseClient? _supabaseClient;
+
+  SchoolRepository({SupabaseClient? supabaseClient})
+      : _supabaseClient = supabaseClient ?? _resolveClient();
+
+  /// Lista de colegios de demostración para pruebas fuera de línea
+  static final List<School> _demoSchools = [
+    School(
+      id: 'a0000000-0000-0000-0000-000000000001',
+      nombre: 'Colegio Bilingüe EDUNEX Piloto',
+      rnc: '1-31-00000-1',
+      siglas: 'EDUNEX',
+      telefono: '809-555-0100',
+      emailContacto: 'info@edunex.edu',
+      direccion: 'Av. 27 de Febrero #200, Santo Domingo, D.N.',
+      estadoSuscripcion: 'active',
+      maxEstudiantes: 500,
+      createdAt: DateTime(2026, 1, 10),
+      totalEstudiantes: 342,
+      totalFamilias: 186,
+    ),
+    School(
+      id: 'a0000000-0000-0000-0000-000000000002',
+      nombre: 'Instituto Educativo San Judas Tadeo',
+      rnc: '1-30-55443-2',
+      siglas: 'SJT',
+      telefono: '809-541-2300',
+      emailContacto: 'administracion@sanjudas.edu.do',
+      direccion: 'Calle Fantino Falco #40, Naco, Santo Domingo',
+      estadoSuscripcion: 'active',
+      maxEstudiantes: 800,
+      createdAt: DateTime(2026, 2, 1),
+      totalEstudiantes: 620,
+      totalFamilias: 340,
+    ),
+    School(
+      id: 'a0000000-0000-0000-0000-000000000003',
+      nombre: 'St. Patrick International School',
+      rnc: '1-32-99887-4',
+      siglas: 'SPIS',
+      telefono: '809-567-8900',
+      emailContacto: 'admissions@stpatrick.edu.do',
+      direccion: 'Av. Sarasota #75, Bella Vista, Santo Domingo',
+      estadoSuscripcion: 'trial',
+      maxEstudiantes: 350,
+      createdAt: DateTime(2026, 3, 15),
+      totalEstudiantes: 180,
+      totalFamilias: 110,
+    ),
+  ];
+
+  /// Obtiene la lista de colegios registrados
+  Future<List<School>> getSchools({
+    String? searchQuery,
+    String? statusFilter,
+  }) async {
+    List<School> schools = [];
+
+    if (_supabaseClient != null && SupabaseConfig.isConfigured) {
+      try {
+        final response = await _supabaseClient
+            .from('colegios')
+            .select('*')
+            .order('created_at', ascending: false);
+
+        schools = (response as List)
+            .map((item) => School.fromJson(item as Map<String, dynamic>))
+            .toList();
+      } catch (e) {
+        debugPrint('Aviso: Usando respaldo para colegios: $e');
+        schools = List<School>.from(_demoSchools);
+      }
+    } else {
+      schools = List<School>.from(_demoSchools);
+    }
+
+    if (schools.isEmpty) {
+      schools = List<School>.from(_demoSchools);
+    }
+
+    // Filtrar por término de búsqueda
+    if (searchQuery != null && searchQuery.trim().isNotEmpty) {
+      final q = searchQuery.trim().toLowerCase();
+      schools = schools.where((s) {
+        return s.nombre.toLowerCase().contains(q) ||
+            (s.siglas?.toLowerCase().contains(q) ?? false) ||
+            (s.rnc?.toLowerCase().contains(q) ?? false) ||
+            (s.emailContacto?.toLowerCase().contains(q) ?? false);
+      }).toList();
+    }
+
+    // Filtrar por estado de suscripción
+    if (statusFilter != null && statusFilter != 'all') {
+      schools = schools.where((s) => s.estadoSuscripcion == statusFilter).toList();
+    }
+
+    return schools;
+  }
+
+  /// Crea un nuevo colegio en Supabase
+  Future<School> createSchool({
+    required String nombre,
+    String? rnc,
+    String? siglas,
+    String? telefono,
+    String? emailContacto,
+    String? direccion,
+    required String estadoSuscripcion,
+    required int maxEstudiantes,
+  }) async {
+    final newSchoolData = {
+      'nombre': nombre.trim(),
+      'rnc': rnc?.trim(),
+      'siglas': siglas?.trim().toUpperCase(),
+      'telefono': telefono?.trim(),
+      'email_contacto': emailContacto?.trim(),
+      'direccion': direccion?.trim(),
+      'estado_suscripcion': estadoSuscripcion,
+      'max_estudiantes': maxEstudiantes,
+    };
+
+    if (_supabaseClient != null && SupabaseConfig.isConfigured) {
+      try {
+        final res = await _supabaseClient
+            .from('colegios')
+            .insert(newSchoolData)
+            .select()
+            .single();
+        return School.fromJson(res);
+      } catch (e) {
+        debugPrint('Error creando colegio en Supabase: $e');
+      }
+    }
+
+    // Retorno en memoria para demo/offline
+    final fallback = School(
+      id: 'col-${DateTime.now().millisecondsSinceEpoch}',
+      nombre: nombre,
+      rnc: rnc,
+      siglas: siglas,
+      telefono: telefono,
+      emailContacto: emailContacto,
+      direccion: direccion,
+      estadoSuscripcion: estadoSuscripcion,
+      maxEstudiantes: maxEstudiantes,
+      createdAt: DateTime.now(),
+    );
+    _demoSchools.insert(0, fallback);
+    return fallback;
+  }
+
+  /// Actualiza el estado de la suscripción (Activar, Suspender, etc.)
+  Future<void> updateSubscriptionStatus(String schoolId, String newStatus) async {
+    if (_supabaseClient != null && SupabaseConfig.isConfigured) {
+      try {
+        await _supabaseClient
+            .from('colegios')
+            .update({'estado_suscripcion': newStatus})
+            .eq('id', schoolId);
+      } catch (e) {
+        debugPrint('Error actualizando suscripción: $e');
+      }
+    }
+
+    final index = _demoSchools.indexWhere((s) => s.id == schoolId);
+    if (index != -1) {
+      final old = _demoSchools[index];
+      _demoSchools[index] = School(
+        id: old.id,
+        nombre: old.nombre,
+        rnc: old.rnc,
+        siglas: old.siglas,
+        telefono: old.telefono,
+        emailContacto: old.emailContacto,
+        direccion: old.direccion,
+        logoUrl: old.logoUrl,
+        estadoSuscripcion: newStatus,
+        maxEstudiantes: old.maxEstudiantes,
+        createdAt: old.createdAt,
+        totalEstudiantes: old.totalEstudiantes,
+        totalFamilias: old.totalFamilias,
+      );
+    }
+  }
+
+  /// Retorna las métricas ejecutivas globales del negocio SaaS
+  Future<Map<String, dynamic>> getSaaSMasterKpis() async {
+    final list = await getSchools();
+    final totalSchools = list.length;
+    final activeSchools = list.where((s) => s.isActive).length;
+    final trialSchools = list.where((s) => s.isTrial).length;
+    final totalStudents = list.fold<int>(0, (sum, s) => sum + s.totalEstudiantes);
+
+    // Estimación de MRR (RD$): Asumiendo RD$ 40,000 promedio mensual por colegio suscrito
+    final estimatedMRR = activeSchools * 45000.0;
+
+    return {
+      'totalSchools': totalSchools,
+      'activeSchools': activeSchools,
+      'trialSchools': trialSchools,
+      'totalStudents': totalStudents,
+      'estimatedMRR': estimatedMRR,
+    };
+  }
+}
