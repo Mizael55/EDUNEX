@@ -112,8 +112,8 @@ class SchoolRepository {
     return schools;
   }
 
-  /// Crea un nuevo colegio en Supabase
-  Future<School> createSchool({
+  /// Crea un nuevo colegio y su usuario Director administrador de forma atómica en Supabase
+  Future<Map<String, dynamic>> createSchoolWithDirector({
     required String nombre,
     String? rnc,
     String? siglas,
@@ -122,33 +122,42 @@ class SchoolRepository {
     String? direccion,
     required String estadoSuscripcion,
     required int maxEstudiantes,
+    required String directorEmail,
+    required String directorPassword,
+    required String directorNombres,
+    String? directorApellidos,
   }) async {
-    final newSchoolData = {
-      'nombre': nombre.trim(),
-      'rnc': rnc?.trim(),
-      'siglas': siglas?.trim().toUpperCase(),
-      'telefono': telefono?.trim(),
-      'email_contacto': emailContacto?.trim(),
-      'direccion': direccion?.trim(),
-      'estado_suscripcion': estadoSuscripcion,
-      'max_estudiantes': maxEstudiantes,
-    };
-
     if (_supabaseClient != null && SupabaseConfig.isConfigured) {
       try {
-        final res = await _supabaseClient
-            .from('colegios')
-            .insert(newSchoolData)
-            .select()
-            .single();
-        return School.fromJson(res);
+        final res = await _supabaseClient.rpc('crear_colegio_con_director', params: {
+          'p_nombre': nombre.trim(),
+          'p_rnc': rnc?.trim(),
+          'p_siglas': siglas?.trim().toUpperCase(),
+          'p_telefono': telefono?.trim(),
+          'p_email_contacto': emailContacto?.trim(),
+          'p_direccion': direccion?.trim(),
+          'p_estado_suscripcion': estadoSuscripcion,
+          'p_max_estudiantes': maxEstudiantes,
+          'p_director_email': directorEmail.trim().toLowerCase(),
+          'p_director_password': directorPassword,
+          'p_director_nombres': directorNombres.trim(),
+          'p_director_apellidos': directorApellidos?.trim() ?? '',
+        });
+
+        final colegioMap = res['colegio'] as Map<String, dynamic>;
+        final school = School.fromJson(colegioMap);
+        return {
+          'school': school,
+          'director': res['director'] as Map<String, dynamic>,
+        };
       } catch (e) {
-        debugPrint('Error creando colegio en Supabase: $e');
+        debugPrint('Error creando colegio con director en Supabase RPC: $e');
+        rethrow;
       }
     }
 
-    // Retorno en memoria para demo/offline
-    final fallback = School(
+    // Modo local / offline
+    final fallbackSchool = School(
       id: 'col-${DateTime.now().millisecondsSinceEpoch}',
       nombre: nombre,
       rnc: rnc,
@@ -160,8 +169,63 @@ class SchoolRepository {
       maxEstudiantes: maxEstudiantes,
       createdAt: DateTime.now(),
     );
-    _demoSchools.insert(0, fallback);
-    return fallback;
+    _demoSchools.insert(0, fallbackSchool);
+    return {
+      'school': fallbackSchool,
+      'director': {
+        'email': directorEmail,
+        'nombres': directorNombres,
+        'apellidos': directorApellidos ?? '',
+        'rol': 'admin_colegio',
+      },
+    };
+  }
+
+  /// Obtiene el nombre del colegio por ID
+  Future<String?> getSchoolNameById(String id) async {
+    if (_supabaseClient != null && SupabaseConfig.isConfigured) {
+      try {
+        final res = await _supabaseClient
+            .from('colegios')
+            .select('nombre')
+            .eq('id', id)
+            .maybeSingle();
+        if (res != null && res['nombre'] != null) {
+          return res['nombre'] as String;
+        }
+      } catch (_) {}
+    }
+    final match = _demoSchools.where((s) => s.id == id).toList();
+    if (match.isNotEmpty) return match.first.nombre;
+    return null;
+  }
+
+  /// Crea un nuevo colegio en Supabase (método simplificado)
+  Future<School> createSchool({
+    required String nombre,
+    String? rnc,
+    String? siglas,
+    String? telefono,
+    String? emailContacto,
+    String? direccion,
+    required String estadoSuscripcion,
+    required int maxEstudiantes,
+  }) async {
+    final result = await createSchoolWithDirector(
+      nombre: nombre,
+      rnc: rnc,
+      siglas: siglas,
+      telefono: telefono,
+      emailContacto: emailContacto,
+      direccion: direccion,
+      estadoSuscripcion: estadoSuscripcion,
+      maxEstudiantes: maxEstudiantes,
+      directorEmail: emailContacto ?? 'director@${siglas?.toLowerCase() ?? "edunex"}.edu.do',
+      directorPassword: 'password123',
+      directorNombres: 'Director',
+      directorApellidos: nombre,
+    );
+    return result['school'] as School;
   }
 
   /// Actualiza el estado de la suscripción (Activar, Suspender, etc.)

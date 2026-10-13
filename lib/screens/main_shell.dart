@@ -27,12 +27,23 @@ class _MainShellState extends State<MainShell> {
   int _selectedIndex = 0;
   late final FamilyRepository _familyRepository;
   late final SchoolRepository _schoolRepository;
+  String _schoolName = 'Colegio Cliente EDUNEX';
 
   @override
   void initState() {
     super.initState();
     _familyRepository = FamilyRepository();
     _schoolRepository = SchoolRepository();
+    _loadSchoolName();
+  }
+
+  Future<void> _loadSchoolName() async {
+    if (widget.userProfile.colegioId != null) {
+      final name = await _schoolRepository.getSchoolNameById(widget.userProfile.colegioId!);
+      if (name != null && mounted) {
+        setState(() => _schoolName = name);
+      }
+    }
   }
 
   bool get _isSuperAdmin => widget.userProfile.rol == UserRole.superadmin;
@@ -436,7 +447,7 @@ class _MainShellState extends State<MainShell> {
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(
-                            _isSuperAdmin ? 'Red Central EDUNEX (SaaS)' : 'Colegio Bilingüe EDUNEX Piloto',
+                            _isSuperAdmin ? 'Red Central EDUNEX (SaaS)' : _schoolName,
                             overflow: TextOverflow.ellipsis,
                             style: const TextStyle(
                               color: AppColors.surfaceWhite,

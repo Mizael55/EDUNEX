@@ -4,6 +4,7 @@ import 'package:edunex/main.dart';
 import 'package:edunex/features/auth/models/user_profile.dart';
 import 'package:edunex/features/auth/models/user_role.dart';
 import 'package:edunex/features/families/repositories/family_repository.dart';
+import 'package:edunex/features/superadmin/repositories/school_repository.dart';
 import 'package:edunex/screens/main_shell.dart';
 
 void main() {
@@ -114,5 +115,28 @@ void main() {
     expect(find.text('Panel Maestro SaaS'), findsWidgets);
     expect(find.text('Colegios Clientes'), findsWidgets);
     expect(find.text('Red Central EDUNEX (SaaS)'), findsOneWidget);
+  });
+
+  test('SchoolRepository createSchoolWithDirector creates school and director data', () async {
+    final repo = SchoolRepository();
+    final result = await repo.createSchoolWithDirector(
+      nombre: 'Colegio Experimental EDUNEX',
+      rnc: '1-30-11223-4',
+      siglas: 'CEED',
+      estadoSuscripcion: 'active',
+      maxEstudiantes: 500,
+      directorEmail: 'director.exp@edunex.edu',
+      directorPassword: 'password123',
+      directorNombres: 'Marcos',
+      directorApellidos: 'Díaz',
+    );
+
+    final school = result['school'];
+    final director = result['director'] as Map<String, dynamic>;
+
+    expect(school.nombre, 'Colegio Experimental EDUNEX');
+    expect(school.siglas, 'CEED');
+    expect(director['email'], 'director.exp@edunex.edu');
+    expect(director['rol'], 'admin_colegio');
   });
 }
