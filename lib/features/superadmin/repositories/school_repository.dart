@@ -85,14 +85,11 @@ class SchoolRepository {
             .map((item) => School.fromJson(item as Map<String, dynamic>))
             .toList();
       } catch (e) {
-        debugPrint('Aviso: Usando respaldo para colegios: $e');
-        schools = List<School>.from(_demoSchools);
+        debugPrint('Aviso: Error consultando colegios en Supabase: $e');
+        schools = [];
       }
     } else {
-      schools = List<School>.from(_demoSchools);
-    }
-
-    if (schools.isEmpty) {
+      // Modo desconectado o pruebas unitarias sin Supabase configurado
       schools = List<School>.from(_demoSchools);
     }
 

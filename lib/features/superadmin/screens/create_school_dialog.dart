@@ -189,13 +189,14 @@ class _CreateSchoolDialogState extends State<CreateSchoolDialog> {
                       TextFormField(
                         controller: _nombreController,
                         decoration: InputDecoration(
-                          labelText: 'Nombre de la Institución *',
+                          labelText: 'Nombre Oficial de la Institución *',
                           hintText: 'Ej. Colegio Bilingüe San Judas Tadeo',
+                          helperText: 'Razón social o nombre comercial del colegio cliente',
                           prefixIcon: const Icon(Icons.school_rounded, color: AppColors.navyPrimary),
                           border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
                         ),
                         validator: (value) =>
-                            (value == null || value.trim().isEmpty) ? 'Requerido' : null,
+                            (value == null || value.trim().isEmpty) ? 'El nombre del colegio es obligatorio' : null,
                       ),
                       const SizedBox(height: 16),
 
@@ -206,8 +207,9 @@ class _CreateSchoolDialogState extends State<CreateSchoolDialog> {
                             child: TextFormField(
                               controller: _siglasController,
                               decoration: InputDecoration(
-                                labelText: 'Siglas / Abreviatura',
+                                labelText: 'Siglas Institucionales',
                                 hintText: 'Ej. SJT',
+                                helperText: 'Código corto para matrículas',
                                 prefixIcon: const Icon(Icons.short_text_rounded),
                                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
                               ),
@@ -218,8 +220,9 @@ class _CreateSchoolDialogState extends State<CreateSchoolDialog> {
                             child: TextFormField(
                               controller: _rncController,
                               decoration: InputDecoration(
-                                labelText: 'RNC (Rep. Dominicana)',
+                                labelText: 'RNC (DGII Dominicana)',
                                 hintText: 'Ej. 1-31-55443-2',
+                                helperText: 'Registro fiscal de 9 u 11 dígitos',
                                 prefixIcon: const Icon(Icons.badge_outlined),
                                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
                               ),
@@ -236,8 +239,9 @@ class _CreateSchoolDialogState extends State<CreateSchoolDialog> {
                             child: TextFormField(
                               controller: _telefonoController,
                               decoration: InputDecoration(
-                                labelText: 'Teléfono de Contacto',
+                                labelText: 'Teléfono Principal',
                                 hintText: '809-555-0100',
+                                helperText: 'Central telefónica o WhatsApp',
                                 prefixIcon: const Icon(Icons.phone_outlined),
                                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
                               ),
@@ -248,8 +252,9 @@ class _CreateSchoolDialogState extends State<CreateSchoolDialog> {
                             child: TextFormField(
                               controller: _emailController,
                               decoration: InputDecoration(
-                                labelText: 'Email de Contacto',
+                                labelText: 'Email de Administración',
                                 hintText: 'direccion@colegio.edu.do',
+                                helperText: 'Para contratos y alertas SaaS',
                                 prefixIcon: const Icon(Icons.email_outlined),
                                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
                               ),
@@ -263,8 +268,9 @@ class _CreateSchoolDialogState extends State<CreateSchoolDialog> {
                       TextFormField(
                         controller: _direccionController,
                         decoration: InputDecoration(
-                          labelText: 'Dirección Física',
+                          labelText: 'Dirección Física del Plantel',
                           hintText: 'Av. Winston Churchill #105, Santo Domingo, D.N.',
+                          helperText: 'Sede principal o campus en República Dominicana',
                           prefixIcon: const Icon(Icons.location_on_outlined),
                           border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
                         ),
@@ -279,6 +285,7 @@ class _CreateSchoolDialogState extends State<CreateSchoolDialog> {
                               initialValue: _selectedMaxEstudiantes,
                               decoration: InputDecoration(
                                 labelText: 'Capacidad de Estudiantes',
+                                helperText: 'Límite según el plan SaaS contratado',
                                 prefixIcon: const Icon(Icons.people_alt_outlined),
                                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
                               ),
@@ -297,7 +304,8 @@ class _CreateSchoolDialogState extends State<CreateSchoolDialog> {
                             child: DropdownButtonFormField<String>(
                               initialValue: _selectedStatus,
                               decoration: InputDecoration(
-                                labelText: 'Estado de Suscripción',
+                                labelText: 'Estado Inicial',
+                                helperText: 'Activa (pagado) o Trial (prueba)',
                                 prefixIcon: const Icon(Icons.verified_outlined),
                                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
                               ),
