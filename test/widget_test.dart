@@ -30,6 +30,13 @@ import 'package:edunex/features/circulars/models/circular.dart';
 import 'package:edunex/features/circulars/repositories/circular_repository.dart';
 import 'package:edunex/features/circulars/screens/admin_circulars_screen.dart';
 import 'package:edunex/features/parent_portal/screens/parent_circulars_screen.dart';
+import 'package:edunex/features/finances/models/billing_models.dart';
+import 'package:edunex/features/finances/screens/finance_overview_screen.dart';
+import 'package:edunex/features/finances/screens/monthly_billing_dialog.dart';
+import 'package:edunex/features/academics/models/grade_report.dart';
+import 'package:edunex/features/academics/repositories/academic_repository.dart';
+import 'package:edunex/features/academics/screens/admin_grades_screen.dart';
+import 'package:edunex/features/parent_portal/screens/parent_grades_screen.dart';
 import 'package:edunex/screens/login_screen.dart';
 import 'package:edunex/screens/main_shell.dart';
 
@@ -1050,6 +1057,203 @@ void main() {
     // Dialog dismissed and success confirmation shown
     expect(find.text('Firma Digital & Consentimiento Legal'), findsNothing);
     expect(find.textContaining('Consentimiento formal registrado'), findsOneWidget);
+  });
+
+  test('FamilyRepository: executeMonthlyBillingRun and getDebtAgingReport manage recurring charges and aging', () async {
+    final repo = FamilyRepository(useDemoFallback: true);
+
+    // Initial aging report
+    final initialAging = await repo.getDebtAgingReport();
+    expect(initialAging.familiasEnMora.isNotEmpty, isTrue);
+    expect(initialAging.totalCarteraVencida, greaterThan(0));
+
+    // Execute monthly billing run
+    final billingResult = await repo.executeMonthlyBillingRun(
+      mesConcepto: 'Octubre 2026',
+      cuotaColegiaturaBase: 8500.0,
+      incluirServicios: true,
+    );
+
+    expect(billingResult.familiasProcesadas, greaterThan(0));
+    expect(billingResult.estudiantesFacturados, greaterThan(0));
+    expect(billingResult.montoTotalFacturado, greaterThan(0));
+    expect(billingResult.mesConcepto, 'Octubre 2026');
+
+    // History contains the run
+    final runs = await repo.getBillingRuns();
+    expect(runs.length, greaterThanOrEqualTo(1));
+    expect(runs.first.id, billingResult.id);
+
+    // Delinquency reminders
+    final remindersSent = await repo.sendDelinquencyReminders();
+    expect(remindersSent, greaterThan(0));
+  });
+
+  testWidgets('FinanceOverviewScreen renders recurring billing, aging tab, and bulk reminders', (WidgetTester tester) async {
+    tester.view.physicalSize = const Size(1280, 900);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+
+    final familyRepo = FamilyRepository(useDemoFallback: true);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: FinanceOverviewScreen(
+            isSuperAdmin: false,
+            familyRepository: familyRepo,
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // Verify header buttons
+    expect(find.text('Corte Mensual Recurrente'), findsOneWidget);
+    expect(find.text('Registrar Cobro en Caja'), findsOneWidget);
+
+    // Verify tabs
+    expect(find.text('Historial de Cobros & Recibos'), findsOneWidget);
+    expect(find.textContaining('Reporte de Antigüedad de Cartera'), findsOneWidget);
+
+    // Switch to aging tab
+    await tester.tap(find.textContaining('Reporte de Antigüedad de Cartera'));
+    await tester.pumpAndSettle();
+
+    // Verify aging buckets and bulk reminder button
+    expect(find.text('Corriente (0-30 días)'), findsOneWidget);
+    expect(find.text('Vencido (31-60 días)'), findsOneWidget);
+    expect(find.text('Mora Crítica (>90 días)'), findsOneWidget);
+    expect(find.text('Enviar Recordatorio Masivo a Todos'), findsOneWidget);
+
+    // Tap send reminders
+    await tester.tap(find.text('Enviar Recordatorio Masivo a Todos'));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('Recordatorios de cobro enviados'), findsOneWidget);
+  });
+
+  test('AcademicRepository: manages student grade reports, honors, and grade updates', () async {
+    final repo = AcademicRepository();
+
+    // Get all reports
+    final reports = await repo.getReports();
+    expect(reports.length, greaterThanOrEqualTo(2));
+
+    // Get Mateo's report
+    final mateoReport = await repo.getReportForStudent('f0000000-0000-0000-0000-000000000001');
+    expect(mateoReport, isNotNull);
+    expect(mateoReport!.studentName, 'Mateo Pérez González');
+    expect(mateoReport.promedioGeneral, greaterThanOrEqualTo(85.0));
+    expect(mateoReport.materias.isNotEmpty, isTrue);
+
+    // Update grade for Mateo
+    await repo.updateSubjectGrade(
+      reportId: mateoReport.id,
+      materia: 'Matemáticas',
+      periodo: 1,
+      nota: 98,
+    );
+
+    final updatedMateo = await repo.getReportForStudent('f0000000-0000-0000-0000-000000000001');
+    final math = updatedMateo!.materias.firstWhere((m) => m.materia == 'Matemáticas');
+    expect(math.periodo1, 98);
+
+    // Metrics
+    final metrics = repo.getAcademicMetrics();
+    expect(metrics['promedioGeneral'], greaterThan(80.0));
+    expect(metrics['tasaAprobacion'], greaterThanOrEqualTo(90.0));
+  });
+
+  testWidgets('AdminGradesScreen renders academic metrics and allows entering period grades', (WidgetTester tester) async {
+    tester.view.physicalSize = const Size(1280, 900);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+
+    final academicRepo = AcademicRepository();
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: AdminGradesScreen(academicRepository: academicRepo),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // Verify title and KPI metrics
+    expect(find.text('Control Académico & Boletín de Notas'), findsOneWidget);
+    expect(find.text('Promedio General'), findsOneWidget);
+    expect(find.text('Tasa de Aprobación'), findsOneWidget);
+    expect(find.text('Cuadro de Honor'), findsOneWidget);
+
+    // Verify students listed
+    expect(find.text('Mateo Pérez González'), findsOneWidget);
+    expect(find.text('Sofía Pérez González'), findsOneWidget);
+
+    // Open grade entry dialog for Mateo
+    final editButtons = find.text('Ver / Calificar');
+    expect(editButtons, findsWidgets);
+    await tester.tap(editButtons.first);
+    await tester.pumpAndSettle();
+
+    // Dialog appears with subjects
+    expect(find.text('Desglose por Asignaturas & Períodos Bimestrales:'), findsOneWidget);
+    expect(find.text('Matemáticas'), findsOneWidget);
+    expect(find.text('Listo'), findsOneWidget);
+
+    await tester.tap(find.text('Listo'));
+    await tester.pumpAndSettle();
+    expect(find.text('Desglose por Asignaturas & Períodos Bimestrales:'), findsNothing);
+  });
+
+  testWidgets('ParentGradesScreen renders official report card, GPA, and subject breakdown', (WidgetTester tester) async {
+    tester.view.physicalSize = const Size(1280, 900);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+
+    final parentProfile = UserProfile(
+      id: 'parent-1',
+      colegioId: 'a0000000-0000-0000-0000-000000000001',
+      rol: UserRole.tutorFamiliar,
+      email: 'familia@edunex.edu',
+      nombres: 'Roberto',
+      apellidos: 'Pérez',
+    );
+
+    final familyRepo = FamilyRepository(useDemoFallback: true);
+    final academicRepo = AcademicRepository();
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: ParentGradesScreen(
+            userProfile: parentProfile,
+            familyRepository: familyRepo,
+            academicRepository: academicRepo,
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // Verify header and report card view
+    expect(find.text('Boletín de Calificaciones Oficial'), findsOneWidget);
+    expect(find.text('COLEGIO BILINGÜE NUEVO HORIZONTE'), findsOneWidget);
+    expect(find.text('Descargar Boletín (PDF)'), findsOneWidget);
+
+    // Verify student selector pills (Mateo and Sofía)
+    expect(find.textContaining('Mateo'), findsWidgets);
+    expect(find.textContaining('Sofía'), findsWidgets);
+
+    // Verify subjects table
+    expect(find.text('Calificaciones Bimestrales por Asignatura:'), findsOneWidget);
+    expect(find.text('Matemáticas'), findsOneWidget);
+    expect(find.text('Observaciones del Tutor Docente:'), findsOneWidget);
+
+    // Tap Download PDF
+    await tester.tap(find.text('Descargar Boletín (PDF)'));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('Generando Boletín Oficial en formato PDF'), findsOneWidget);
   });
 }
 

@@ -9,6 +9,7 @@ import '../../auth/models/user_role.dart';
 import '../../parent_portal/models/payment_receipt.dart';
 import '../../parent_portal/models/payment_agreement_request.dart';
 import '../../parent_portal/models/parent_question.dart';
+import '../../finances/models/billing_models.dart';
 
 /// Repositorio de Cuentas Familiares y Estudiantes en EDUNEX
 class FamilyRepository {
@@ -845,5 +846,208 @@ class FamilyRepository {
     }
 
     return student;
+  }
+
+  // =========================================================================
+  // AUTOMATIZACIÓN DE FACTURACIÓN RECURRENTE & AGING DE CARTERA (Sección 4.3 y 8)
+  // =========================================================================
+
+  static final List<BillingRunResult> _billingRuns = [];
+  static final Map<String, DateTime> _recordatoriosEnviados = {};
+
+  /// Ejecuta el corte masivo mensual de colegiaturas y servicios activos
+  Future<BillingRunResult> executeMonthlyBillingRun({
+    required String mesConcepto,
+    double cuotaColegiaturaBase = 8500.0,
+    bool incluirServicios = true,
+  }) async {
+    final families = await getFamilies();
+    final List<BillingItemDetail> detalles = [];
+
+    int totalEstudiantes = 0;
+    double sumaColegiaturas = 0.0;
+    double sumaServicios = 0.0;
+
+    for (final fam in families) {
+      if (!fam.activo || fam.estudiantes.isEmpty) continue;
+
+      final countEst = fam.estudiantes.length;
+      totalEstudiantes += countEst;
+
+      final colegiaturaFam = cuotaColegiaturaBase * countEst;
+      sumaColegiaturas += colegiaturaFam;
+
+      double serviciosFam = 0.0;
+      if (incluirServicios) {
+        for (final est in fam.estudiantes) {
+          for (final serv in est.serviciosActivos) {
+            final sLow = serv.toLowerCase();
+            if (sLow.contains('cuido') || sLow.contains('tarde')) {
+              serviciosFam += 3500.0;
+            } else if (sLow.contains('ruta') || sLow.contains('transporte')) {
+              serviciosFam += 4500.0;
+            } else {
+              serviciosFam += 2000.0;
+            }
+          }
+        }
+      }
+      sumaServicios += serviciosFam;
+
+      final cargoTotal = colegiaturaFam + serviciosFam;
+      final nuevoBalance = fam.balancePendiente + cargoTotal;
+
+      // Actualizar balance de la familia en memoria
+      final index = _customFamilies.indexWhere((f) => f.id == fam.id);
+      if (index != -1) {
+        final current = _customFamilies[index];
+        _customFamilies[index] = Family(
+          id: current.id,
+          colegioId: current.colegioId,
+          codigoFamilia: current.codigoFamilia,
+          nombreFamilia: current.nombreFamilia,
+          balancePendiente: nuevoBalance,
+          telefonoPrincipal: current.telefonoPrincipal,
+          emailPrincipal: current.emailPrincipal,
+          direccion: current.direccion,
+          activo: current.activo,
+          tutores: current.tutores,
+          estudiantes: current.estudiantes,
+        );
+      }
+
+      detalles.add(
+        BillingItemDetail(
+          familiaId: fam.id,
+          codigoFamilia: fam.codigoFamilia,
+          nombreFamilia: fam.nombreFamilia,
+          cantidadEstudiantes: countEst,
+          colegiatura: colegiaturaFam,
+          servicios: serviciosFam,
+          totalCargo: cargoTotal,
+          nuevoBalance: nuevoBalance,
+        ),
+      );
+    }
+
+    final totalFacturado = sumaColegiaturas + sumaServicios;
+    final runResult = BillingRunResult(
+      id: 'CORTE-${DateTime.now().year}-${_billingRuns.length + 101}',
+      mesConcepto: mesConcepto,
+      fechaEjecucion: DateTime.now(),
+      familiasProcesadas: detalles.length,
+      estudiantesFacturados: totalEstudiantes,
+      montoColegiaturas: sumaColegiaturas,
+      montoServiciosAdicionales: sumaServicios,
+      montoTotalFacturado: totalFacturado,
+      detalles: detalles,
+    );
+
+    _billingRuns.insert(0, runResult);
+    return runResult;
+  }
+
+  /// Retorna el historial de cortes de facturación
+  Future<List<BillingRunResult>> getBillingRuns() async {
+    return List.unmodifiable(_billingRuns);
+  }
+
+  /// Genera el reporte de antigüedad de saldos / Cartera Vencida (Aging Report)
+  Future<DebtAgingSummary> getDebtAgingReport() async {
+    final families = await getFamilies();
+    final List<DelinquentFamily> enMora = [];
+
+    double corriente = 0.0;
+    double d30a60 = 0.0;
+    double d60a90 = 0.0;
+    double mas90 = 0.0;
+
+    for (int i = 0; i < families.length; i++) {
+      final f = families[i];
+      if (f.balancePendiente <= 0) continue;
+
+      // Calcular días de mora basados en el historial o distribución simulada
+      int dias = 20;
+      DelinquencyRisk riesgo = DelinquencyRisk.bajo;
+
+      if (f.codigoFamilia == 'FAM-2026-001') {
+        dias = 45;
+        riesgo = DelinquencyRisk.medio;
+      } else if (f.codigoFamilia == 'FAM-2026-003') {
+        dias = 85;
+        riesgo = DelinquencyRisk.alto;
+      } else if (f.codigoFamilia == 'FAM-2026-004') {
+        dias = 110;
+        riesgo = DelinquencyRisk.critico;
+      } else {
+        dias = (i * 18) % 95 + 10;
+        if (dias > 90) {
+          riesgo = DelinquencyRisk.critico;
+        } else if (dias > 60) {
+          riesgo = DelinquencyRisk.alto;
+        } else if (dias > 30) {
+          riesgo = DelinquencyRisk.medio;
+        }
+      }
+
+      if (dias <= 30) {
+        corriente += f.balancePendiente;
+      } else if (dias <= 60) {
+        d30a60 += f.balancePendiente;
+      } else if (dias <= 90) {
+        d60a90 += f.balancePendiente;
+      } else {
+        mas90 += f.balancePendiente;
+      }
+
+      enMora.add(
+        DelinquentFamily(
+          familiaId: f.id,
+          codigoFamilia: f.codigoFamilia,
+          nombreFamilia: f.nombreFamilia,
+          telefonoPrincipal: f.telefonoPrincipal ?? 'Sin teléfono',
+          emailPrincipal: f.emailPrincipal ?? 'Sin correo',
+          balancePendiente: f.balancePendiente,
+          diasMora: dias,
+          riesgo: riesgo,
+          ultimoRecordatorio: _recordatoriosEnviados[f.id],
+        ),
+      );
+    }
+
+    // Ordenar por días de mora descendente
+    enMora.sort((a, b) => b.diasMora.compareTo(a.diasMora));
+
+    final totalVencida = d30a60 + d60a90 + mas90;
+
+    return DebtAgingSummary(
+      totalCorriente: corriente,
+      total30a60: d30a60,
+      total60a90: d60a90,
+      totalMas90: mas90,
+      totalCarteraVencida: totalVencida,
+      familiasEnMora: enMora,
+    );
+  }
+
+  /// Dispara recordatorios masivos o individuales de cobro a familias en mora
+  Future<int> sendDelinquencyReminders({List<String>? familyIds}) async {
+    final now = DateTime.now();
+    int count = 0;
+
+    if (familyIds != null && familyIds.isNotEmpty) {
+      for (final id in familyIds) {
+        _recordatoriosEnviados[id] = now;
+        count++;
+      }
+    } else {
+      final report = await getDebtAgingReport();
+      for (final fam in report.familiasEnMora) {
+        _recordatoriosEnviados[fam.familiaId] = now;
+        count++;
+      }
+    }
+
+    return count;
   }
 }

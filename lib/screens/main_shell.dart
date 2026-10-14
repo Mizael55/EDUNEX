@@ -21,6 +21,9 @@ import '../features/transport/screens/admin_transport_screen.dart';
 import '../features/circulars/repositories/circular_repository.dart';
 import '../features/circulars/screens/admin_circulars_screen.dart';
 import '../features/parent_portal/screens/parent_circulars_screen.dart';
+import '../features/academics/repositories/academic_repository.dart';
+import '../features/academics/screens/admin_grades_screen.dart';
+import '../features/parent_portal/screens/parent_grades_screen.dart';
 import '../features/superadmin/repositories/school_repository.dart';
 import '../features/superadmin/screens/superadmin_dashboard_screen.dart';
 import '../features/superadmin/models/school.dart';
@@ -33,12 +36,14 @@ class MainShell extends StatefulWidget {
   final UserProfile userProfile;
   final FamilyRepository? familyRepository;
   final SchoolRepository? schoolRepository;
+  final AcademicRepository? academicRepository;
 
   const MainShell({
     super.key,
     required this.userProfile,
     this.familyRepository,
     this.schoolRepository,
+    this.academicRepository,
   });
 
   @override
@@ -53,6 +58,7 @@ class _MainShellState extends State<MainShell> {
   late final AttendanceRepository _attendanceRepository;
   late final TransportRepository _transportRepository;
   late final CircularRepository _circularRepository;
+  late final AcademicRepository _academicRepository;
   String _schoolName = 'Colegio Cliente EDUNEX';
   School? _inspectedSchool;
 
@@ -65,6 +71,7 @@ class _MainShellState extends State<MainShell> {
     _attendanceRepository = AttendanceRepository(familyRepository: _familyRepository);
     _transportRepository = TransportRepository(familyRepository: _familyRepository);
     _circularRepository = CircularRepository(familyRepository: _familyRepository);
+    _academicRepository = widget.academicRepository ?? AcademicRepository();
     _loadSchoolName();
   }
 
@@ -141,6 +148,10 @@ class _MainShellState extends State<MainShell> {
           title: 'Consultas & Preguntas',
           icon: Icons.question_answer_rounded,
         ),
+        const NavigationItem(
+          title: 'Calificaciones & Boletín',
+          icon: Icons.grade_rounded,
+        ),
       ];
     }
 
@@ -193,6 +204,10 @@ class _MainShellState extends State<MainShell> {
       const NavigationItem(
         title: 'Transporte Escolar',
         icon: Icons.directions_bus_rounded,
+      ),
+      const NavigationItem(
+        title: 'Gestión Académica & Notas',
+        icon: Icons.school_rounded,
       ),
       const NavigationItem(
         title: 'Tienda & Uniformes',
@@ -252,6 +267,7 @@ class _MainShellState extends State<MainShell> {
             eventRepository: _eventRepository,
             attendanceRepository: _attendanceRepository,
             circularRepository: _circularRepository,
+            academicRepository: _academicRepository,
             onNavigateTab: (index) => setState(() => _selectedIndex = index),
           );
         case 1:
@@ -291,6 +307,12 @@ class _MainShellState extends State<MainShell> {
           return ParentQuestionsScreen(
             userProfile: widget.userProfile,
             familyRepository: _familyRepository,
+          );
+        case 8:
+          return ParentGradesScreen(
+            userProfile: widget.userProfile,
+            familyRepository: _familyRepository,
+            academicRepository: _academicRepository,
           );
         default:
           return _buildPlaceholderScreen(_navItems[_selectedIndex].title);
@@ -354,6 +376,10 @@ class _MainShellState extends State<MainShell> {
           colegioId: widget.userProfile.colegioId,
         );
       case 8:
+        return AdminGradesScreen(
+          academicRepository: _academicRepository,
+        );
+      case 9:
         return const ServicesManagementScreen(moduleType: ServiceModuleType.tienda);
       default:
         return _buildPlaceholderScreen(_navItems[_selectedIndex].title);

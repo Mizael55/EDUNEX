@@ -14,6 +14,8 @@ import 'parent_circulars_screen.dart';
 import '../../events/repositories/event_repository.dart';
 import '../../attendance/repositories/attendance_repository.dart';
 import '../../circulars/repositories/circular_repository.dart';
+import '../../academics/repositories/academic_repository.dart';
+import 'parent_grades_screen.dart';
 
 /// Portal de Padres y Tutores en EDUNEX
 class ParentPortalScreen extends StatefulWidget {
@@ -22,6 +24,7 @@ class ParentPortalScreen extends StatefulWidget {
   final EventRepository? eventRepository;
   final AttendanceRepository? attendanceRepository;
   final CircularRepository? circularRepository;
+  final AcademicRepository? academicRepository;
   final void Function(int tabIndex)? onNavigateTab;
 
   const ParentPortalScreen({
@@ -31,6 +34,7 @@ class ParentPortalScreen extends StatefulWidget {
     this.eventRepository,
     this.attendanceRepository,
     this.circularRepository,
+    this.academicRepository,
     this.onNavigateTab,
   });
 
@@ -469,6 +473,22 @@ class _ParentPortalScreenState extends State<ParentPortalScreen> {
                     );
                   },
                 ),
+                _buildActionCard(
+                  title: '10. Boletín de Calificaciones',
+                  subtitle: 'Récord oficial de notas, promedios y observaciones docentes',
+                  icon: Icons.grade_rounded,
+                  color: const Color(0xFFEAB308),
+                  onTap: () {
+                    _navigateToSection(
+                      8,
+                      ParentGradesScreen(
+                        userProfile: widget.userProfile,
+                        familyRepository: widget.familyRepository,
+                        academicRepository: widget.academicRepository,
+                      ),
+                    );
+                  },
+                ),
               ],
             ),
 
@@ -501,7 +521,7 @@ class _ParentPortalScreenState extends State<ParentPortalScreen> {
                     crossAxisCount: isWide ? 2 : 1,
                     crossAxisSpacing: 16,
                     mainAxisSpacing: 16,
-                    childAspectRatio: isWide ? 1.45 : 1.5,
+                    childAspectRatio: isWide ? 1.22 : 1.3,
                   ),
                   itemCount: family.estudiantes.length,
                   itemBuilder: (context, index) {
@@ -585,7 +605,7 @@ class _ParentPortalScreenState extends State<ParentPortalScreen> {
 
   Widget _buildChildCard(Student student) {
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: AppColors.surfaceWhite,
         borderRadius: BorderRadius.circular(16),
@@ -701,6 +721,26 @@ class _ParentPortalScreenState extends State<ParentPortalScreen> {
                 style: TextButton.styleFrom(
                   foregroundColor: AppColors.navyPrimary,
                   textStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                ),
+              ),
+              OutlinedButton.icon(
+                onPressed: () {
+                  _navigateToSection(
+                    8,
+                    ParentGradesScreen(
+                      userProfile: widget.userProfile,
+                      familyRepository: widget.familyRepository,
+                      academicRepository: widget.academicRepository,
+                    ),
+                  );
+                },
+                icon: const Icon(Icons.grade_rounded, size: 16),
+                label: const Text('Boletín de Notas'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: const Color(0xFFB45309),
+                  side: const BorderSide(color: Color(0xFFFDE68A)),
+                  backgroundColor: const Color(0xFFFEF3C7),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                 ),
               ),
               OutlinedButton.icon(
