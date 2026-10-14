@@ -14,7 +14,11 @@ import 'package:edunex/features/parent_portal/screens/parent_payments_screen.dar
 import 'package:edunex/features/parent_portal/screens/parent_services_screen.dart';
 import 'package:edunex/features/parent_portal/screens/parent_store_screen.dart';
 import 'package:edunex/features/parent_portal/screens/parent_questions_screen.dart';
-import 'package:edunex/features/parent_portal/widgets/receipt_details_dialog.dart';
+import 'package:edunex/features/events/models/school_event.dart';
+import 'package:edunex/features/events/models/event_registration.dart';
+import 'package:edunex/features/events/repositories/event_repository.dart';
+import 'package:edunex/features/events/screens/admin_events_screen.dart';
+import 'package:edunex/features/parent_portal/screens/parent_events_screen.dart';
 import 'package:edunex/screens/login_screen.dart';
 import 'package:edunex/screens/main_shell.dart';
 
@@ -569,6 +573,140 @@ void main() {
     expect(fam, isNotNull);
     final student = fam!.estudiantes.firstWhere((s) => s.id == 'f0000000-0000-0000-0000-000000000001');
     expect(student.serviciosActivos.contains('Transporte Escolar'), isTrue);
+  });
+
+  test('EventRepository manages school events and registrations correctly', () async {
+    final familyRepo = FamilyRepository(useDemoFallback: true);
+    final eventRepo = EventRepository(familyRepository: familyRepo);
+
+    final events = await eventRepo.getEvents();
+    expect(events.isNotEmpty, isTrue);
+
+    // 1. Create a new event
+    final newEvent = await eventRepo.createEvent(
+      colegioId: 'col-1',
+      titulo: 'Visita Botánica y Herbario Nacional',
+      descripcion: 'Recorrido educativo de ciencias naturales',
+      tipo: 'Excursión',
+      lugar: 'Jardín Botánico Nacional',
+      fechaEvento: DateTime.now().add(const Duration(days: 10)),
+      fechaLimiteInscripcion: DateTime.now().add(const Duration(days: 8)),
+      precio: 850.0,
+      cupoMaximo: 30,
+    );
+    expect(newEvent.id.isNotEmpty, isTrue);
+    expect(newEvent.cuposRestantes, 30);
+
+    // 2. Register student to the event
+    final registration = await eventRepo.registerStudentToEvent(
+      eventoId: newEvent.id,
+      familiaId: 'e0000000-0000-0000-0000-000000000001',
+      estudianteId: 'f0000000-0000-0000-0000-000000000001',
+      estudianteNombre: 'Mateo Pérez',
+      metodoPago: 'Tarjeta de Crédito / CardNET',
+    );
+    expect(registration.id.isNotEmpty, isTrue);
+    expect(registration.estadoPago, 'Pagado');
+    expect(registration.montoPagado, 850.0);
+
+    // 3. Verify event capacity decreased
+    final updatedEvent = await eventRepo.getEventById(newEvent.id);
+    expect(updatedEvent!.cuposOcupados, 1);
+    expect(updatedEvent.cuposRestantes, 29);
+
+    // 4. Verify family registrations query
+    final familyRegs = await eventRepo.getRegistrationsForFamily('e0000000-0000-0000-0000-000000000001');
+    expect(familyRegs.any((r) => r.id == registration.id), isTrue);
+
+    // 5. Verify event participants query
+    final eventRegs = await eventRepo.getRegistrationsForEvent(newEvent.id);
+    expect(eventRegs.length, 1);
+    expect(eventRegs.first.estudianteNombre, 'Mateo Pérez');
+  });
+
+  testWidgets('AdminEventsScreen displays school events, metrics and creates event', (WidgetTester tester) async {
+    tester.view.physicalSize = const Size(1280, 900);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+
+    final familyRepo = FamilyRepository(useDemoFallback: true);
+    final eventRepo = EventRepository(familyRepository: familyRepo);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: AdminEventsScreen(
+            repository: eventRepo,
+            colegioId: 'col-1',
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // Verify Title & Metrics
+    expect(find.text('Gestión de Eventos & Excursiones'), findsOneWidget);
+    expect(find.text('Eventos Publicados'), findsOneWidget);
+    expect(find.text('Alumnos Inscritos'), findsOneWidget);
+    expect(find.text('Recaudación Estimada'), findsOneWidget);
+    expect(find.text('Estado de Cupos'), findsOneWidget);
+    expect(find.text('Nuevo Evento Escolar'), findsOneWidget);
+
+    // Verify event cards exist
+    expect(find.textContaining('Gran Excursión al Jardín Botánico Nacional'), findsOneWidget);
+  });
+
+  testWidgets('ParentEventsScreen renders catalog and allows child registration', (WidgetTester tester) async {
+    tester.view.physicalSize = const Size(1280, 900);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+
+    final parentProfile = UserProfile(
+      id: 'parent-1',
+      colegioId: 'col-1',
+      rol: UserRole.tutorFamiliar,
+      email: 'familia@edunex.edu',
+      nombres: 'Roberto',
+      apellidos: 'Pérez',
+    );
+
+    final familyRepo = FamilyRepository(useDemoFallback: true);
+    final eventRepo = EventRepository(familyRepository: familyRepo);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: ParentEventsScreen(
+            userProfile: parentProfile,
+            familyRepository: familyRepo,
+            eventRepository: eventRepo,
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // Verify Catalog UI elements
+    expect(find.text('Eventos, Excursiones & Actividades'), findsOneWidget);
+    expect(find.textContaining('Gran Excursión al Jardín Botánico Nacional'), findsOneWidget);
+
+    // Tap on Inscribir a mi hijo
+    final enrollButtons = find.text('Inscribir a mi hijo');
+    expect(enrollButtons, findsWidgets);
+    await tester.tap(enrollButtons.first);
+    await tester.pumpAndSettle();
+
+    // Registration Dialog appears
+    expect(find.textContaining('Inscripción:'), findsOneWidget);
+    expect(find.text('Confirmar Inscripción'), findsOneWidget);
+
+    // Confirm registration
+    await tester.tap(find.text('Confirmar Inscripción'));
+    await tester.pumpAndSettle();
+
+    // Dialog closed and active registrations updated
+    expect(find.text('Confirmar Inscripción'), findsNothing);
+    expect(find.textContaining('inscripciones activas'), findsOneWidget);
   });
 }
 

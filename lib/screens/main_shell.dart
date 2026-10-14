@@ -10,6 +10,9 @@ import '../features/parent_portal/screens/parent_payments_screen.dart';
 import '../features/parent_portal/screens/parent_services_screen.dart';
 import '../features/parent_portal/screens/parent_store_screen.dart';
 import '../features/parent_portal/screens/parent_questions_screen.dart';
+import '../features/parent_portal/screens/parent_events_screen.dart';
+import '../features/events/repositories/event_repository.dart';
+import '../features/events/screens/admin_events_screen.dart';
 import '../features/superadmin/repositories/school_repository.dart';
 import '../features/superadmin/screens/superadmin_dashboard_screen.dart';
 import '../features/superadmin/models/school.dart';
@@ -38,6 +41,7 @@ class _MainShellState extends State<MainShell> {
   int _selectedIndex = 0;
   late final FamilyRepository _familyRepository;
   late final SchoolRepository _schoolRepository;
+  late final EventRepository _eventRepository;
   String _schoolName = 'Colegio Cliente EDUNEX';
   School? _inspectedSchool;
 
@@ -46,6 +50,7 @@ class _MainShellState extends State<MainShell> {
     super.initState();
     _familyRepository = widget.familyRepository ?? FamilyRepository();
     _schoolRepository = widget.schoolRepository ?? SchoolRepository();
+    _eventRepository = EventRepository(familyRepository: _familyRepository);
     _loadSchoolName();
   }
 
@@ -107,6 +112,10 @@ class _MainShellState extends State<MainShell> {
           icon: Icons.shopping_bag_rounded,
         ),
         const NavigationItem(
+          title: 'Eventos & Excursiones',
+          icon: Icons.event_available_rounded,
+        ),
+        const NavigationItem(
           title: 'Consultas & Preguntas',
           icon: Icons.question_answer_rounded,
         ),
@@ -146,6 +155,10 @@ class _MainShellState extends State<MainShell> {
       const NavigationItem(
         title: 'Servicios de Cuido',
         icon: Icons.child_care_rounded,
+      ),
+      const NavigationItem(
+        title: 'Eventos & Excursiones',
+        icon: Icons.event_available_rounded,
       ),
       const NavigationItem(
         title: 'Transporte Escolar',
@@ -206,6 +219,7 @@ class _MainShellState extends State<MainShell> {
           return ParentPortalScreen(
             userProfile: widget.userProfile,
             familyRepository: _familyRepository,
+            eventRepository: _eventRepository,
             onNavigateTab: (index) => setState(() => _selectedIndex = index),
           );
         case 1:
@@ -224,6 +238,12 @@ class _MainShellState extends State<MainShell> {
             familyRepository: _familyRepository,
           );
         case 4:
+          return ParentEventsScreen(
+            userProfile: widget.userProfile,
+            familyRepository: _familyRepository,
+            eventRepository: _eventRepository,
+          );
+        case 5:
           return ParentQuestionsScreen(
             userProfile: widget.userProfile,
             familyRepository: _familyRepository,
@@ -270,8 +290,13 @@ class _MainShellState extends State<MainShell> {
       case 3:
         return const ServicesManagementScreen(moduleType: ServiceModuleType.cuido);
       case 4:
-        return const ServicesManagementScreen(moduleType: ServiceModuleType.transporte);
+        return AdminEventsScreen(
+          repository: _eventRepository,
+          colegioId: widget.userProfile.colegioId,
+        );
       case 5:
+        return const ServicesManagementScreen(moduleType: ServiceModuleType.transporte);
+      case 6:
         return const ServicesManagementScreen(moduleType: ServiceModuleType.tienda);
       default:
         return _buildPlaceholderScreen(_navItems[_selectedIndex].title);

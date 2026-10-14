@@ -8,17 +8,21 @@ import 'parent_payments_screen.dart';
 import 'parent_services_screen.dart';
 import 'parent_store_screen.dart';
 import 'parent_questions_screen.dart';
+import 'parent_events_screen.dart';
+import '../../events/repositories/event_repository.dart';
 
 /// Portal de Padres y Tutores en EDUNEX
 class ParentPortalScreen extends StatefulWidget {
   final UserProfile userProfile;
   final FamilyRepository familyRepository;
+  final EventRepository? eventRepository;
   final void Function(int tabIndex)? onNavigateTab;
 
   const ParentPortalScreen({
     super.key,
     required this.userProfile,
     required this.familyRepository,
+    this.eventRepository,
     this.onNavigateTab,
   });
 
@@ -371,7 +375,7 @@ class _ParentPortalScreenState extends State<ParentPortalScreen> {
                   color: AppColors.electricBlue,
                   onTap: () {
                     _navigateToSection(
-                      4,
+                      5,
                       ParentQuestionsScreen(
                         userProfile: widget.userProfile,
                         familyRepository: widget.familyRepository,
@@ -405,6 +409,22 @@ class _ParentPortalScreenState extends State<ParentPortalScreen> {
                       ParentPaymentsScreen(
                         userProfile: widget.userProfile,
                         familyRepository: widget.familyRepository,
+                      ),
+                    );
+                  },
+                ),
+                _buildActionCard(
+                  title: '7. Eventos & Excursiones',
+                  subtitle: 'Inscripción a campamentos, talleres y paseos',
+                  icon: Icons.event_available_rounded,
+                  color: const Color(0xFF0D9488),
+                  onTap: () {
+                    _navigateToSection(
+                      4,
+                      ParentEventsScreen(
+                        userProfile: widget.userProfile,
+                        familyRepository: widget.familyRepository,
+                        eventRepository: widget.eventRepository,
                       ),
                     );
                   },
