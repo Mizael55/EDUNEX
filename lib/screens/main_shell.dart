@@ -16,6 +16,8 @@ import '../features/events/screens/admin_events_screen.dart';
 import '../features/attendance/repositories/attendance_repository.dart';
 import '../features/attendance/screens/admin_attendance_screen.dart';
 import '../features/parent_portal/screens/parent_attendance_screen.dart';
+import '../features/transport/repositories/transport_repository.dart';
+import '../features/transport/screens/admin_transport_screen.dart';
 import '../features/superadmin/repositories/school_repository.dart';
 import '../features/superadmin/screens/superadmin_dashboard_screen.dart';
 import '../features/superadmin/models/school.dart';
@@ -46,6 +48,7 @@ class _MainShellState extends State<MainShell> {
   late final SchoolRepository _schoolRepository;
   late final EventRepository _eventRepository;
   late final AttendanceRepository _attendanceRepository;
+  late final TransportRepository _transportRepository;
   String _schoolName = 'Colegio Cliente EDUNEX';
   School? _inspectedSchool;
 
@@ -56,6 +59,7 @@ class _MainShellState extends State<MainShell> {
     _schoolRepository = widget.schoolRepository ?? SchoolRepository();
     _eventRepository = EventRepository(familyRepository: _familyRepository);
     _attendanceRepository = AttendanceRepository(familyRepository: _familyRepository);
+    _transportRepository = TransportRepository(familyRepository: _familyRepository);
     _loadSchoolName();
   }
 
@@ -320,7 +324,10 @@ class _MainShellState extends State<MainShell> {
           colegioId: widget.userProfile.colegioId,
         );
       case 6:
-        return const ServicesManagementScreen(moduleType: ServiceModuleType.transporte);
+        return AdminTransportScreen(
+          repository: _transportRepository,
+          colegioId: widget.userProfile.colegioId,
+        );
       case 7:
         return const ServicesManagementScreen(moduleType: ServiceModuleType.tienda);
       default:

@@ -23,6 +23,9 @@ import 'package:edunex/features/attendance/models/attendance_record.dart';
 import 'package:edunex/features/attendance/repositories/attendance_repository.dart';
 import 'package:edunex/features/attendance/screens/admin_attendance_screen.dart';
 import 'package:edunex/features/parent_portal/screens/parent_attendance_screen.dart';
+import 'package:edunex/features/transport/models/bus_route.dart';
+import 'package:edunex/features/transport/repositories/transport_repository.dart';
+import 'package:edunex/features/transport/screens/admin_transport_screen.dart';
 import 'package:edunex/screens/login_screen.dart';
 import 'package:edunex/screens/main_shell.dart';
 
@@ -842,6 +845,77 @@ void main() {
     expect(find.text('Justificar Inasistencia / Tardanza'), findsNothing);
     expect(find.textContaining('Justificación enviada'), findsOneWidget);
   });
+
+  test('TransportRepository loads routes, updates status and manages passenger boarding', () async {
+    final familyRepo = FamilyRepository(useDemoFallback: true);
+    final transportRepo = TransportRepository(familyRepository: familyRepo);
+
+    // 1. Fetch routes
+    final routes = await transportRepo.getRoutes(colegioId: 'a0000000-0000-0000-0000-000000000001');
+    expect(routes.length, 3);
+    expect(routes.first.codigo, 'RUTA-01');
+    expect(routes.first.choferNombre, 'Manuel Rosario');
+
+    // 2. Update route status
+    final updatedRoute = await transportRepo.updateRouteStatus('route-001', 'Completada');
+    expect(updatedRoute.estadoRuta, 'Completada');
+    expect(updatedRoute.completada, true);
+
+    // 3. Update passenger boarding status
+    final passenger = await transportRepo.updatePassengerStatus(
+      routeId: 'route-001',
+      estudianteId: 'f0000000-0000-0000-0000-000000000001',
+      nuevoEstado: 'Entregado en Destino',
+    );
+    expect(passenger.estadoAbordaje, 'Entregado en Destino');
+
+    // 4. Check transport stats
+    final stats = await transportRepo.getTransportStats(colegioId: 'a0000000-0000-0000-0000-000000000001');
+    expect(stats['totalRutas'], 3);
+    expect(stats['totalAsientos'], greaterThan(60));
+  });
+
+  testWidgets('AdminTransportScreen renders routes, metrics and allows passenger check-in', (WidgetTester tester) async {
+    tester.view.physicalSize = const Size(1280, 900);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+
+    final familyRepo = FamilyRepository(useDemoFallback: true);
+    final transportRepo = TransportRepository(familyRepository: familyRepo);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: AdminTransportScreen(
+            repository: transportRepo,
+            colegioId: 'a0000000-0000-0000-0000-000000000001',
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // Verify header and KPI metrics
+    expect(find.text('Transporte Escolar & Monitoreo de Rutas'), findsOneWidget);
+    expect(find.text('Rutas Operativas'), findsOneWidget);
+    expect(find.text('Alumnos en Ruta'), findsOneWidget);
+    expect(find.text('Nueva Ruta Escolar'), findsOneWidget);
+
+    // Verify route cards exist
+    expect(find.textContaining('Ruta 1 - Naco'), findsOneWidget);
+    expect(find.textContaining('Manuel Rosario'), findsOneWidget);
+
+    // Open passenger manifest sheet
+    final passengerButtons = find.textContaining('Hoja de Pasajeros');
+    expect(passengerButtons, findsWidgets);
+    await tester.tap(passengerButtons.first);
+    await tester.pumpAndSettle();
+
+    // Verify modal sheet appears with assigned student
+    expect(find.textContaining('Hoja de Pasajeros & Abordaje: RUTA-01'), findsOneWidget);
+    expect(find.textContaining('Mateo Pérez González'), findsOneWidget);
+  });
 }
+
 
 
