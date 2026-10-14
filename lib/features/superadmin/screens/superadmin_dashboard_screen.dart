@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../theme/app_colors.dart';
 import '../models/school.dart';
 import '../repositories/school_repository.dart';
+import 'business_model_dialog.dart';
 import 'create_school_dialog.dart';
 
 /// Panel Maestro del Dueño del Software (Superadministrador SaaS de EDUNEX).
@@ -214,6 +215,18 @@ class _SuperAdminDashboardScreenState extends State<SuperAdminDashboardScreen> {
                   ],
                 );
 
+                final businessModelButton = OutlinedButton.icon(
+                  onPressed: () => BusinessModelDialog.show(context),
+                  icon: const Icon(Icons.analytics_rounded, size: 18, color: AppColors.electricBlue),
+                  label: const Text('Modelo de Negocio & Pricing'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppColors.navyPrimary,
+                    side: const BorderSide(color: AppColors.electricBlue, width: 1.5),
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                );
+
                 final actionButton = ElevatedButton.icon(
                   onPressed: _openCreateSchoolDialog,
                   icon: const Icon(Icons.domain_add_rounded, size: 20),
@@ -232,7 +245,14 @@ class _SuperAdminDashboardScreenState extends State<SuperAdminDashboardScreen> {
                     children: [
                       titleSection,
                       const SizedBox(height: 14),
-                      actionButton,
+                      Wrap(
+                        spacing: 12,
+                        runSpacing: 8,
+                        children: [
+                          businessModelButton,
+                          actionButton,
+                        ],
+                      ),
                     ],
                   );
                 }
@@ -241,6 +261,8 @@ class _SuperAdminDashboardScreenState extends State<SuperAdminDashboardScreen> {
                   children: [
                     Expanded(child: titleSection),
                     const SizedBox(width: 16),
+                    businessModelButton,
+                    const SizedBox(width: 12),
                     actionButton,
                   ],
                 );

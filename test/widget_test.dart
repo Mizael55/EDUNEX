@@ -5,6 +5,7 @@ import 'package:edunex/features/auth/models/user_profile.dart';
 import 'package:edunex/features/auth/models/user_role.dart';
 import 'package:edunex/features/families/repositories/family_repository.dart';
 import 'package:edunex/features/superadmin/repositories/school_repository.dart';
+import 'package:edunex/features/superadmin/screens/business_model_dialog.dart';
 import 'package:edunex/features/superadmin/screens/create_school_dialog.dart';
 import 'package:edunex/screens/login_screen.dart';
 import 'package:edunex/screens/main_shell.dart';
@@ -267,5 +268,27 @@ void main() {
 
     // Caso 4: Multi-sucursales
     expect(find.text('¿Cuenta con sucursales o recintos adicionales?'), findsOneWidget);
+  });
+
+  testWidgets('BusinessModelDialog renders pricing table, simulation and MINERD targets', (WidgetTester tester) async {
+    tester.view.physicalSize = const Size(1280, 950);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(
+          body: BusinessModelDialog(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Modelo de Negocio & Arquitectura Comercial EDUNEX'), findsOneWidget);
+    expect(find.text('RD\$ 7,000'), findsOneWidget);
+    expect(find.text('1 Sucursal'), findsOneWidget);
+    expect(find.text('2 Sucursales'), findsOneWidget);
+    expect(find.text('3+ Sucursales'), findsOneWidget);
+    expect(find.textContaining('MRR Proyectado'), findsOneWidget);
   });
 }

@@ -956,6 +956,27 @@ Contraseña: $password
                             ),
                             if (_hasBranches) ...[
                               const Divider(height: 16),
+                              Container(
+                                margin: const EdgeInsets.only(bottom: 12),
+                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                decoration: BoxDecoration(
+                                  color: AppColors.electricBlue.withValues(alpha: 0.08),
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(color: AppColors.electricBlue.withValues(alpha: 0.2)),
+                                ),
+                                child: Row(
+                                  children: [
+                                    const Icon(Icons.monetization_on_outlined, size: 16, color: AppColors.electricBlue),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: Text(
+                                        'Tarifa Modelo EDUNEX: ${_branchControllers.isEmpty ? "RD\$ 7,000 / mes (1 sucursal base)" : (_branchControllers.length == 1 ? "RD\$ 10,500 / mes (2 sucursales)" : "RD\$ 14,000 / mes (${1 + _branchControllers.length} sucursales)")}',
+                                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.navyPrimary),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
                               Row(
                                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                 children: [
