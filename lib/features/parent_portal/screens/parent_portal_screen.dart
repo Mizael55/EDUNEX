@@ -10,8 +10,10 @@ import 'parent_store_screen.dart';
 import 'parent_questions_screen.dart';
 import 'parent_events_screen.dart';
 import 'parent_attendance_screen.dart';
+import 'parent_circulars_screen.dart';
 import '../../events/repositories/event_repository.dart';
 import '../../attendance/repositories/attendance_repository.dart';
+import '../../circulars/repositories/circular_repository.dart';
 
 /// Portal de Padres y Tutores en EDUNEX
 class ParentPortalScreen extends StatefulWidget {
@@ -19,6 +21,7 @@ class ParentPortalScreen extends StatefulWidget {
   final FamilyRepository familyRepository;
   final EventRepository? eventRepository;
   final AttendanceRepository? attendanceRepository;
+  final CircularRepository? circularRepository;
   final void Function(int tabIndex)? onNavigateTab;
 
   const ParentPortalScreen({
@@ -27,6 +30,7 @@ class ParentPortalScreen extends StatefulWidget {
     required this.familyRepository,
     this.eventRepository,
     this.attendanceRepository,
+    this.circularRepository,
     this.onNavigateTab,
   });
 
@@ -445,6 +449,22 @@ class _ParentPortalScreenState extends State<ParentPortalScreen> {
                         userProfile: widget.userProfile,
                         familyRepository: widget.familyRepository,
                         attendanceRepository: widget.attendanceRepository,
+                      ),
+                    );
+                  },
+                ),
+                _buildActionCard(
+                  title: '9. Circulares & Autorizaciones',
+                  subtitle: 'Comunicados oficiales y firma digital de consentimientos',
+                  icon: Icons.campaign_rounded,
+                  color: const Color(0xFFC026D3),
+                  onTap: () {
+                    _navigateToSection(
+                      7,
+                      ParentCircularsScreen(
+                        userProfile: widget.userProfile,
+                        familyRepository: widget.familyRepository,
+                        circularRepository: widget.circularRepository,
                       ),
                     );
                   },

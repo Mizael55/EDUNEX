@@ -26,6 +26,10 @@ import 'package:edunex/features/parent_portal/screens/parent_attendance_screen.d
 import 'package:edunex/features/transport/models/bus_route.dart';
 import 'package:edunex/features/transport/repositories/transport_repository.dart';
 import 'package:edunex/features/transport/screens/admin_transport_screen.dart';
+import 'package:edunex/features/circulars/models/circular.dart';
+import 'package:edunex/features/circulars/repositories/circular_repository.dart';
+import 'package:edunex/features/circulars/screens/admin_circulars_screen.dart';
+import 'package:edunex/features/parent_portal/screens/parent_circulars_screen.dart';
 import 'package:edunex/screens/login_screen.dart';
 import 'package:edunex/screens/main_shell.dart';
 
@@ -915,7 +919,140 @@ void main() {
     expect(find.textContaining('Hoja de Pasajeros & Abordaje: RUTA-01'), findsOneWidget);
     expect(find.textContaining('Mateo Pérez González'), findsOneWidget);
   });
+
+  test('CircularRepository loads circulars, filters by grade and signs digital consent', () async {
+    final familyRepo = FamilyRepository(useDemoFallback: true);
+    final circularRepo = CircularRepository(familyRepository: familyRepo);
+
+    // 1. Fetch circulars
+    final circulars = await circularRepo.getCirculars(colegioId: 'a0000000-0000-0000-0000-000000000001');
+    expect(circulars.length, 3);
+    expect(circulars.first.titulo, contains('Circular No. 05'));
+
+    // 2. Fetch for parent with 1ro de Primaria
+    final parentCirculars = await circularRepo.getCircularsForParent(
+      colegioId: 'a0000000-0000-0000-0000-000000000001',
+      gradosHijos: ['1ro de Primaria'],
+    );
+    expect(parentCirculars.isNotEmpty, true);
+
+    // 3. Sign circular
+    final sig = await circularRepo.signCircular(
+      circularId: 'circ-001',
+      signature: CircularSignature(
+        id: 'sig-test-01',
+        tutorId: 'parent-1',
+        tutorNombre: 'Roberto Pérez',
+        tutorCedula: '001-1234567-8',
+        estudianteId: 'f0000000-0000-0000-0000-000000000001',
+        estudianteNombre: 'Mateo Pérez González',
+        fechaFirma: DateTime.now(),
+        autorizado: true,
+      ),
+    );
+    expect(sig.autorizado, true);
+    expect(sig.tutorNombre, 'Roberto Pérez');
+
+    // 4. Check stats
+    final stats = await circularRepo.getCircularStats(colegioId: 'a0000000-0000-0000-0000-000000000001');
+    expect(stats['totalPublicadas'], 3);
+    expect(stats['requierenFirma'], 2);
+  });
+
+  testWidgets('AdminCircularsScreen renders circulars, KPIs and allows inspecting signatures', (WidgetTester tester) async {
+    tester.view.physicalSize = const Size(1280, 900);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+
+    final familyRepo = FamilyRepository(useDemoFallback: true);
+    final circularRepo = CircularRepository(familyRepository: familyRepo);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: AdminCircularsScreen(
+            repository: circularRepo,
+            colegioId: 'a0000000-0000-0000-0000-000000000001',
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // Verify headers and metrics
+    expect(find.text('Circulares Oficiales & Comunicados'), findsOneWidget);
+    expect(find.text('Circulares Publicadas'), findsOneWidget);
+    expect(find.text('Redactar Circular'), findsOneWidget);
+
+    // Verify circular cards exist
+    expect(find.textContaining('Circular No. 05'), findsOneWidget);
+
+    // Open signatures sheet
+    final sigButtons = find.textContaining('Ver Firmas Recibidas');
+    expect(sigButtons, findsWidgets);
+    await tester.tap(sigButtons.first);
+    await tester.pumpAndSettle();
+
+    // Verify modal sheet appears
+    expect(find.text('Registro Oficial de Firmas Digitales'), findsOneWidget);
+  });
+
+  testWidgets('ParentCircularsScreen renders circulars and allows digital signing for student', (WidgetTester tester) async {
+    tester.view.physicalSize = const Size(1280, 900);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+
+    final parentProfile = UserProfile(
+      id: 'parent-1',
+      colegioId: 'a0000000-0000-0000-0000-000000000001',
+      rol: UserRole.tutorFamiliar,
+      email: 'familia@edunex.edu',
+      nombres: 'Roberto',
+      apellidos: 'Pérez',
+    );
+
+    final familyRepo = FamilyRepository(useDemoFallback: true);
+    final circularRepo = CircularRepository(familyRepository: familyRepo);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: ParentCircularsScreen(
+            userProfile: parentProfile,
+            familyRepository: familyRepo,
+            circularRepository: circularRepo,
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // Verify title and pending action banner
+    expect(find.text('Circulares Oficiales & Autorizaciones'), findsOneWidget);
+    expect(find.textContaining('Acción Requerida: Pendiente de autorización'), findsWidgets);
+
+    // Tap signature button
+    final signButtons = find.textContaining('Firmar para');
+    expect(signButtons, findsWidgets);
+    await tester.tap(signButtons.first);
+    await tester.pumpAndSettle();
+
+    // Verify dialog appears
+    expect(find.text('Firma Digital & Consentimiento Legal'), findsOneWidget);
+    expect(find.text('Confirmar Firma Digital'), findsOneWidget);
+
+    // Submit signature
+    await tester.tap(find.text('Confirmar Firma Digital'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.pumpAndSettle();
+
+    // Dialog dismissed and success confirmation shown
+    expect(find.text('Firma Digital & Consentimiento Legal'), findsNothing);
+    expect(find.textContaining('Consentimiento formal registrado'), findsOneWidget);
+  });
 }
+
 
 
 

@@ -18,6 +18,9 @@ import '../features/attendance/screens/admin_attendance_screen.dart';
 import '../features/parent_portal/screens/parent_attendance_screen.dart';
 import '../features/transport/repositories/transport_repository.dart';
 import '../features/transport/screens/admin_transport_screen.dart';
+import '../features/circulars/repositories/circular_repository.dart';
+import '../features/circulars/screens/admin_circulars_screen.dart';
+import '../features/parent_portal/screens/parent_circulars_screen.dart';
 import '../features/superadmin/repositories/school_repository.dart';
 import '../features/superadmin/screens/superadmin_dashboard_screen.dart';
 import '../features/superadmin/models/school.dart';
@@ -49,6 +52,7 @@ class _MainShellState extends State<MainShell> {
   late final EventRepository _eventRepository;
   late final AttendanceRepository _attendanceRepository;
   late final TransportRepository _transportRepository;
+  late final CircularRepository _circularRepository;
   String _schoolName = 'Colegio Cliente EDUNEX';
   School? _inspectedSchool;
 
@@ -60,6 +64,7 @@ class _MainShellState extends State<MainShell> {
     _eventRepository = EventRepository(familyRepository: _familyRepository);
     _attendanceRepository = AttendanceRepository(familyRepository: _familyRepository);
     _transportRepository = TransportRepository(familyRepository: _familyRepository);
+    _circularRepository = CircularRepository(familyRepository: _familyRepository);
     _loadSchoolName();
   }
 
@@ -129,6 +134,10 @@ class _MainShellState extends State<MainShell> {
           icon: Icons.fact_check_rounded,
         ),
         const NavigationItem(
+          title: 'Circulares & Autorizaciones',
+          icon: Icons.campaign_rounded,
+        ),
+        const NavigationItem(
           title: 'Consultas & Preguntas',
           icon: Icons.question_answer_rounded,
         ),
@@ -168,6 +177,10 @@ class _MainShellState extends State<MainShell> {
       const NavigationItem(
         title: 'Control de Asistencia',
         icon: Icons.fact_check_rounded,
+      ),
+      const NavigationItem(
+        title: 'Circulares & Avisos',
+        icon: Icons.campaign_rounded,
       ),
       const NavigationItem(
         title: 'Servicios de Cuido',
@@ -238,6 +251,7 @@ class _MainShellState extends State<MainShell> {
             familyRepository: _familyRepository,
             eventRepository: _eventRepository,
             attendanceRepository: _attendanceRepository,
+            circularRepository: _circularRepository,
             onNavigateTab: (index) => setState(() => _selectedIndex = index),
           );
         case 1:
@@ -268,6 +282,12 @@ class _MainShellState extends State<MainShell> {
             attendanceRepository: _attendanceRepository,
           );
         case 6:
+          return ParentCircularsScreen(
+            userProfile: widget.userProfile,
+            familyRepository: _familyRepository,
+            circularRepository: _circularRepository,
+          );
+        case 7:
           return ParentQuestionsScreen(
             userProfile: widget.userProfile,
             familyRepository: _familyRepository,
@@ -317,18 +337,23 @@ class _MainShellState extends State<MainShell> {
           colegioId: widget.userProfile.colegioId,
         );
       case 4:
-        return const ServicesManagementScreen(moduleType: ServiceModuleType.cuido);
+        return AdminCircularsScreen(
+          repository: _circularRepository,
+          colegioId: widget.userProfile.colegioId,
+        );
       case 5:
+        return const ServicesManagementScreen(moduleType: ServiceModuleType.cuido);
+      case 6:
         return AdminEventsScreen(
           repository: _eventRepository,
           colegioId: widget.userProfile.colegioId,
         );
-      case 6:
+      case 7:
         return AdminTransportScreen(
           repository: _transportRepository,
           colegioId: widget.userProfile.colegioId,
         );
-      case 7:
+      case 8:
         return const ServicesManagementScreen(moduleType: ServiceModuleType.tienda);
       default:
         return _buildPlaceholderScreen(_navItems[_selectedIndex].title);
