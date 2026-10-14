@@ -16,6 +16,16 @@ class School {
   final DateTime? createdAt;
   final int totalEstudiantes;
   final int totalFamilias;
+  // Caso 2: Tarifario Escolar & Criterio Sujeto a Mejora de Pago
+  final double precioInicial;
+  final double precioPrimaria;
+  final double precioSecundaria;
+  final double precioMatricula;
+  final bool sujetoAMejoraPago;
+  final double descuentoProntoPagoAnualPct;
+  final double descuentoProntoPagoSemestralPct;
+  final double descuentoProntoPagoTrimestralPct;
+  final double descuentoHermanosPct;
 
   const School({
     required this.id,
@@ -31,6 +41,15 @@ class School {
     this.createdAt,
     this.totalEstudiantes = 0,
     this.totalFamilias = 0,
+    this.precioInicial = 6500.0,
+    this.precioPrimaria = 8000.0,
+    this.precioSecundaria = 9500.0,
+    this.precioMatricula = 12000.0,
+    this.sujetoAMejoraPago = true,
+    this.descuentoProntoPagoAnualPct = 10.0,
+    this.descuentoProntoPagoSemestralPct = 5.0,
+    this.descuentoProntoPagoTrimestralPct = 3.0,
+    this.descuentoHermanosPct = 10.0,
   });
 
   bool get isActive => estadoSuscripcion == 'active';
@@ -81,6 +100,11 @@ class School {
       } catch (_) {}
     }
 
+    double parseDouble(dynamic v, double defaultVal) {
+      if (v is num) return v.toDouble();
+      return double.tryParse(v?.toString() ?? '') ?? defaultVal;
+    }
+
     return School(
       id: json['id']?.toString() ?? '',
       nombre: json['nombre']?.toString() ?? '',
@@ -101,6 +125,15 @@ class School {
       totalFamilias: json['total_familias'] is int
           ? json['total_familias'] as int
           : int.tryParse(json['total_familias']?.toString() ?? '0') ?? 0,
+      precioInicial: parseDouble(json['precio_inicial'], 6500.0),
+      precioPrimaria: parseDouble(json['precio_primaria'], 8000.0),
+      precioSecundaria: parseDouble(json['precio_secundaria'], 9500.0),
+      precioMatricula: parseDouble(json['precio_matricula'], 12000.0),
+      sujetoAMejoraPago: json['sujeto_a_mejora_pago'] as bool? ?? true,
+      descuentoProntoPagoAnualPct: parseDouble(json['descuento_anual_pct'], 10.0),
+      descuentoProntoPagoSemestralPct: parseDouble(json['descuento_semestral_pct'], 5.0),
+      descuentoProntoPagoTrimestralPct: parseDouble(json['descuento_trimestral_pct'], 3.0),
+      descuentoHermanosPct: parseDouble(json['descuento_hermanos_pct'], 10.0),
     );
   }
 
@@ -116,6 +149,15 @@ class School {
       'logo_url': logoUrl,
       'estado_suscripcion': estadoSuscripcion,
       'max_estudiantes': maxEstudiantes,
+      'precio_inicial': precioInicial,
+      'precio_primaria': precioPrimaria,
+      'precio_secundaria': precioSecundaria,
+      'precio_matricula': precioMatricula,
+      'sujeto_a_mejora_pago': sujetoAMejoraPago,
+      'descuento_anual_pct': descuentoProntoPagoAnualPct,
+      'descuento_semestral_pct': descuentoProntoPagoSemestralPct,
+      'descuento_trimestral_pct': descuentoProntoPagoTrimestralPct,
+      'descuento_hermanos_pct': descuentoHermanosPct,
     };
   }
 }

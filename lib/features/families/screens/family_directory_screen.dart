@@ -9,10 +9,12 @@ import '../../finances/screens/record_payment_dialog.dart';
 /// Pantalla del Directorio de Cuentas Familiares en EDUNEX
 class FamilyDirectoryScreen extends StatefulWidget {
   final FamilyRepository repository;
+  final String? colegioId;
 
   const FamilyDirectoryScreen({
     super.key,
     required this.repository,
+    this.colegioId,
   });
 
   @override
@@ -97,6 +99,7 @@ class _FamilyDirectoryScreenState extends State<FamilyDirectoryScreen> {
                     CreateFamilyDialog.show(
                       context,
                       repository: widget.repository,
+                      colegioId: widget.colegioId ?? 'a0000000-0000-0000-0000-000000000001',
                       onFamilyCreated: (_) => _loadFamilies(),
                     );
                   },

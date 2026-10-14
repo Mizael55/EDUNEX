@@ -4,6 +4,9 @@ import 'package:edunex/main.dart';
 import 'package:edunex/features/auth/models/user_profile.dart';
 import 'package:edunex/features/auth/models/user_role.dart';
 import 'package:edunex/features/families/repositories/family_repository.dart';
+import 'package:edunex/features/families/models/student.dart';
+import 'package:edunex/features/families/screens/create_family_dialog.dart';
+import 'package:edunex/features/auth/repositories/auth_repository.dart';
 import 'package:edunex/features/superadmin/repositories/school_repository.dart';
 import 'package:edunex/features/superadmin/screens/business_model_dialog.dart';
 import 'package:edunex/features/superadmin/screens/create_school_dialog.dart';
@@ -291,4 +294,154 @@ void main() {
     expect(find.text('3+ Sucursales'), findsOneWidget);
     expect(find.textContaining('MRR Proyectado'), findsOneWidget);
   });
+
+  test('FamilyRepository creates family with multi-student, physical tutor dossier and prevents disappearance on login', () async {
+    final familyRepo = FamilyRepository(useDemoFallback: true);
+    final authRepo = AuthRepository();
+
+    final created = await familyRepo.createFamily(
+      colegioId: 'col-1',
+      nombreFamilia: 'Familia Pérez Gómez',
+      tutorNombres: 'Marcos',
+      tutorApellidos: 'Pérez',
+      tutorEmail: 'marcos.perez@test.edu',
+      tutorTelefono: '809-555-0199',
+      cedula: '001-9988776-5',
+      ocupacion: 'Ingeniero de Software',
+      lugarTrabajo: 'Tech Corp',
+      telefonoTrabajo: '809-222-1111',
+      ingresosAproximados: '120000',
+      cartaTrabajoAdjunta: true,
+      estadosFinancierosAdjuntos: true,
+      copiaCedulaAdjunta: true,
+      modalidadPago: 'Semestral',
+      descuentoAcordadoPct: 5.0,
+      multipleStudents: [
+        Student(
+          id: 'est-1',
+          colegioId: 'col-1',
+          familiaId: 'fam-test',
+          matricula: 'MAT-001',
+          nombres: 'Mateo',
+          apellidos: 'Pérez',
+          fechaNacimiento: DateTime(2018, 5, 12),
+          gradoNombre: '1er Grado Primaria',
+          tipoSangre: 'O+',
+          alergias: 'Ninguna',
+          seguroMedico: 'Humano Seguros',
+          numeroPoliza: 'POL-9988',
+          pediatraContacto: 'Dra. Castillo (809-555-4321)',
+          fotoAdjunta: true,
+          actaNacimientoAdjunta: true,
+          certificadoNotasAdjunto: true,
+          cartaSaldoConductaAdjunta: true,
+        ),
+        Student(
+          id: 'est-2',
+          colegioId: 'col-1',
+          familiaId: 'fam-test',
+          matricula: 'MAT-002',
+          nombres: 'Lucía',
+          apellidos: 'Pérez',
+          fechaNacimiento: DateTime(2021, 2, 8),
+          gradoNombre: 'Kínder',
+          tipoSangre: 'O+',
+          alergias: 'Polvo',
+          seguroMedico: 'Humano Seguros',
+          numeroPoliza: 'POL-9988',
+          pediatraContacto: 'Dra. Castillo (809-555-4321)',
+          fotoAdjunta: true,
+          actaNacimientoAdjunta: true,
+          certificadoNotasAdjunto: false,
+          cartaSaldoConductaAdjunta: false,
+        ),
+      ],
+    );
+
+    expect(created.id, isNotEmpty);
+    expect(created.estudiantes.length, 2);
+    expect(created.tutores.first.ocupacion, 'Ingeniero de Software');
+    expect(created.tutores.first.ingresosAproximados, '120000');
+    expect(created.tutores.first.cartaTrabajoAdjunta, isTrue);
+
+    // Verify student medical data & dossier
+    expect(created.estudiantes[0].tipoSangre, 'O+');
+    expect(created.estudiantes[0].seguroMedico, 'Humano Seguros');
+    expect(created.estudiantes[0].cartaSaldoConductaAdjunta, isTrue);
+    expect(created.estudiantes[1].nombreCompleto, 'Lucía Pérez');
+
+    // Verify auth login works seamlessly for this tutor
+    final authUser = await authRepo.signInWithPassword(
+      email: 'marcos.perez@test.edu',
+      password: 'Password123!',
+    );
+    expect(authUser.rol, UserRole.tutorFamiliar);
+    expect(authUser.colegioId, 'col-1');
+
+    // Verify family does NOT disappear upon access
+    final retrieved = await familyRepo.getFamilyForCurrentUser(
+      email: authUser.email,
+      colegioId: authUser.colegioId,
+    );
+    expect(retrieved, isNotNull);
+    expect(retrieved!.id, created.id);
+    expect(retrieved.nombreFamilia, 'Familia Pérez Gómez');
+    expect(retrieved.estudiantes.length, 2);
+  });
+
+  testWidgets('CreateFamilyDialog renders 4 tabs, supports adding second student and displays quotation', (WidgetTester tester) async {
+    tester.view.physicalSize = const Size(1280, 950);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+
+    final familyRepo = FamilyRepository(useDemoFallback: true);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: CreateFamilyDialog(
+            repository: familyRepo,
+            colegioId: 'col-1',
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // Verify 4 tabs
+    expect(find.text('1. Tutor & Familia'), findsOneWidget);
+    expect(find.textContaining('2. Alumnos'), findsOneWidget);
+    expect(find.text('3. Criterios del Centro'), findsOneWidget);
+    expect(find.text('4. Cotización & Pagos'), findsOneWidget);
+
+    // Verify tutor fields
+    expect(find.textContaining('Cédula'), findsWidgets);
+    expect(find.textContaining('Ocupación / Profesión'), findsOneWidget);
+    expect(find.textContaining('Lugar de Trabajo'), findsOneWidget);
+    expect(find.textContaining('Documentos Físicos del Tutor'), findsOneWidget);
+
+    // Switch to Tab 2: Alumnos
+    await tester.tap(find.textContaining('2. Alumnos'));
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('Expediente Médico & Clínico'), findsOneWidget);
+    expect(find.textContaining('Documentos del Expediente Escolar'), findsOneWidget);
+    expect(find.text('+ Agregar Otro Alumno / Hermano'), findsOneWidget);
+
+    // Add second student
+    await tester.tap(find.text('+ Agregar Otro Alumno / Hermano'));
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('ALUMNO #2'), findsOneWidget);
+
+    // Switch to Tab 4: Cotización & Pagos
+    await tester.tap(find.text('4. Cotización & Pagos'));
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('Sujeto a Mejora de Pago'), findsOneWidget);
+    expect(find.textContaining('Resumen Consolidado'), findsOneWidget);
+    expect(find.text('COTIZADOR EN VIVO'), findsOneWidget);
+    expect(find.text('Generar y Emitir Cotización Oficial'), findsOneWidget);
+  });
 }
+

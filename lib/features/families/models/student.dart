@@ -13,6 +13,16 @@ class Student {
   final String? seccionNombre;
   final String? fotoUrl;
   final String? condicionesMedicas;
+  final String? tipoSangre;
+  final String? alergias;
+  final String? seguroMedico;
+  final String? numeroPoliza;
+  final String? pediatraContacto;
+  final bool fotoAdjunta;
+  final bool actaNacimientoAdjunta;
+  final bool certificadoNotasAdjunto;
+  final bool cartaSaldoConductaAdjunta;
+  final Map<String, String> criteriosEvaluados;
   final bool activo;
   final List<String> serviciosActivos;
 
@@ -30,6 +40,16 @@ class Student {
     this.seccionNombre,
     this.fotoUrl,
     this.condicionesMedicas,
+    this.tipoSangre,
+    this.alergias,
+    this.seguroMedico,
+    this.numeroPoliza,
+    this.pediatraContacto,
+    this.fotoAdjunta = false,
+    this.actaNacimientoAdjunta = false,
+    this.certificadoNotasAdjunto = false,
+    this.cartaSaldoConductaAdjunta = false,
+    this.criteriosEvaluados = const {},
     this.activo = true,
     this.serviciosActivos = const [],
   });
@@ -78,6 +98,13 @@ class Student {
           .toList();
     }
 
+    Map<String, String> criterios = {};
+    if (json['criterios_evaluados'] is Map) {
+      (json['criterios_evaluados'] as Map).forEach((k, v) {
+        criterios[k.toString()] = v.toString();
+      });
+    }
+
     return Student(
       id: json['id'] as String? ?? '',
       colegioId: json['colegio_id'] as String? ?? '',
@@ -92,6 +119,16 @@ class Student {
       seccionNombre: seccion,
       fotoUrl: json['foto_url'] as String?,
       condicionesMedicas: json['condiciones_medicas'] as String?,
+      tipoSangre: json['tipo_sangre'] as String?,
+      alergias: json['alergias'] as String?,
+      seguroMedico: json['seguro_medico'] as String?,
+      numeroPoliza: json['numero_poliza'] as String?,
+      pediatraContacto: json['pediatra_contacto'] as String?,
+      fotoAdjunta: json['foto_adjunta'] as bool? ?? false,
+      actaNacimientoAdjunta: json['acta_nacimiento_adjunta'] as bool? ?? false,
+      certificadoNotasAdjunto: json['certificado_notas_adjunto'] as bool? ?? false,
+      cartaSaldoConductaAdjunta: json['carta_saldo_conducta_adjunta'] as bool? ?? false,
+      criteriosEvaluados: criterios,
       activo: json['activo'] as bool? ?? true,
       serviciosActivos: servicios,
     );
@@ -112,6 +149,16 @@ class Student {
       'seccion_nombre': seccionNombre,
       'foto_url': fotoUrl,
       'condiciones_medicas': condicionesMedicas,
+      'tipo_sangre': tipoSangre,
+      'alergias': alergias,
+      'seguro_medico': seguroMedico,
+      'numero_poliza': numeroPoliza,
+      'pediatra_contacto': pediatraContacto,
+      'foto_adjunta': fotoAdjunta,
+      'acta_nacimiento_adjunta': actaNacimientoAdjunta,
+      'certificado_notas_adjunto': certificadoNotasAdjunto,
+      'carta_saldo_conducta_adjunta': cartaSaldoConductaAdjunta,
+      'criterios_evaluados': criteriosEvaluados,
       'activo': activo,
       'servicios_activos': serviciosActivos,
     };

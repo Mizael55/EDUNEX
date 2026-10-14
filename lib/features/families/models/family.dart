@@ -15,6 +15,10 @@ class Family {
   final bool activo;
   final List<Tutor> tutores;
   final List<Student> estudiantes;
+  final String modalidadPago; // 'mensual', 'trimestral', 'semestral', 'anual', 'acuerdo_especial'
+  final double descuentoAcordadoPct;
+  final String? notaAcuerdoPago;
+  final List<String> criteriosCentroAdicionales;
 
   const Family({
     required this.id,
@@ -28,6 +32,10 @@ class Family {
     this.activo = true,
     this.tutores = const [],
     this.estudiantes = const [],
+    this.modalidadPago = 'mensual',
+    this.descuentoAcordadoPct = 0.0,
+    this.notaAcuerdoPago,
+    this.criteriosCentroAdicionales = const [],
   });
 
   /// Indica si la familia está al día con sus pagos
@@ -65,6 +73,16 @@ class Family {
         ? rawBalance.toDouble()
         : double.tryParse(rawBalance?.toString() ?? '0') ?? 0.0;
 
+    List<String> criterios = [];
+    if (json['criterios_centro_adicionales'] is List) {
+      criterios = (json['criterios_centro_adicionales'] as List).map((e) => e.toString()).toList();
+    }
+
+    final rawDesc = json['descuento_acordado_pct'];
+    final double descPct = (rawDesc is num)
+        ? rawDesc.toDouble()
+        : double.tryParse(rawDesc?.toString() ?? '0') ?? 0.0;
+
     return Family(
       id: json['id'] as String? ?? '',
       colegioId: json['colegio_id'] as String? ?? '',
@@ -77,6 +95,10 @@ class Family {
       activo: json['activo'] as bool? ?? true,
       tutores: parsedTutores,
       estudiantes: parsedEstudiantes,
+      modalidadPago: json['modalidad_pago'] as String? ?? 'mensual',
+      descuentoAcordadoPct: descPct,
+      notaAcuerdoPago: json['nota_acuerdo_pago'] as String?,
+      criteriosCentroAdicionales: criterios,
     );
   }
 
@@ -93,6 +115,10 @@ class Family {
       'activo': activo,
       'tutores': tutores.map((t) => t.toJson()).toList(),
       'estudiantes': estudiantes.map((e) => e.toJson()).toList(),
+      'modalidad_pago': modalidadPago,
+      'descuento_acordado_pct': descuentoAcordadoPct,
+      'nota_acuerdo_pago': notaAcuerdoPago,
+      'criterios_centro_adicionales': criteriosCentroAdicionales,
     };
   }
 }

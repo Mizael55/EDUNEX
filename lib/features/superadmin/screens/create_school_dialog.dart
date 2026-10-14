@@ -67,6 +67,17 @@ class _CreateSchoolDialogState extends State<CreateSchoolDialog> {
   bool _hasBranches = false;
   final List<Map<String, TextEditingController>> _branchControllers = [];
 
+  // Caso 2: Tarifario Escolar & Criterio Sujeto a Mejora de Pago
+  final _precioInicialController = TextEditingController(text: '6500');
+  final _precioPrimariaController = TextEditingController(text: '8000');
+  final _precioSecundariaController = TextEditingController(text: '9500');
+  final _precioMatriculaController = TextEditingController(text: '12000');
+  bool _sujetoAMejoraPago = true;
+  double _descuentoAnual = 10.0;
+  double _descuentoSemestral = 5.0;
+  double _descuentoTrimestral = 3.0;
+  double _descuentoHermanos = 10.0;
+
   // Credenciales del Director / Administrador Escolar
   final _directorNombresController = TextEditingController(text: 'Carlos');
   final _directorApellidosController = TextEditingController(text: 'Gómez');
@@ -90,6 +101,10 @@ class _CreateSchoolDialogState extends State<CreateSchoolDialog> {
     _direccionController.dispose();
     _maxEstudiantesController.dispose();
     _logoUrlController.dispose();
+    _precioInicialController.dispose();
+    _precioPrimariaController.dispose();
+    _precioSecundariaController.dispose();
+    _precioMatriculaController.dispose();
     for (final branch in _branchControllers) {
       branch['nombre']?.dispose();
       branch['direccion']?.dispose();
@@ -202,6 +217,15 @@ class _CreateSchoolDialogState extends State<CreateSchoolDialog> {
         directorPassword: _directorPasswordController.text.trim(),
         directorNombres: _directorNombresController.text.trim(),
         directorApellidos: _directorApellidosController.text.trim(),
+        precioInicial: double.tryParse(_precioInicialController.text.trim()) ?? 6500.0,
+        precioPrimaria: double.tryParse(_precioPrimariaController.text.trim()) ?? 8000.0,
+        precioSecundaria: double.tryParse(_precioSecundariaController.text.trim()) ?? 9500.0,
+        precioMatricula: double.tryParse(_precioMatriculaController.text.trim()) ?? 12000.0,
+        sujetoAMejoraPago: _sujetoAMejoraPago,
+        descuentoProntoPagoAnualPct: _descuentoAnual,
+        descuentoProntoPagoSemestralPct: _descuentoSemestral,
+        descuentoProntoPagoTrimestralPct: _descuentoTrimestral,
+        descuentoHermanosPct: _descuentoHermanos,
       );
 
       final newSchool = result['school'] as School;
@@ -1066,10 +1090,162 @@ Contraseña: $password
                       const Divider(),
                       const SizedBox(height: 16),
 
-                      // SECCIÓN 2: CUENTA DEL DIRECTOR
+                      // CASO 2: SECCIÓN DE TARIFARIO ESCOLAR & CRITERIO "SUJETO A MEJORA DE PAGO"
+                      _buildSectionHeader(
+                        icon: Icons.payments_rounded,
+                        title: '2. Tarifario Escolar & Criterios de Pago (Caso 2)',
+                        subtitle: 'Precios base de mensualidades, matrícula y acuerdos flexibles de pronto pago por familia',
+                      ),
+                      const SizedBox(height: 16),
+
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF8FAFC),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: const Color(0xFFE2E8F0)),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Precios y Rangos de Mensualidad por Nivel Educativo:',
+                              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppColors.navyPrimary),
+                            ),
+                            const SizedBox(height: 12),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: TextFormField(
+                                    controller: _precioInicialController,
+                                    keyboardType: TextInputType.number,
+                                    decoration: InputDecoration(
+                                      labelText: 'Nivel Inicial (Maternal/Kínder)',
+                                      prefixText: 'RD\$ ',
+                                      isDense: true,
+                                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: TextFormField(
+                                    controller: _precioPrimariaController,
+                                    keyboardType: TextInputType.number,
+                                    decoration: InputDecoration(
+                                      labelText: 'Nivel Primaria (1ro a 6to)',
+                                      prefixText: 'RD\$ ',
+                                      isDense: true,
+                                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 12),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: TextFormField(
+                                    controller: _precioSecundariaController,
+                                    keyboardType: TextInputType.number,
+                                    decoration: InputDecoration(
+                                      labelText: 'Nivel Secundaria (1ro a 6to)',
+                                      prefixText: 'RD\$ ',
+                                      isDense: true,
+                                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: TextFormField(
+                                    controller: _precioMatriculaController,
+                                    keyboardType: TextInputType.number,
+                                    decoration: InputDecoration(
+                                      labelText: 'Matrícula Anual / Inscripción',
+                                      prefixText: 'RD\$ ',
+                                      isDense: true,
+                                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 16),
+                            const Divider(),
+                            const SizedBox(height: 10),
+
+                            // Criterio especial: "Sujeto a mejora de pago, por familia"
+                            Container(
+                              padding: const EdgeInsets.all(14),
+                              decoration: BoxDecoration(
+                                color: _sujetoAMejoraPago ? const Color(0xFFEFF6FF) : Colors.white,
+                                borderRadius: BorderRadius.circular(10),
+                                border: Border.all(
+                                  color: _sujetoAMejoraPago ? AppColors.electricBlue : const Color(0xFFCBD5E1),
+                                  width: _sujetoAMejoraPago ? 1.5 : 1.0,
+                                ),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      const Expanded(
+                                        child: Row(
+                                          children: [
+                                            Icon(Icons.handshake_rounded, color: AppColors.navyPrimary, size: 20),
+                                            SizedBox(width: 8),
+                                            Expanded(
+                                              child: Text(
+                                                'Criterio Especial: Sujeto a mejora de pago, por familia',
+                                                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppColors.navyPrimary),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      Switch(
+                                        value: _sujetoAMejoraPago,
+                                        activeColor: AppColors.electricBlue,
+                                        onChanged: (val) => setState(() => _sujetoAMejoraPago = val),
+                                      ),
+                                    ],
+                                  ),
+                                  Text(
+                                    'Permite registrar acuerdos flexibles si la familia paga el año, 6 meses o 3 meses por adelantado, o cuenta con múltiples hermanos en el centro.',
+                                    style: TextStyle(fontSize: 11, color: AppColors.textSecondary.withValues(alpha: 0.9)),
+                                  ),
+                                  if (_sujetoAMejoraPago) ...[
+                                    const SizedBox(height: 12),
+                                    Wrap(
+                                      spacing: 12,
+                                      runSpacing: 8,
+                                      children: [
+                                        _buildDiscountChip('Año Adelantado: 10% desc.', Colors.green.shade800),
+                                        _buildDiscountChip('6 Meses (Semestral): 5% desc.', AppColors.electricBlue),
+                                        _buildDiscountChip('3 Meses (Trimestral): 3% desc.', AppColors.navyPrimary),
+                                        _buildDiscountChip('2do Hermano: 10% desc.', Colors.deepPurple),
+                                      ],
+                                    ),
+                                  ],
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+
+                      const SizedBox(height: 28),
+                      const Divider(),
+                      const SizedBox(height: 16),
+
+                      // SECCIÓN 3: CUENTA DEL DIRECTOR
                       _buildSectionHeader(
                         icon: Icons.person_add_alt_1_rounded,
-                        title: '2. Cuenta de Acceso del Director / Administrador',
+                        title: '3. Cuenta de Acceso del Director / Administrador',
                         subtitle: 'Estas serán las credenciales para que el colegio inicie sesión en EDUNEX',
                       ),
                       const SizedBox(height: 16),
@@ -1226,6 +1402,28 @@ Contraseña: $password
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildDiscountChip(String text, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.check_circle_outline_rounded, size: 14, color: color),
+          const SizedBox(width: 5),
+          Text(
+            text,
+            style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: color),
+          ),
+        ],
+      ),
     );
   }
 }

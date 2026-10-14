@@ -2,6 +2,8 @@ import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/config/supabase_config.dart';
 import '../models/school.dart';
+import '../../auth/repositories/auth_repository.dart';
+import '../../auth/models/user_role.dart';
 
 /// Repositorio de Colegios y Clientes para el Dueño del Software (Superadmin)
 class SchoolRepository {
@@ -130,6 +132,15 @@ class SchoolRepository {
     required String directorPassword,
     required String directorNombres,
     String? directorApellidos,
+    double precioInicial = 6500.0,
+    double precioPrimaria = 8000.0,
+    double precioSecundaria = 9500.0,
+    double precioMatricula = 12000.0,
+    bool sujetoAMejoraPago = true,
+    double descuentoProntoPagoAnualPct = 10.0,
+    double descuentoProntoPagoSemestralPct = 5.0,
+    double descuentoProntoPagoTrimestralPct = 3.0,
+    double descuentoHermanosPct = 10.0,
   }) async {
     if (_supabaseClient != null && SupabaseConfig.isConfigured) {
       try {
@@ -149,7 +160,18 @@ class SchoolRepository {
         });
 
         final colegioMap = res['colegio'] as Map<String, dynamic>;
-        var school = School.fromJson(colegioMap);
+        var school = School.fromJson({
+          ...colegioMap,
+          'precio_inicial': precioInicial,
+          'precio_primaria': precioPrimaria,
+          'precio_secundaria': precioSecundaria,
+          'precio_matricula': precioMatricula,
+          'sujeto_a_mejora_pago': sujetoAMejoraPago,
+          'descuento_anual_pct': descuentoProntoPagoAnualPct,
+          'descuento_semestral_pct': descuentoProntoPagoSemestralPct,
+          'descuento_trimestral_pct': descuentoProntoPagoTrimestralPct,
+          'descuento_hermanos_pct': descuentoHermanosPct,
+        });
 
         if (logoUrl != null && logoUrl.trim().isNotEmpty) {
           try {
@@ -157,9 +179,29 @@ class SchoolRepository {
             school = School.fromJson({
               ...colegioMap,
               'logo_url': logoUrl.trim(),
+              'precio_inicial': precioInicial,
+              'precio_primaria': precioPrimaria,
+              'precio_secundaria': precioSecundaria,
+              'precio_matricula': precioMatricula,
+              'sujeto_a_mejora_pago': sujetoAMejoraPago,
+              'descuento_anual_pct': descuentoProntoPagoAnualPct,
+              'descuento_semestral_pct': descuentoProntoPagoSemestralPct,
+              'descuento_trimestral_pct': descuentoProntoPagoTrimestralPct,
+              'descuento_hermanos_pct': descuentoHermanosPct,
             });
           } catch (_) {}
         }
+
+        // Registrar director en AuthRepository
+        AuthRepository().registerUser(
+          email: directorEmail,
+          nombres: directorNombres,
+          apellidos: directorApellidos ?? '',
+          rol: UserRole.adminColegio,
+          colegioId: school.id,
+          colegioNombre: school.nombre,
+          telefono: telefono,
+        );
 
         return {
           'school': school,
@@ -184,8 +226,29 @@ class SchoolRepository {
       estadoSuscripcion: estadoSuscripcion,
       maxEstudiantes: maxEstudiantes,
       createdAt: DateTime.now(),
+      precioInicial: precioInicial,
+      precioPrimaria: precioPrimaria,
+      precioSecundaria: precioSecundaria,
+      precioMatricula: precioMatricula,
+      sujetoAMejoraPago: sujetoAMejoraPago,
+      descuentoProntoPagoAnualPct: descuentoProntoPagoAnualPct,
+      descuentoProntoPagoSemestralPct: descuentoProntoPagoSemestralPct,
+      descuentoProntoPagoTrimestralPct: descuentoProntoPagoTrimestralPct,
+      descuentoHermanosPct: descuentoHermanosPct,
     );
     _demoSchools.insert(0, fallbackSchool);
+
+    // Registrar director en AuthRepository para login local inmediato
+    AuthRepository().registerUser(
+      email: directorEmail,
+      nombres: directorNombres,
+      apellidos: directorApellidos ?? '',
+      rol: UserRole.adminColegio,
+      colegioId: fallbackSchool.id,
+      colegioNombre: fallbackSchool.nombre,
+      telefono: telefono,
+    );
+
     return {
       'school': fallbackSchool,
       'director': {

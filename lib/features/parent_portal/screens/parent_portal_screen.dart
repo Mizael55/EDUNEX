@@ -34,6 +34,7 @@ class _ParentPortalScreenState extends State<ParentPortalScreen> {
     try {
       final family = await widget.familyRepository.getFamilyForCurrentUser(
         email: widget.userProfile.email,
+        colegioId: widget.userProfile.colegioId,
       );
       if (mounted) {
         setState(() {

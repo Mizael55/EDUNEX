@@ -66,7 +66,13 @@ class _LoginScreenState extends State<LoginScreen> {
   void _onRoleChanged(int index) {
     setState(() {
       _selectedRoleIndex = index;
-      _userController.text = _roles[index]['email'] as String;
+      final selectedRole = _roles[index]['role'] as UserRole;
+      final registered = AuthRepository.getRegisteredUsersByRole(selectedRole);
+      if (registered.isNotEmpty) {
+        _userController.text = registered.last.email;
+      } else {
+        _userController.text = _roles[index]['email'] as String;
+      }
     });
   }
 

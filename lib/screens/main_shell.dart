@@ -177,7 +177,10 @@ class _MainShellState extends State<MainShell> {
             onNavigateToFamilies: () => setState(() => _selectedIndex = 3),
           );
         case 3:
-          return FamilyDirectoryScreen(repository: _familyRepository);
+          return FamilyDirectoryScreen(
+            repository: _familyRepository,
+            colegioId: _inspectedSchool?.id,
+          );
         case 4:
           return FinanceOverviewScreen(
             isSuperAdmin: true,
@@ -235,7 +238,10 @@ class _MainShellState extends State<MainShell> {
           onNavigateToFamilies: () => setState(() => _selectedIndex = 1),
         );
       case 1:
-        return FamilyDirectoryScreen(repository: _familyRepository);
+        return FamilyDirectoryScreen(
+          repository: _familyRepository,
+          colegioId: widget.userProfile.colegioId,
+        );
       case 2:
         return FinanceOverviewScreen(
           isSuperAdmin: false,

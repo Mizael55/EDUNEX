@@ -4,6 +4,8 @@ import '../../../core/config/supabase_config.dart';
 import '../models/family.dart';
 import '../models/student.dart';
 import '../models/tutor.dart';
+import '../../auth/repositories/auth_repository.dart';
+import '../../auth/models/user_role.dart';
 
 /// Repositorio de Cuentas Familiares y Estudiantes en EDUNEX
 class FamilyRepository {
@@ -254,25 +256,48 @@ class FamilyRepository {
   }
 
   /// Retorna la familia asociada al usuario autenticado (para portal de padres)
-  Future<Family?> getFamilyForCurrentUser({String? email}) async {
+  Future<Family?> getFamilyForCurrentUser({String? email, String? colegioId}) async {
     final list = await getFamilies();
-    if (list.isEmpty) return null;
-    if (email != null && email.isNotEmpty) {
+    final cleanEmail = email?.trim().toLowerCase();
+
+    // 1. Buscar coincidencia exacta por correo del tutor o correo principal
+    if (cleanEmail != null && cleanEmail.isNotEmpty) {
       try {
         return list.firstWhere(
-          (f) => f.emailPrincipal?.toLowerCase() == email.toLowerCase() ||
-              f.tutores.any((t) => t.email?.toLowerCase() == email.toLowerCase()),
+          (f) =>
+              (f.emailPrincipal?.toLowerCase() == cleanEmail ||
+                  f.tutores.any((t) => t.email?.toLowerCase() == cleanEmail)) &&
+              (colegioId == null || f.colegioId == colegioId),
         );
       } catch (_) {}
     }
-    // Retorna la primera familia disponible
-    return list.first;
+
+    // 2. Si no coincide el correo exacto, verificar en las familias creadas en la sesión
+    if (_customFamilies.isNotEmpty) {
+      if (colegioId != null) {
+        final schoolCustom = _customFamilies.where((f) => f.colegioId == colegioId).toList();
+        if (schoolCustom.isNotEmpty) return schoolCustom.first;
+      }
+      return _customFamilies.first;
+    }
+
+    // 3. Retorna la primera familia disponible en el colegio
+    if (list.isNotEmpty) {
+      if (colegioId != null) {
+        try {
+          return list.firstWhere((f) => f.colegioId == colegioId);
+        } catch (_) {}
+      }
+      return list.first;
+    }
+
+    return null;
   }
 
   /// Lista en memoria para familias creadas durante la sesión
   static final List<Family> _customFamilies = [];
 
-  /// Registra una nueva familia con su tutor y estudiante inicial
+  /// Registra una nueva familia con su tutor, documentos físicos, múltiples alumnos y acuerdos de pago
   Future<Family> createFamily({
     required String colegioId,
     required String nombreFamilia,
@@ -283,17 +308,29 @@ class FamilyRepository {
     String? parentesco,
     String? cedula,
     String? direccion,
+    String? ocupacion,
+    String? lugarTrabajo,
+    String? telefonoTrabajo,
+    String? ingresosAproximados,
+    bool cartaTrabajoAdjunta = false,
+    bool estadosFinancierosAdjuntos = false,
+    bool copiaCedulaAdjunta = false,
+    List<String> otrosDocumentos = const [],
     double balanceInicial = 0.0,
     String? estudianteNombres,
     String? estudianteApellidos,
     String? gradoNombre,
+    List<Student>? multipleStudents,
+    String modalidadPago = 'mensual',
+    double descuentoAcordadoPct = 0.0,
+    String? notaAcuerdoPago,
+    List<String> criteriosCentroAdicionales = const [],
   }) async {
     final now = DateTime.now();
     final uniqueSuffix = now.millisecondsSinceEpoch.toString().substring(8);
     final codigoFamilia = 'FAM-${now.year}-$uniqueSuffix';
     final familyId = 'fam-${now.millisecondsSinceEpoch}';
     final tutorId = 'tut-${now.millisecondsSinceEpoch}';
-    final studentId = 'est-${now.millisecondsSinceEpoch}';
 
     final newTutor = Tutor(
       id: tutorId,
@@ -306,10 +343,21 @@ class FamilyRepository {
       email: tutorEmail,
       esContactoPrincipal: true,
       autorizadoRecoger: true,
+      ocupacion: ocupacion,
+      lugarTrabajo: lugarTrabajo,
+      telefonoTrabajo: telefonoTrabajo,
+      ingresosAproximados: ingresosAproximados,
+      cartaTrabajoAdjunta: cartaTrabajoAdjunta,
+      estadosFinancierosAdjuntos: estadosFinancierosAdjuntos,
+      copiaCedulaAdjunta: copiaCedulaAdjunta,
+      otrosDocumentos: otrosDocumentos,
     );
 
     List<Student> students = [];
-    if (estudianteNombres != null && estudianteNombres.trim().isNotEmpty) {
+    if (multipleStudents != null && multipleStudents.isNotEmpty) {
+      students = List<Student>.from(multipleStudents);
+    } else if (estudianteNombres != null && estudianteNombres.trim().isNotEmpty) {
+      final studentId = 'est-${now.millisecondsSinceEpoch}';
       students.add(
         Student(
           id: studentId,
@@ -340,6 +388,20 @@ class FamilyRepository {
       activo: true,
       tutores: [newTutor],
       estudiantes: students,
+      modalidadPago: modalidadPago,
+      descuentoAcordadoPct: descuentoAcordadoPct,
+      notaAcuerdoPago: notaAcuerdoPago,
+      criteriosCentroAdicionales: criteriosCentroAdicionales,
+    );
+
+    // Registrar credenciales para que el tutor pueda acceder de inmediato al sistema
+    AuthRepository().registerUser(
+      email: tutorEmail,
+      nombres: tutorNombres,
+      apellidos: tutorApellidos,
+      rol: UserRole.tutorFamiliar,
+      colegioId: colegioId,
+      telefono: tutorTelefono,
     );
 
     if (_supabaseClient != null && SupabaseConfig.isConfigured) {
@@ -353,6 +415,10 @@ class FamilyRepository {
           'email_principal': tutorEmail,
           'direccion': direccion,
           'activo': true,
+          'modalidad_pago': modalidadPago,
+          'descuento_acordado_pct': descuentoAcordadoPct,
+          'nota_acuerdo_pago': notaAcuerdoPago,
+          'criterios_centro_adicionales': criteriosCentroAdicionales,
         }).select().single();
 
         final createdFamilyId = familyData['id'] as String;
@@ -367,19 +433,36 @@ class FamilyRepository {
           'email': tutorEmail,
           'es_contacto_principal': true,
           'autorizado_recoger': true,
+          'ocupacion': ocupacion,
+          'lugar_trabajo': lugarTrabajo,
+          'telefono_trabajo': telefonoTrabajo,
+          'ingresos_aproximados': ingresosAproximados,
+          'carta_trabajo_adjunta': cartaTrabajoAdjunta,
+          'estados_financieros_adjuntos': estadosFinancierosAdjuntos,
+          'copia_cedula_adjunta': copiaCedulaAdjunta,
         });
 
-        if (students.isNotEmpty) {
+        for (final st in students) {
           await _supabaseClient.from('estudiantes').insert({
             'colegio_id': colegioId,
             'familia_id': createdFamilyId,
-            'matricula': 'EST-${now.year}-$uniqueSuffix',
-            'nombres': estudianteNombres!.trim(),
-            'apellidos': (estudianteApellidos != null && estudianteApellidos.trim().isNotEmpty)
-                ? estudianteApellidos.trim()
-                : tutorApellidos,
-            'fecha_nacimiento': DateTime(now.year - 8, 1, 1).toIso8601String().split('T').first,
-            'genero': 'No especificado',
+            'matricula': st.matricula,
+            'nombres': st.nombres,
+            'apellidos': st.apellidos,
+            'fecha_nacimiento': st.fechaNacimiento.toIso8601String().split('T').first,
+            'genero': st.genero ?? 'No especificado',
+            'grado_nombre': st.gradoNombre,
+            'seccion_nombre': st.seccionNombre,
+            'tipo_sangre': st.tipoSangre,
+            'alergias': st.alergias,
+            'seguro_medico': st.seguroMedico,
+            'numero_poliza': st.numeroPoliza,
+            'pediatra_contacto': st.pediatraContacto,
+            'foto_adjunta': st.fotoAdjunta,
+            'acta_nacimiento_adjunta': st.actaNacimientoAdjunta,
+            'certificado_notas_adjunto': st.certificadoNotasAdjunto,
+            'carta_saldo_conducta_adjunta': st.cartaSaldoConductaAdjunta,
+            'criterios_evaluados': st.criteriosEvaluados,
             'activo': true,
           });
         }
