@@ -5,6 +5,8 @@ import 'package:edunex/features/auth/models/user_profile.dart';
 import 'package:edunex/features/auth/models/user_role.dart';
 import 'package:edunex/features/families/repositories/family_repository.dart';
 import 'package:edunex/features/superadmin/repositories/school_repository.dart';
+import 'package:edunex/features/superadmin/screens/create_school_dialog.dart';
+import 'package:edunex/screens/login_screen.dart';
 import 'package:edunex/screens/main_shell.dart';
 
 void main() {
@@ -187,5 +189,83 @@ void main() {
     expect(newStudent.nombreCompleto, 'Diego Méndez');
     final familyWithTwo = await repo.getFamilyById(newFamily.id);
     expect(familyWithTwo!.estudiantes.length, 2);
+  });
+
+  testWidgets('LoginScreen displays 4 role profiles including Estudiante and School Branding', (WidgetTester tester) async {
+    tester.view.physicalSize = const Size(1280, 900);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+
+    await tester.pumpWidget(const MaterialApp(home: LoginScreen()));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Administrador'), findsWidgets);
+    expect(find.text('Docente'), findsOneWidget);
+    expect(find.text('Tutor o Familia'), findsOneWidget);
+    expect(find.text('Estudiante'), findsOneWidget);
+    expect(find.text('Personalizar Logo / Centro Educativo'), findsOneWidget);
+  });
+
+  testWidgets('MainShell renders student portal for estudiante role', (WidgetTester tester) async {
+    tester.view.physicalSize = const Size(1280, 900);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+
+    final studentProfile = UserProfile(
+      id: 'student-1',
+      colegioId: 'col-1',
+      rol: UserRole.estudiante,
+      email: 'estudiante@edunex.edu',
+      nombres: 'Alejandro',
+      apellidos: 'Gómez',
+    );
+
+    final demoFamilyRepo = FamilyRepository(useDemoFallback: true);
+    await tester.pumpWidget(
+      MaterialApp(
+        home: MainShell(
+          userProfile: studentProfile,
+          familyRepository: demoFamilyRepo,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Mi Portal Escolar'), findsWidgets);
+    expect(find.text('Servicios de Cuido'), findsWidgets);
+    expect(find.text('Tienda & Uniformes'), findsWidgets);
+  });
+
+  testWidgets('CreateSchoolDialog renders Casos 1, 2, 3, 4 properly', (WidgetTester tester) async {
+    tester.view.physicalSize = const Size(1280, 950);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+
+    final repo = SchoolRepository();
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: CreateSchoolDialog(schoolRepository: repo),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // Caso 1: RNC Persona Jurídica / Física
+    expect(find.textContaining('Persona Jurídica'), findsWidgets);
+    expect(find.textContaining('Persona Física'), findsWidgets);
+
+    // Caso 2: Capacidad exacta y presets
+    expect(find.text('Número Exacto de Estudiantes *'), findsOneWidget);
+    expect(find.text('100 alumnos'), findsOneWidget);
+    expect(find.text('250 alumnos'), findsOneWidget);
+    expect(find.text('500 alumnos'), findsOneWidget);
+
+    // Caso 3: Geolocalizar GPS
+    expect(find.text('Geolocalizar Dirección (GPS/Coordenadas)'), findsOneWidget);
+
+    // Caso 4: Multi-sucursales
+    expect(find.text('¿Cuenta con sucursales o recintos adicionales?'), findsOneWidget);
   });
 }

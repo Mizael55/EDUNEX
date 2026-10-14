@@ -123,6 +123,7 @@ class SchoolRepository {
     String? telefono,
     String? emailContacto,
     String? direccion,
+    String? logoUrl,
     required String estadoSuscripcion,
     required int maxEstudiantes,
     required String directorEmail,
@@ -148,7 +149,18 @@ class SchoolRepository {
         });
 
         final colegioMap = res['colegio'] as Map<String, dynamic>;
-        final school = School.fromJson(colegioMap);
+        var school = School.fromJson(colegioMap);
+
+        if (logoUrl != null && logoUrl.trim().isNotEmpty) {
+          try {
+            await _supabaseClient.from('colegios').update({'logo_url': logoUrl.trim()}).eq('id', school.id);
+            school = School.fromJson({
+              ...colegioMap,
+              'logo_url': logoUrl.trim(),
+            });
+          } catch (_) {}
+        }
+
         return {
           'school': school,
           'director': res['director'] as Map<String, dynamic>,
@@ -168,6 +180,7 @@ class SchoolRepository {
       telefono: telefono,
       emailContacto: emailContacto,
       direccion: direccion,
+      logoUrl: logoUrl,
       estadoSuscripcion: estadoSuscripcion,
       maxEstudiantes: maxEstudiantes,
       createdAt: DateTime.now(),

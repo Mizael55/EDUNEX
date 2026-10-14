@@ -88,7 +88,9 @@ class AuthRepository {
               ? UserRole.adminColegio
               : email.contains('docente')
                   ? UserRole.docente
-                  : UserRole.tutorFamiliar);
+                  : email.contains('estudiante')
+                      ? UserRole.estudiante
+                      : UserRole.tutorFamiliar);
 
       final demoProfile = UserProfile(
         id: 'demo-user-id-001',
@@ -99,12 +101,16 @@ class AuthRepository {
             ? 'Lic. Carlos'
             : role == UserRole.docente
                 ? 'Prof. María'
-                : 'Ing. Roberto',
+                : role == UserRole.estudiante
+                    ? 'Mateo'
+                    : 'Ing. Roberto',
         apellidos: role == UserRole.adminColegio
             ? 'Rodríguez'
             : role == UserRole.docente
                 ? 'González'
-                : 'Pérez (Familia Pérez)',
+                : role == UserRole.estudiante
+                    ? 'Pérez González'
+                    : 'Pérez (Familia Pérez)',
         rol: role,
         colegioNombre: 'Colegio Bilingüe EDUNEX Piloto',
         telefono: '809-555-0123',

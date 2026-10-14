@@ -56,6 +56,7 @@ class _MainShellState extends State<MainShell> {
 
   bool get _isSuperAdmin => widget.userProfile.rol == UserRole.superadmin;
   bool get _isParent => widget.userProfile.rol == UserRole.tutorFamiliar;
+  bool get _isStudent => widget.userProfile.rol == UserRole.estudiante;
 
   List<NavigationItem> get _navItems {
     if (_isSuperAdmin) {
@@ -99,6 +100,23 @@ class _MainShellState extends State<MainShell> {
         ),
         const NavigationItem(
           title: 'Tienda Escolar',
+          icon: Icons.shopping_bag_rounded,
+        ),
+      ];
+    }
+
+    if (_isStudent) {
+      return [
+        const NavigationItem(
+          title: 'Mi Portal Escolar',
+          icon: Icons.backpack_rounded,
+        ),
+        const NavigationItem(
+          title: 'Servicios de Cuido',
+          icon: Icons.child_care_rounded,
+        ),
+        const NavigationItem(
+          title: 'Tienda & Uniformes',
           icon: Icons.shopping_bag_rounded,
         ),
       ];
@@ -186,6 +204,22 @@ class _MainShellState extends State<MainShell> {
         case 2:
           return const ServicesManagementScreen(moduleType: ServiceModuleType.cuido);
         case 3:
+          return const ServicesManagementScreen(moduleType: ServiceModuleType.tienda);
+        default:
+          return _buildPlaceholderScreen(_navItems[_selectedIndex].title);
+      }
+    }
+
+    if (_isStudent) {
+      switch (_selectedIndex) {
+        case 0:
+          return ParentPortalScreen(
+            userProfile: widget.userProfile,
+            familyRepository: _familyRepository,
+          );
+        case 1:
+          return const ServicesManagementScreen(moduleType: ServiceModuleType.cuido);
+        case 2:
           return const ServicesManagementScreen(moduleType: ServiceModuleType.tienda);
         default:
           return _buildPlaceholderScreen(_navItems[_selectedIndex].title);

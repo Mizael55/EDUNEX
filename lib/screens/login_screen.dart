@@ -21,6 +21,10 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _isLoading = false;
   int _selectedRoleIndex = 0;
 
+  // Personalización del Centro Educativo (Logo y Nombre institucional)
+  String? _customSchoolName;
+  String? _customSchoolLogoUrl;
+
   final List<Map<String, dynamic>> _roles = [
     {
       'role': UserRole.adminColegio,
@@ -38,10 +42,17 @@ class _LoginScreenState extends State<LoginScreen> {
     },
     {
       'role': UserRole.tutorFamiliar,
-      'name': 'Estudiante / Tutor',
+      'name': 'Tutor o Familia',
       'email': 'familia@edunex.edu',
       'icon': UserRole.tutorFamiliar.icon,
       'color': UserRole.tutorFamiliar.color,
+    },
+    {
+      'role': UserRole.estudiante,
+      'name': 'Estudiante',
+      'email': 'estudiante@edunex.edu',
+      'icon': UserRole.estudiante.icon,
+      'color': UserRole.estudiante.color,
     },
   ];
 
@@ -450,7 +461,12 @@ class _LoginScreenState extends State<LoginScreen> {
             ],
           ),
 
-          const SizedBox(height: 24),
+          const SizedBox(height: 16),
+
+          // Personalización con el logo de tu centro educativo
+          _buildSchoolBrandingHeader(),
+
+          const SizedBox(height: 16),
 
           // Selector de perfil/rol
           const Text(
@@ -508,7 +524,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: TextStyle(
-                              fontSize: 11,
+                              fontSize: 10,
                               fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
                               color: isSelected ? AppColors.navyDark : AppColors.slateGray,
                             ),
@@ -862,6 +878,246 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildSchoolBrandingHeader() {
+    if (_customSchoolName != null || _customSchoolLogoUrl != null) {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        decoration: BoxDecoration(
+          color: AppColors.electricBlue.withValues(alpha: 0.06),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: AppColors.electricBlue.withValues(alpha: 0.25),
+          ),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 38,
+              height: 38,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(8),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.05),
+                    blurRadius: 4,
+                  ),
+                ],
+              ),
+              clipBehavior: Clip.antiAlias,
+              child: _customSchoolLogoUrl != null && _customSchoolLogoUrl!.isNotEmpty
+                  ? Image.network(
+                      _customSchoolLogoUrl!,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => const Icon(
+                        Icons.school_rounded,
+                        color: AppColors.navyPrimary,
+                        size: 20,
+                      ),
+                    )
+                  : const Icon(
+                      Icons.school_rounded,
+                      color: AppColors.navyPrimary,
+                      size: 20,
+                    ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    _customSchoolName?.trim().isNotEmpty == true
+                        ? _customSchoolName!
+                        : 'Centro Educativo Asociado',
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.navyDark,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const Text(
+                    'Acceso Institucional Personalizado',
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: AppColors.slateGray,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            IconButton(
+              tooltip: 'Cambiar o editar logo del centro',
+              icon: const Icon(Icons.edit_rounded, size: 18, color: AppColors.electricBlue),
+              onPressed: _openSchoolCustomizationDialog,
+            ),
+            IconButton(
+              tooltip: 'Quitar personalización',
+              icon: const Icon(Icons.close_rounded, size: 18, color: AppColors.slateGray),
+              onPressed: () {
+                setState(() {
+                  _customSchoolName = null;
+                  _customSchoolLogoUrl = null;
+                });
+              },
+            ),
+          ],
+        ),
+      );
+    }
+
+    return Center(
+      child: TextButton.icon(
+        onPressed: _openSchoolCustomizationDialog,
+        icon: const Icon(Icons.add_photo_alternate_outlined, size: 16),
+        label: const Text(
+          'Personalizar Logo / Centro Educativo',
+          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+        ),
+        style: TextButton.styleFrom(
+          foregroundColor: AppColors.electricBlue,
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+            side: BorderSide(color: AppColors.electricBlue.withValues(alpha: 0.3)),
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _openSchoolCustomizationDialog() {
+    final nameCtrl = TextEditingController(text: _customSchoolName ?? '');
+    final logoCtrl = TextEditingController(text: _customSchoolLogoUrl ?? '');
+
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (dialogCtx, setDialogState) {
+            final previewUrl = logoCtrl.text.trim();
+            return AlertDialog(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              title: const Row(
+                children: [
+                  Icon(Icons.palette_rounded, color: AppColors.electricBlue),
+                  SizedBox(width: 10),
+                  Text(
+                    'Personalizar Acceso Institucional',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
+                ],
+              ),
+              content: SizedBox(
+                width: 440,
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Ingresa el nombre y logo de tu centro escolar para que aparezca en el encabezado de inicio de sesión de EDUNEX.',
+                        style: TextStyle(fontSize: 13, color: AppColors.slateDark),
+                      ),
+                      const SizedBox(height: 16),
+                      TextFormField(
+                        controller: nameCtrl,
+                        decoration: const InputDecoration(
+                          labelText: 'Nombre del Colegio / Institución',
+                          hintText: 'Ej. Colegio San José de Calasanz',
+                          prefixIcon: Icon(Icons.school_rounded),
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+                      TextFormField(
+                        controller: logoCtrl,
+                        decoration: InputDecoration(
+                          labelText: 'URL del Logo Institucional',
+                          hintText: 'https://ejemplo.com/logo.png',
+                          prefixIcon: const Icon(Icons.image_rounded),
+                          suffixIcon: logoCtrl.text.isNotEmpty
+                              ? IconButton(
+                                  icon: const Icon(Icons.clear_rounded),
+                                  onPressed: () {
+                                    logoCtrl.clear();
+                                    setDialogState(() {});
+                                  },
+                                )
+                              : null,
+                        ),
+                        onChanged: (_) => setDialogState(() {}),
+                      ),
+                      const SizedBox(height: 14),
+                      const Text(
+                        'Previsualización en Pantalla:',
+                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.slateGray),
+                      ),
+                      const SizedBox(height: 8),
+                      Center(
+                        child: Container(
+                          width: 80,
+                          height: 80,
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(color: AppColors.slateLight),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.06),
+                                blurRadius: 8,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
+                          ),
+                          clipBehavior: Clip.antiAlias,
+                          child: previewUrl.isNotEmpty
+                              ? Image.network(
+                                  previewUrl,
+                                  fit: BoxFit.contain,
+                                  errorBuilder: (_, __, ___) => const Center(
+                                    child: Icon(Icons.broken_image_rounded, color: Colors.red, size: 32),
+                                  ),
+                                )
+                              : const Center(
+                                  child: Icon(Icons.account_balance_rounded, color: AppColors.slateGray, size: 36),
+                                ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  child: const Text('Cancelar'),
+                ),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.navyPrimary,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                  onPressed: () {
+                    setState(() {
+                      _customSchoolName = nameCtrl.text.trim().isNotEmpty ? nameCtrl.text.trim() : null;
+                      _customSchoolLogoUrl = logoCtrl.text.trim().isNotEmpty ? logoCtrl.text.trim() : null;
+                    });
+                    Navigator.pop(ctx);
+                  },
+                  child: const Text('Guardar y Aplicar'),
+                ),
+              ],
+            );
+          },
+        );
+      },
     );
   }
 }

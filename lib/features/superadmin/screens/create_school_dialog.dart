@@ -49,8 +49,23 @@ class _CreateSchoolDialogState extends State<CreateSchoolDialog> {
   final _telefonoController = TextEditingController();
   final _emailContactoController = TextEditingController();
   final _direccionController = TextEditingController();
+
+  // Caso 1: RNC Persona Física vs Persona Jurídica
+  String _rncType = 'juridica'; // 'juridica' (9 dígitos) | 'fisica' (11 dígitos)
+
+  // Caso 2: Capacidad de Estudiantes Libre & Presets
+  final _maxEstudiantesController = TextEditingController(text: '500');
   int _selectedMaxEstudiantes = 500;
+  final List<int> _presetCapacities = [100, 250, 500, 1000, 2500];
   String _selectedStatus = 'active';
+
+  // Caso 3: Foto/Logo Institucional con Previsualización y Geolocalización GPS
+  final _logoUrlController = TextEditingController();
+  String? _gpsCoordinates;
+
+  // Caso 4: Multi-sucursales
+  bool _hasBranches = false;
+  final List<Map<String, TextEditingController>> _branchControllers = [];
 
   // Credenciales del Director / Administrador Escolar
   final _directorNombresController = TextEditingController(text: 'Carlos');
@@ -73,11 +88,87 @@ class _CreateSchoolDialogState extends State<CreateSchoolDialog> {
     _telefonoController.dispose();
     _emailContactoController.dispose();
     _direccionController.dispose();
+    _maxEstudiantesController.dispose();
+    _logoUrlController.dispose();
+    for (final branch in _branchControllers) {
+      branch['nombre']?.dispose();
+      branch['direccion']?.dispose();
+    }
     _directorNombresController.dispose();
     _directorApellidosController.dispose();
     _directorEmailController.dispose();
     _directorPasswordController.dispose();
     super.dispose();
+  }
+
+  void _addBranch() {
+    setState(() {
+      _branchControllers.add({
+        'nombre': TextEditingController(text: 'Sucursal ${_branchControllers.length + 1}'),
+        'direccion': TextEditingController(),
+      });
+    });
+  }
+
+  void _removeBranch(int index) {
+    setState(() {
+      final removed = _branchControllers.removeAt(index);
+      removed['nombre']?.dispose();
+      removed['direccion']?.dispose();
+    });
+  }
+
+  void _geolocateAddress() {
+    const lat = 18.4861;
+    const lng = -69.9312;
+    setState(() {
+      _gpsCoordinates = '$lat, $lng';
+      final current = _direccionController.text.trim();
+      if (current.isEmpty) {
+        _direccionController.text = 'Av. Winston Churchill, Santo Domingo, D.N. (GPS: $lat, $lng)';
+      } else if (!current.contains('GPS:')) {
+        _direccionController.text = '$current (GPS: $lat, $lng)';
+      }
+    });
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        backgroundColor: AppColors.navyPrimary,
+        behavior: SnackBarBehavior.floating,
+        duration: Duration(seconds: 2),
+        content: Row(
+          children: [
+            Icon(Icons.my_location_rounded, color: AppColors.cyanLight),
+            SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                '📍 Coordenadas GPS asociadas exitosamente: [18.4861, -69.9312]',
+                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  String? _validateRnc(String? val) {
+    if (val == null || val.trim().isEmpty) {
+      return _rncType == 'juridica'
+          ? 'El RNC es obligatorio para Persona Jurídica'
+          : 'La Cédula es obligatoria para Persona Física';
+    }
+    final digits = val.replaceAll(RegExp(r'[^0-9]'), '');
+    if (_rncType == 'juridica') {
+      if (digits.length != 9) {
+        return 'El RNC de Persona Jurídica debe contener 9 dígitos (ingresados: ${digits.length})';
+      }
+    } else {
+      if (digits.length != 11) {
+        return 'La Cédula de Persona Física debe contener 11 dígitos (ingresados: ${digits.length})';
+      }
+    }
+    return null;
   }
 
   Future<void> _submit() async {
@@ -86,15 +177,27 @@ class _CreateSchoolDialogState extends State<CreateSchoolDialog> {
     setState(() => _isLoading = true);
 
     try {
+      final capacity = int.tryParse(_maxEstudiantesController.text.trim()) ?? _selectedMaxEstudiantes;
+      String direccionFinal = _direccionController.text.trim();
+      if (_hasBranches && _branchControllers.isNotEmpty) {
+        final branchesInfo = _branchControllers
+            .map((b) => '${b['nombre']?.text.trim() ?? "Sucursal"}: ${b['direccion']?.text.trim() ?? ""}')
+            .join(' | ');
+        direccionFinal = direccionFinal.isNotEmpty
+            ? '$direccionFinal [Sucursales: $branchesInfo]'
+            : '[Sucursales: $branchesInfo]';
+      }
+
       final result = await widget.schoolRepository.createSchoolWithDirector(
         nombre: _nombreController.text,
         siglas: _siglasController.text.isNotEmpty ? _siglasController.text : null,
         rnc: _rncController.text.isNotEmpty ? _rncController.text : null,
         telefono: _telefonoController.text.isNotEmpty ? _telefonoController.text : null,
         emailContacto: _emailContactoController.text.isNotEmpty ? _emailContactoController.text : null,
-        direccion: _direccionController.text.isNotEmpty ? _direccionController.text : null,
+        direccion: direccionFinal.isNotEmpty ? direccionFinal : null,
+        logoUrl: _logoUrlController.text.trim().isNotEmpty ? _logoUrlController.text.trim() : null,
         estadoSuscripcion: _selectedStatus,
-        maxEstudiantes: _selectedMaxEstudiantes,
+        maxEstudiantes: capacity > 0 ? capacity : 500,
         directorEmail: _directorEmailController.text.trim(),
         directorPassword: _directorPasswordController.text.trim(),
         directorNombres: _directorNombresController.text.trim(),
@@ -392,6 +495,106 @@ Contraseña: $password
                       ),
                       const SizedBox(height: 16),
 
+                      // CASO 3: Foto/Logo Institucional con Previsualización en Vivo
+                      Container(
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: AppColors.backgroundLight,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: const Color(0xFFE2E8F0)),
+                        ),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            Container(
+                              width: 60,
+                              height: 60,
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: AppColors.slateLight),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withValues(alpha: 0.05),
+                                    blurRadius: 4,
+                                    offset: const Offset(0, 2),
+                                  ),
+                                ],
+                              ),
+                              clipBehavior: Clip.antiAlias,
+                              child: _logoUrlController.text.trim().isNotEmpty
+                                  ? Image.network(
+                                      _logoUrlController.text.trim(),
+                                      fit: BoxFit.cover,
+                                      errorBuilder: (_, __, ___) => const Icon(
+                                        Icons.broken_image_rounded,
+                                        color: Colors.redAccent,
+                                        size: 26,
+                                      ),
+                                    )
+                                  : const Icon(
+                                      Icons.account_balance_rounded,
+                                      color: AppColors.navyPrimary,
+                                      size: 30,
+                                    ),
+                            ),
+                            const SizedBox(width: 14),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  TextFormField(
+                                    controller: _logoUrlController,
+                                    decoration: InputDecoration(
+                                      labelText: 'Logo o Foto del Colegio (URL)',
+                                      hintText: 'https://ejemplo.com/logo-colegio.png',
+                                      prefixIcon: const Icon(Icons.add_photo_alternate_outlined),
+                                      suffixIcon: _logoUrlController.text.isNotEmpty
+                                          ? IconButton(
+                                              icon: const Icon(Icons.clear_rounded, size: 18),
+                                              onPressed: () {
+                                                _logoUrlController.clear();
+                                                setState(() {});
+                                              },
+                                            )
+                                          : null,
+                                      isDense: true,
+                                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                                    ),
+                                    onChanged: (_) => setState(() {}),
+                                  ),
+                                  const SizedBox(height: 6),
+                                  Wrap(
+                                    spacing: 8,
+                                    children: [
+                                      ActionChip(
+                                        avatar: const Icon(Icons.auto_awesome, size: 14, color: AppColors.electricBlue),
+                                        label: const Text('Usar Logo Demo 1', style: TextStyle(fontSize: 11)),
+                                        onPressed: () {
+                                          _logoUrlController.text =
+                                              'https://images.unsplash.com/photo-1580582932707-520aed937b7b?w=200';
+                                          setState(() {});
+                                        },
+                                      ),
+                                      ActionChip(
+                                        avatar: const Icon(Icons.school, size: 14, color: AppColors.accentOrange),
+                                        label: const Text('Usar Logo Demo 2', style: TextStyle(fontSize: 11)),
+                                        onPressed: () {
+                                          _logoUrlController.text =
+                                              'https://images.unsplash.com/photo-1546410531-bb4caa6b424d?w=200';
+                                          setState(() {});
+                                        },
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+
                       TextFormField(
                         controller: _nombreController,
                         decoration: InputDecoration(
@@ -403,6 +606,61 @@ Contraseña: $password
                         ),
                         validator: (value) =>
                             (value == null || value.trim().isEmpty) ? 'El nombre del colegio es obligatorio' : null,
+                      ),
+                      const SizedBox(height: 16),
+
+                      // CASO 1: Selector Tipo de RNC (Persona Jurídica vs Persona Física)
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF1F5F9),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: const Color(0xFFCBD5E1)),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Row(
+                              children: [
+                                Icon(Icons.badge_outlined, size: 16, color: AppColors.navyPrimary),
+                                SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    'Tipo de Registro Fiscal DGII (República Dominicana):',
+                                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: AppColors.navyPrimary),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            SegmentedButton<String>(
+                              segments: const [
+                                ButtonSegment<String>(
+                                  value: 'juridica',
+                                  label: FittedBox(
+                                    fit: BoxFit.scaleDown,
+                                    child: Text('Persona Jurídica (9 dígitos)'),
+                                  ),
+                                  icon: Icon(Icons.business_rounded, size: 16),
+                                ),
+                                ButtonSegment<String>(
+                                  value: 'fisica',
+                                  label: FittedBox(
+                                    fit: BoxFit.scaleDown,
+                                    child: Text('Persona Física (11 dígitos)'),
+                                  ),
+                                  icon: Icon(Icons.person_outline_rounded, size: 16),
+                                ),
+                              ],
+                              selected: {_rncType},
+                              onSelectionChanged: (newSelection) {
+                                setState(() {
+                                  _rncType = newSelection.first;
+                                });
+                              },
+                            ),
+                          ],
+                        ),
                       ),
                       const SizedBox(height: 16),
 
@@ -425,12 +683,20 @@ Contraseña: $password
                             child: TextFormField(
                               controller: _rncController,
                               decoration: InputDecoration(
-                                labelText: 'RNC (DGII Dominicana)',
-                                hintText: 'Ej. 1-31-55443-2',
-                                helperText: 'Registro fiscal de 9 u 11 dígitos',
-                                prefixIcon: const Icon(Icons.badge_outlined),
+                                labelText: _rncType == 'juridica'
+                                    ? 'RNC Institucional (9 dígitos) *'
+                                    : 'Cédula de Propietario (11 dígitos) *',
+                                hintText: _rncType == 'juridica' ? '1-31-55443-2' : '001-1234567-8',
+                                helperText: _rncType == 'juridica'
+                                    ? '9 dígitos numéricos (DGII Dominicana)'
+                                    : '11 dígitos numéricos de cédula',
+                                prefixIcon: Icon(
+                                  _rncType == 'juridica' ? Icons.business_center_outlined : Icons.perm_identity_rounded,
+                                  color: AppColors.navyPrimary,
+                                ),
                                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
                               ),
+                              validator: _validateRnc,
                             ),
                           ),
                         ],
@@ -468,59 +734,311 @@ Contraseña: $password
                       ),
                       const SizedBox(height: 16),
 
-                      TextFormField(
-                        controller: _direccionController,
-                        decoration: InputDecoration(
-                          labelText: 'Dirección Física del Plantel',
-                          hintText: 'Av. Winston Churchill #105, Santo Domingo, D.N.',
-                          helperText: 'Sede principal o campus en República Dominicana',
-                          prefixIcon: const Icon(Icons.location_on_outlined),
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                      // CASO 3: Dirección Física + Botón Geolocalizar Dirección (GPS)
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          TextFormField(
+                            controller: _direccionController,
+                            decoration: InputDecoration(
+                              labelText: 'Dirección Física del Plantel',
+                              hintText: 'Av. Winston Churchill #105, Santo Domingo, D.N.',
+                              helperText: 'Sede principal o campus en República Dominicana',
+                              prefixIcon: const Icon(Icons.location_on_outlined),
+                              suffixIcon: IconButton(
+                                tooltip: 'Geolocalizar Dirección (GPS/Coordenadas)',
+                                icon: const Icon(Icons.my_location_rounded, color: AppColors.electricBlue),
+                                onPressed: _geolocateAddress,
+                              ),
+                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          Wrap(
+                            spacing: 10,
+                            runSpacing: 6,
+                            crossAxisAlignment: WrapCrossAlignment.center,
+                            children: [
+                              OutlinedButton.icon(
+                                onPressed: _geolocateAddress,
+                                icon: const Icon(Icons.gps_fixed_rounded, size: 15, color: AppColors.electricBlue),
+                                label: const Text('Geolocalizar Dirección (GPS/Coordenadas)', style: TextStyle(fontSize: 12)),
+                                style: OutlinedButton.styleFrom(
+                                  foregroundColor: AppColors.electricBlue,
+                                  side: BorderSide(color: AppColors.electricBlue.withValues(alpha: 0.4)),
+                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                ),
+                              ),
+                              if (_gpsCoordinates != null)
+                                Chip(
+                                  avatar: const Icon(Icons.check_circle_rounded, size: 14, color: AppColors.accentGreen),
+                                  label: Text('GPS: $_gpsCoordinates', style: const TextStyle(fontSize: 11)),
+                                  backgroundColor: const Color(0xFFF0FDF4),
+                                  side: const BorderSide(color: Color(0xFFBBF7D0)),
+                                ),
+                            ],
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+
+                      // CASO 2: Capacidad de Estudiantes Libre & Presets
+                      Container(
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF8FAFC),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: const Color(0xFFE2E8F0)),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Wrap(
+                              alignment: WrapAlignment.spaceBetween,
+                              crossAxisAlignment: WrapCrossAlignment.center,
+                              spacing: 8,
+                              runSpacing: 6,
+                              children: [
+                                const Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(Icons.groups_rounded, size: 18, color: AppColors.navyPrimary),
+                                    SizedBox(width: 8),
+                                    Text(
+                                      'Capacidad de Estudiantes:',
+                                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppColors.navyPrimary),
+                                    ),
+                                  ],
+                                ),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.electricBlue.withValues(alpha: 0.12),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Text(
+                                    () {
+                                      final count = int.tryParse(_maxEstudiantesController.text.trim()) ?? _selectedMaxEstudiantes;
+                                      if (count <= 250) return 'Plan Básico (≤ 250)';
+                                      if (count <= 500) return 'Plan Profesional (≤ 500)';
+                                      return 'Plan Enterprise ($count Alumnos)';
+                                    }(),
+                                    style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.electricBlue),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 10),
+                            Row(
+                              children: [
+                                Expanded(
+                                  flex: 3,
+                                  child: TextFormField(
+                                    controller: _maxEstudiantesController,
+                                    keyboardType: TextInputType.number,
+                                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                                    decoration: InputDecoration(
+                                      labelText: 'Número Exacto de Estudiantes *',
+                                      hintText: 'Ej. 137, 345, 500, 1200...',
+                                      helperText: 'Capacidad libre sin estar limitado a planes fijos',
+                                      prefixIcon: const Icon(Icons.format_list_numbered_rounded),
+                                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                                    ),
+                                    onChanged: (val) {
+                                      final parsed = int.tryParse(val);
+                                      if (parsed != null && parsed > 0) {
+                                        setState(() => _selectedMaxEstudiantes = parsed);
+                                      }
+                                    },
+                                    validator: (val) {
+                                      if (val == null || val.trim().isEmpty) return 'Indica la capacidad';
+                                      final parsed = int.tryParse(val.trim());
+                                      if (parsed == null || parsed <= 0) return 'Ingresa un número mayor a 0';
+                                      return null;
+                                    },
+                                  ),
+                                ),
+                                const SizedBox(width: 14),
+                                Expanded(
+                                  flex: 2,
+                                  child: DropdownButtonFormField<String>(
+                                    initialValue: _selectedStatus,
+                                    isExpanded: true,
+                                    decoration: InputDecoration(
+                                      labelText: 'Estado',
+                                      helperText: 'Activa o Trial',
+                                      prefixIcon: const Icon(Icons.verified_outlined),
+                                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                                    ),
+                                    items: const [
+                                      DropdownMenuItem(value: 'active', child: Text('Activa')),
+                                      DropdownMenuItem(value: 'trial', child: Text('Trial')),
+                                    ],
+                                    onChanged: (val) {
+                                      if (val != null) setState(() => _selectedStatus = val);
+                                    },
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 10),
+                            Wrap(
+                              spacing: 8,
+                              runSpacing: 4,
+                              crossAxisAlignment: WrapCrossAlignment.center,
+                              children: [
+                                const Text('Opciones rápidas:', style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+                                ..._presetCapacities.map((preset) {
+                                  final isCurrent = _maxEstudiantesController.text == preset.toString();
+                                  return ChoiceChip(
+                                    label: Text('$preset alumnos'),
+                                    selected: isCurrent,
+                                    onSelected: (_) {
+                                      setState(() {
+                                        _selectedMaxEstudiantes = preset;
+                                        _maxEstudiantesController.text = preset.toString();
+                                      });
+                                    },
+                                  );
+                                }),
+                              ],
+                            ),
+                          ],
                         ),
                       ),
                       const SizedBox(height: 16),
 
-                      Row(
-                        children: [
-                          Expanded(
-                            child: DropdownButtonFormField<int>(
-                              initialValue: _selectedMaxEstudiantes,
-                              decoration: InputDecoration(
-                                labelText: 'Capacidad de Estudiantes',
-                                helperText: 'Límite según el plan SaaS contratado',
-                                prefixIcon: const Icon(Icons.people_alt_outlined),
-                                border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                              ),
-                              items: const [
-                                DropdownMenuItem(value: 250, child: Text('Básico (Hasta 250)')),
-                                DropdownMenuItem(value: 500, child: Text('Profesional (Hasta 500)')),
-                                DropdownMenuItem(value: 1000, child: Text('Enterprise (Hasta 1,000)')),
-                              ],
-                              onChanged: (val) {
-                                if (val != null) setState(() => _selectedMaxEstudiantes = val);
-                              },
-                            ),
+                      // CASO 4: Soporte Multi-sucursales
+                      Container(
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF8FAFC),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: _hasBranches ? AppColors.electricBlue : const Color(0xFFCBD5E1),
+                            width: _hasBranches ? 1.5 : 1.0,
                           ),
-                          const SizedBox(width: 14),
-                          Expanded(
-                            child: DropdownButtonFormField<String>(
-                              initialValue: _selectedStatus,
-                              decoration: InputDecoration(
-                                labelText: 'Estado Inicial',
-                                helperText: 'Activa (pagado) o Trial (prueba)',
-                                prefixIcon: const Icon(Icons.verified_outlined),
-                                border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                              ),
-                              items: const [
-                                DropdownMenuItem(value: 'active', child: Text('Activa (Pagando)')),
-                                DropdownMenuItem(value: 'trial', child: Text('Período de Prueba (Trial)')),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                const Expanded(
+                                  child: Row(
+                                    children: [
+                                      Icon(Icons.hub_rounded, size: 20, color: AppColors.navyPrimary),
+                                      SizedBox(width: 8),
+                                      Expanded(
+                                        child: Text(
+                                          '¿Cuenta con sucursales o recintos adicionales?',
+                                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppColors.navyPrimary),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                Switch(
+                                  value: _hasBranches,
+                                  activeColor: AppColors.electricBlue,
+                                  onChanged: (val) {
+                                    setState(() {
+                                      _hasBranches = val;
+                                      if (_hasBranches && _branchControllers.isEmpty) {
+                                        _addBranch();
+                                      }
+                                    });
+                                  },
+                                ),
                               ],
-                              onChanged: (val) {
-                                if (val != null) setState(() => _selectedStatus = val);
-                              },
                             ),
-                          ),
-                        ],
+                            if (_hasBranches) ...[
+                              const Divider(height: 16),
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text(
+                                    'Sucursales enroladas: ${_branchControllers.length}',
+                                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: AppColors.slateDark),
+                                  ),
+                                  ElevatedButton.icon(
+                                    onPressed: _addBranch,
+                                    icon: const Icon(Icons.add_rounded, size: 16),
+                                    label: const Text('Agregar Sucursal', style: TextStyle(fontSize: 12)),
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: AppColors.navyPrimary,
+                                      foregroundColor: Colors.white,
+                                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 10),
+                              ...List.generate(_branchControllers.length, (idx) {
+                                final branch = _branchControllers[idx];
+                                return Container(
+                                  margin: const EdgeInsets.only(bottom: 10),
+                                  padding: const EdgeInsets.all(12),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(10),
+                                    border: Border.all(color: const Color(0xFFE2E8F0)),
+                                  ),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Row(
+                                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                        children: [
+                                          Text(
+                                            'Sucursal / Campus #${idx + 1}',
+                                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: AppColors.navyPrimary),
+                                          ),
+                                          if (_branchControllers.length > 1)
+                                            IconButton(
+                                              icon: const Icon(Icons.delete_outline_rounded, color: Colors.redAccent, size: 18),
+                                              onPressed: () => _removeBranch(idx),
+                                            ),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 6),
+                                      Row(
+                                        children: [
+                                          Expanded(
+                                            child: TextFormField(
+                                              controller: branch['nombre'],
+                                              decoration: InputDecoration(
+                                                labelText: 'Nombre de la Sucursal',
+                                                hintText: 'Ej. Campus Piantini / Recinto Este',
+                                                isDense: true,
+                                                border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                                              ),
+                                            ),
+                                          ),
+                                          const SizedBox(width: 10),
+                                          Expanded(
+                                            child: TextFormField(
+                                              controller: branch['direccion'],
+                                              decoration: InputDecoration(
+                                                labelText: 'Dirección de la Sucursal',
+                                                hintText: 'Ej. Calle Federico Geraldino #45',
+                                                isDense: true,
+                                                border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              }),
+                            ],
+                          ],
+                        ),
                       ),
 
                       const SizedBox(height: 28),

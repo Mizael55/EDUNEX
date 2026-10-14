@@ -12,7 +12,8 @@ enum UserRole {
   responsableCuido,
   responsableTransporte,
   tiendaInventario,
-  tutorFamiliar;
+  tutorFamiliar,
+  estudiante;
 
   /// Conversión desde string de base de datos Supabase
   static UserRole fromString(String? roleStr) {
@@ -35,6 +36,8 @@ enum UserRole {
         return UserRole.responsableTransporte;
       case 'tienda_inventario':
         return UserRole.tiendaInventario;
+      case 'estudiante':
+        return UserRole.estudiante;
       case 'tutor_familiar':
       default:
         return UserRole.tutorFamiliar;
@@ -64,6 +67,8 @@ enum UserRole {
         return 'tienda_inventario';
       case UserRole.tutorFamiliar:
         return 'tutor_familiar';
+      case UserRole.estudiante:
+        return 'estudiante';
     }
   }
 
@@ -89,7 +94,9 @@ enum UserRole {
       case UserRole.tiendaInventario:
         return 'Tienda y Uniformes';
       case UserRole.tutorFamiliar:
-        return 'Padre / Tutor Familiar';
+        return 'Tutor o Familia';
+      case UserRole.estudiante:
+        return 'Estudiante';
     }
   }
 
@@ -115,6 +122,8 @@ enum UserRole {
         return Icons.storefront_rounded;
       case UserRole.tutorFamiliar:
         return Icons.family_restroom_rounded;
+      case UserRole.estudiante:
+        return Icons.backpack_rounded;
     }
   }
 
@@ -135,12 +144,14 @@ enum UserRole {
       case UserRole.tiendaInventario:
         return AppColors.cyanLight;
       case UserRole.tutorFamiliar:
+        return AppColors.accentOrange;
+      case UserRole.estudiante:
         return AppColors.accentGreen;
     }
   }
 
   /// Determina si el rol pertenece al equipo administrativo del colegio
   bool get isAdminOrStaff {
-    return this != UserRole.tutorFamiliar;
+    return this != UserRole.tutorFamiliar && this != UserRole.estudiante;
   }
 }
