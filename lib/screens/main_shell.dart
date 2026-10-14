@@ -13,6 +13,9 @@ import '../features/parent_portal/screens/parent_questions_screen.dart';
 import '../features/parent_portal/screens/parent_events_screen.dart';
 import '../features/events/repositories/event_repository.dart';
 import '../features/events/screens/admin_events_screen.dart';
+import '../features/attendance/repositories/attendance_repository.dart';
+import '../features/attendance/screens/admin_attendance_screen.dart';
+import '../features/parent_portal/screens/parent_attendance_screen.dart';
 import '../features/superadmin/repositories/school_repository.dart';
 import '../features/superadmin/screens/superadmin_dashboard_screen.dart';
 import '../features/superadmin/models/school.dart';
@@ -42,6 +45,7 @@ class _MainShellState extends State<MainShell> {
   late final FamilyRepository _familyRepository;
   late final SchoolRepository _schoolRepository;
   late final EventRepository _eventRepository;
+  late final AttendanceRepository _attendanceRepository;
   String _schoolName = 'Colegio Cliente EDUNEX';
   School? _inspectedSchool;
 
@@ -51,6 +55,7 @@ class _MainShellState extends State<MainShell> {
     _familyRepository = widget.familyRepository ?? FamilyRepository();
     _schoolRepository = widget.schoolRepository ?? SchoolRepository();
     _eventRepository = EventRepository(familyRepository: _familyRepository);
+    _attendanceRepository = AttendanceRepository(familyRepository: _familyRepository);
     _loadSchoolName();
   }
 
@@ -116,6 +121,10 @@ class _MainShellState extends State<MainShell> {
           icon: Icons.event_available_rounded,
         ),
         const NavigationItem(
+          title: 'Asistencia & Seguimiento',
+          icon: Icons.fact_check_rounded,
+        ),
+        const NavigationItem(
           title: 'Consultas & Preguntas',
           icon: Icons.question_answer_rounded,
         ),
@@ -151,6 +160,10 @@ class _MainShellState extends State<MainShell> {
       const NavigationItem(
         title: 'Finanzas & Cobranzas',
         icon: Icons.account_balance_wallet_rounded,
+      ),
+      const NavigationItem(
+        title: 'Control de Asistencia',
+        icon: Icons.fact_check_rounded,
       ),
       const NavigationItem(
         title: 'Servicios de Cuido',
@@ -220,6 +233,7 @@ class _MainShellState extends State<MainShell> {
             userProfile: widget.userProfile,
             familyRepository: _familyRepository,
             eventRepository: _eventRepository,
+            attendanceRepository: _attendanceRepository,
             onNavigateTab: (index) => setState(() => _selectedIndex = index),
           );
         case 1:
@@ -244,6 +258,12 @@ class _MainShellState extends State<MainShell> {
             eventRepository: _eventRepository,
           );
         case 5:
+          return ParentAttendanceScreen(
+            userProfile: widget.userProfile,
+            familyRepository: _familyRepository,
+            attendanceRepository: _attendanceRepository,
+          );
+        case 6:
           return ParentQuestionsScreen(
             userProfile: widget.userProfile,
             familyRepository: _familyRepository,
@@ -288,15 +308,20 @@ class _MainShellState extends State<MainShell> {
           familyRepository: _familyRepository,
         );
       case 3:
-        return const ServicesManagementScreen(moduleType: ServiceModuleType.cuido);
+        return AdminAttendanceScreen(
+          repository: _attendanceRepository,
+          colegioId: widget.userProfile.colegioId,
+        );
       case 4:
+        return const ServicesManagementScreen(moduleType: ServiceModuleType.cuido);
+      case 5:
         return AdminEventsScreen(
           repository: _eventRepository,
           colegioId: widget.userProfile.colegioId,
         );
-      case 5:
-        return const ServicesManagementScreen(moduleType: ServiceModuleType.transporte);
       case 6:
+        return const ServicesManagementScreen(moduleType: ServiceModuleType.transporte);
+      case 7:
         return const ServicesManagementScreen(moduleType: ServiceModuleType.tienda);
       default:
         return _buildPlaceholderScreen(_navItems[_selectedIndex].title);

@@ -19,6 +19,10 @@ import 'package:edunex/features/events/models/event_registration.dart';
 import 'package:edunex/features/events/repositories/event_repository.dart';
 import 'package:edunex/features/events/screens/admin_events_screen.dart';
 import 'package:edunex/features/parent_portal/screens/parent_events_screen.dart';
+import 'package:edunex/features/attendance/models/attendance_record.dart';
+import 'package:edunex/features/attendance/repositories/attendance_repository.dart';
+import 'package:edunex/features/attendance/screens/admin_attendance_screen.dart';
+import 'package:edunex/features/parent_portal/screens/parent_attendance_screen.dart';
 import 'package:edunex/screens/login_screen.dart';
 import 'package:edunex/screens/main_shell.dart';
 
@@ -708,5 +712,136 @@ void main() {
     expect(find.text('Confirmar Inscripción'), findsNothing);
     expect(find.textContaining('inscripciones activas'), findsOneWidget);
   });
+
+  test('AttendanceRepository loads, updates and justifies records correctly', () async {
+    final familyRepo = FamilyRepository(useDemoFallback: true);
+    final attendanceRepo = AttendanceRepository(familyRepository: familyRepo);
+
+    // 1. Fetch records for date and section
+    final records = await attendanceRepo.getAttendanceForDateAndSection(
+      fecha: DateTime(2026, 3, 16),
+      colegioId: 'a0000000-0000-0000-0000-000000000001',
+      gradoNombre: '1ro de Primaria',
+      seccionNombre: 'Sección A',
+    );
+    expect(records.isNotEmpty, true);
+    expect(records.first.estudianteNombre, contains('Mateo Pérez'));
+
+    // 2. Compute attendance stats
+    final stats = await attendanceRepo.getAttendanceStats(
+      colegioId: 'a0000000-0000-0000-0000-000000000001',
+    );
+    expect(stats['totalRegistros'], greaterThan(0));
+
+    // 3. Justify an absence
+    final justifiedRecord = await attendanceRepo.submitJustification(
+      recordId: 'att-003',
+      motivo: 'Cita Médica Pediátrica',
+      comentario: 'Consulta de control anual',
+    );
+    expect(justifiedRecord.estado, 'Justificado');
+    expect(justifiedRecord.esJustificado, true);
+    expect(justifiedRecord.justificacionTutor, contains('Cita Médica'));
+  });
+
+  testWidgets('AdminAttendanceScreen renders student roster and updates attendance', (WidgetTester tester) async {
+    tester.view.physicalSize = const Size(1280, 900);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+
+    final familyRepo = FamilyRepository(useDemoFallback: true);
+    final attendanceRepo = AttendanceRepository(familyRepository: familyRepo);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: AdminAttendanceScreen(
+            repository: attendanceRepo,
+            colegioId: 'a0000000-0000-0000-0000-000000000001',
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // Verify key titles and buttons
+    expect(find.text('Control de Asistencia Escolar'), findsOneWidget);
+    expect(find.text('Marcar Todos Presentes'), findsOneWidget);
+    expect(find.text('Guardar y Notificar a Padres'), findsOneWidget);
+
+    // Verify student name is listed
+    expect(find.textContaining('Mateo Pérez González'), findsOneWidget);
+
+    // Mark all as present
+    await tester.tap(find.text('Marcar Todos Presentes'));
+    await tester.pumpAndSettle();
+
+    // Save attendance
+    await tester.tap(find.text('Guardar y Notificar a Padres'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.pumpAndSettle();
+
+    // Verify confirmation snackbar
+    expect(find.textContaining('¡Asistencia guardada y notificada'), findsOneWidget);
+  });
+
+  testWidgets('ParentAttendanceScreen renders attendance history and submits justification', (WidgetTester tester) async {
+    tester.view.physicalSize = const Size(1280, 900);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+
+    final parentProfile = UserProfile(
+      id: 'parent-1',
+      colegioId: 'a0000000-0000-0000-0000-000000000001',
+      rol: UserRole.tutorFamiliar,
+      email: 'familia@edunex.edu',
+      nombres: 'Roberto',
+      apellidos: 'Pérez',
+    );
+
+    final familyRepo = FamilyRepository(useDemoFallback: true);
+    final attendanceRepo = AttendanceRepository(familyRepository: familyRepo);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: ParentAttendanceScreen(
+            userProfile: parentProfile,
+            familyRepository: familyRepo,
+            attendanceRepository: attendanceRepo,
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // Verify header and child chips
+    expect(find.text('Asistencia & Seguimiento Escolar'), findsOneWidget);
+    expect(find.textContaining('Mateo Pérez González'), findsWidgets);
+
+    // Check justification button for absence/tardiness
+    final justifyButtons = find.text('Justificar Inasistencia');
+    expect(justifyButtons, findsWidgets);
+
+    // Tap first Justificar button
+    await tester.tap(justifyButtons.first);
+    await tester.pumpAndSettle();
+
+    // Verify dialog appears
+    expect(find.text('Justificar Inasistencia / Tardanza'), findsOneWidget);
+    expect(find.text('Enviar Justificación'), findsOneWidget);
+
+    // Submit justification
+    await tester.tap(find.text('Enviar Justificación'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.pumpAndSettle();
+
+    // Verify dialog dismissed and success message shown
+    expect(find.text('Justificar Inasistencia / Tardanza'), findsNothing);
+    expect(find.textContaining('Justificación enviada'), findsOneWidget);
+  });
 }
+
 

@@ -9,13 +9,16 @@ import 'parent_services_screen.dart';
 import 'parent_store_screen.dart';
 import 'parent_questions_screen.dart';
 import 'parent_events_screen.dart';
+import 'parent_attendance_screen.dart';
 import '../../events/repositories/event_repository.dart';
+import '../../attendance/repositories/attendance_repository.dart';
 
 /// Portal de Padres y Tutores en EDUNEX
 class ParentPortalScreen extends StatefulWidget {
   final UserProfile userProfile;
   final FamilyRepository familyRepository;
   final EventRepository? eventRepository;
+  final AttendanceRepository? attendanceRepository;
   final void Function(int tabIndex)? onNavigateTab;
 
   const ParentPortalScreen({
@@ -23,6 +26,7 @@ class ParentPortalScreen extends StatefulWidget {
     required this.userProfile,
     required this.familyRepository,
     this.eventRepository,
+    this.attendanceRepository,
     this.onNavigateTab,
   });
 
@@ -375,7 +379,7 @@ class _ParentPortalScreenState extends State<ParentPortalScreen> {
                   color: AppColors.electricBlue,
                   onTap: () {
                     _navigateToSection(
-                      5,
+                      6,
                       ParentQuestionsScreen(
                         userProfile: widget.userProfile,
                         familyRepository: widget.familyRepository,
@@ -425,6 +429,22 @@ class _ParentPortalScreenState extends State<ParentPortalScreen> {
                         userProfile: widget.userProfile,
                         familyRepository: widget.familyRepository,
                         eventRepository: widget.eventRepository,
+                      ),
+                    );
+                  },
+                ),
+                _buildActionCard(
+                  title: '8. Asistencia & Justificaciones',
+                  subtitle: 'Puntualidad en tiempo real y justificar inasistencias',
+                  icon: Icons.fact_check_rounded,
+                  color: const Color(0xFF059669),
+                  onTap: () {
+                    _navigateToSection(
+                      5,
+                      ParentAttendanceScreen(
+                        userProfile: widget.userProfile,
+                        familyRepository: widget.familyRepository,
+                        attendanceRepository: widget.attendanceRepository,
                       ),
                     );
                   },
