@@ -6,6 +6,9 @@ import '../models/student.dart';
 import '../models/tutor.dart';
 import '../../auth/repositories/auth_repository.dart';
 import '../../auth/models/user_role.dart';
+import '../../parent_portal/models/payment_receipt.dart';
+import '../../parent_portal/models/payment_agreement_request.dart';
+import '../../parent_portal/models/parent_question.dart';
 
 /// Repositorio de Cuentas Familiares y Estudiantes en EDUNEX
 class FamilyRepository {
@@ -213,10 +216,11 @@ class FamilyRepository {
     }
 
     if (_customFamilies.isNotEmpty) {
-      // Evitar duplicados por ID
-      final existingIds = families.map((f) => f.id).toSet();
       for (final cf in _customFamilies) {
-        if (!existingIds.contains(cf.id)) {
+        final existingIdx = families.indexWhere((f) => f.id == cf.id);
+        if (existingIdx != -1) {
+          families[existingIdx] = cf;
+        } else {
           families.insert(0, cf);
         }
       }
@@ -296,6 +300,81 @@ class FamilyRepository {
 
   /// Lista en memoria para familias creadas durante la sesión
   static final List<Family> _customFamilies = [];
+
+  /// Comprobantes de pago oficiales registrados
+  static final List<PaymentReceipt> _receipts = [
+    PaymentReceipt(
+      id: 'rec-001',
+      numeroComprobante: 'REC-2026-0089',
+      ncf: 'B0200000142',
+      familiaId: 'e0000000-0000-0000-0000-000000000001',
+      nombreFamilia: 'Familia Pérez González',
+      fechaEmision: DateTime(2026, 2, 5, 10, 30),
+      concepto: 'Colegiatura Febrero 2026 & Servicios Escolares',
+      monto: 18500.00,
+      metodoPago: 'Tarjeta de Crédito / CardNET',
+      referencia: 'AUTH-982341',
+      estado: 'Válido / Pagado',
+      estudiantes: const ['Mateo Pérez', 'Sofía Pérez'],
+    ),
+    PaymentReceipt(
+      id: 'rec-002',
+      numeroComprobante: 'REC-2026-0045',
+      ncf: 'B0200000098',
+      familiaId: 'e0000000-0000-0000-0000-000000000001',
+      nombreFamilia: 'Familia Pérez González',
+      fechaEmision: DateTime(2026, 1, 10, 15, 12),
+      concepto: 'Colegiatura Enero 2026 & Matrícula Anual',
+      monto: 25000.00,
+      metodoPago: 'Transferencia Bancaria BHD',
+      referencia: 'TRF-458129',
+      estado: 'Válido / Pagado',
+      estudiantes: const ['Mateo Pérez', 'Sofía Pérez'],
+    ),
+  ];
+
+  /// Solicitudes de acuerdos o convenios de pago
+  static final List<PaymentAgreementRequest> _agreements = [
+    PaymentAgreementRequest(
+      id: 'agr-001',
+      familiaId: 'e0000000-0000-0000-0000-000000000001',
+      nombreFamilia: 'Familia Pérez González',
+      tipoAcuerdo: 'Fraccionamiento de Cuota de Colegiatura',
+      propuestaCuota: 3750.00,
+      justificacion: 'Solicitud de división en 2 quincenas para la colegiatura mensual por reestructuración de ingresos.',
+      fechaSolicitud: DateTime(2026, 2, 1, 9, 0),
+      estado: 'Aprobado',
+      respuestaCentro: 'Aprobado por el Consejo Directivo. Cuotas de RD\$ 3,750 los días 15 y 30 de cada mes.',
+      fechaRespuesta: DateTime(2026, 2, 3, 14, 20),
+    ),
+  ];
+
+  /// Preguntas y consultas directas de tutores
+  static final List<ParentQuestion> _questions = [
+    ParentQuestion(
+      id: 'qst-001',
+      familiaId: 'e0000000-0000-0000-0000-000000000001',
+      tutorNombre: 'Roberto Pérez',
+      departamento: 'Dirección Académica',
+      asunto: 'Horario extendido de evaluaciones bimestrales',
+      mensaje: 'Buenas tardes, quisiéramos confirmar si las pruebas del segundo bimestre tendrán salida temprana o continuará el horario habitual de cuido.',
+      fechaEnvio: DateTime(2026, 2, 10, 11, 20),
+      estado: 'Respondida',
+      respuestaCentro: 'Estimado Roberto, las evaluaciones se impartirán en el horario regular matutino. El servicio de cuido vespertino operará con normalidad hasta las 6:00 PM.',
+      fechaRespuesta: DateTime(2026, 2, 10, 16, 45),
+      respondidoPor: 'Lic. Carmen Morales (Coord. Académica)',
+    ),
+    ParentQuestion(
+      id: 'qst-002',
+      familiaId: 'e0000000-0000-0000-0000-000000000001',
+      tutorNombre: 'Roberto Pérez',
+      departamento: 'Caja y Facturación',
+      asunto: 'Comprobante fiscal con valor crediticio',
+      mensaje: 'Saludos, por favor requerimos que la próxima factura sea emitida con comprobante fiscal gubernamental para nuestra empresa.',
+      fechaEnvio: DateTime(2026, 2, 12, 14, 05),
+      estado: 'En trámite',
+    ),
+  ];
 
   /// Registra una nueva familia con su tutor, documentos físicos, múltiples alumnos y acuerdos de pago
   Future<Family> createFamily({
@@ -475,8 +554,8 @@ class FamilyRepository {
     return newFamily;
   }
 
-  /// Registra un abono o pago a una familia
-  Future<void> recordPayment({
+  /// Registra un abono o pago a una familia y emite su comprobante fiscal oficial
+  Future<PaymentReceipt> recordPayment({
     required String familiaId,
     required double monto,
     required String concepto,
@@ -498,10 +577,16 @@ class FamilyRepository {
       }
     }
 
+    String familyName = 'Familia';
+    List<String> studentNames = [];
+
     // Actualizar balance en memoria
+    bool foundInCustom = false;
     for (int i = 0; i < _customFamilies.length; i++) {
       if (_customFamilies[i].id == familiaId) {
         final f = _customFamilies[i];
+        familyName = f.nombreFamilia;
+        studentNames = f.estudiantes.map((s) => s.nombreCompleto).toList();
         final newBal = (f.balancePendiente - monto).clamp(0.0, double.infinity);
         _customFamilies[i] = Family(
           id: f.id,
@@ -515,6 +600,175 @@ class FamilyRepository {
           activo: f.activo,
           tutores: f.tutores,
           estudiantes: f.estudiantes,
+        );
+        foundInCustom = true;
+        break;
+      }
+    }
+
+    if (!foundInCustom) {
+      for (final df in _demoFamilies) {
+        if (df.id == familiaId) {
+          familyName = df.nombreFamilia;
+          studentNames = df.estudiantes.map((s) => s.nombreCompleto).toList();
+          final newBal = (df.balancePendiente - monto).clamp(0.0, double.infinity);
+          _customFamilies.insert(0, Family(
+            id: df.id,
+            colegioId: df.colegioId,
+            codigoFamilia: df.codigoFamilia,
+            nombreFamilia: df.nombreFamilia,
+            balancePendiente: newBal,
+            telefonoPrincipal: df.telefonoPrincipal,
+            emailPrincipal: df.emailPrincipal,
+            direccion: df.direccion,
+            activo: df.activo,
+            tutores: df.tutores,
+            estudiantes: df.estudiantes,
+          ));
+          break;
+        }
+      }
+    }
+
+    final now = DateTime.now();
+    final receiptNum = 'REC-${now.year}-${now.millisecondsSinceEpoch.toString().substring(7)}';
+    final ncfCode = 'B02${now.millisecondsSinceEpoch.toString().substring(5)}';
+    final ref = referencia ?? 'AUTH-${now.millisecondsSinceEpoch.toString().substring(7)}';
+
+    final receipt = PaymentReceipt(
+      id: 'rec-${now.millisecondsSinceEpoch}',
+      numeroComprobante: receiptNum,
+      ncf: ncfCode,
+      familiaId: familiaId,
+      nombreFamilia: familyName,
+      fechaEmision: now,
+      concepto: concepto,
+      monto: monto,
+      metodoPago: metodo,
+      referencia: ref,
+      estado: 'Válido / Pagado',
+      estudiantes: studentNames,
+    );
+
+    _receipts.insert(0, receipt);
+    return receipt;
+  }
+
+  /// Obtiene todos los comprobantes de pago emitidos para una familia
+  Future<List<PaymentReceipt>> getReceiptsForFamily(String familiaId) async {
+    return _receipts.where((r) => r.familiaId == familiaId).toList();
+  }
+
+  /// Obtiene los acuerdos y convenios de pago solicitados por la familia
+  Future<List<PaymentAgreementRequest>> getAgreementsForFamily(String familiaId) async {
+    return _agreements.where((a) => a.familiaId == familiaId).toList();
+  }
+
+  /// Registra una nueva solicitud de acuerdo de pago o mejora de cuota
+  Future<PaymentAgreementRequest> submitAgreementRequest({
+    required String familiaId,
+    required String nombreFamilia,
+    required String tipoAcuerdo,
+    required double propuestaCuota,
+    required String justificacion,
+  }) async {
+    final agreement = PaymentAgreementRequest(
+      id: 'agr-${DateTime.now().millisecondsSinceEpoch}',
+      familiaId: familiaId,
+      nombreFamilia: nombreFamilia,
+      tipoAcuerdo: tipoAcuerdo,
+      propuestaCuota: propuestaCuota,
+      justificacion: justificacion,
+      fechaSolicitud: DateTime.now(),
+      estado: 'En revisión por Dirección',
+    );
+    _agreements.insert(0, agreement);
+    return agreement;
+  }
+
+  /// Obtiene las preguntas y consultas formuladas por la familia
+  Future<List<ParentQuestion>> getQuestionsForFamily(String familiaId) async {
+    return _questions.where((q) => q.familiaId == familiaId).toList();
+  }
+
+  /// Envía una nueva consulta o pregunta al centro escolar
+  Future<ParentQuestion> submitQuestion({
+    required String familiaId,
+    required String tutorNombre,
+    required String departamento,
+    required String asunto,
+    required String mensaje,
+  }) async {
+    final question = ParentQuestion(
+      id: 'qst-${DateTime.now().millisecondsSinceEpoch}',
+      familiaId: familiaId,
+      tutorNombre: tutorNombre,
+      departamento: departamento,
+      asunto: asunto,
+      mensaje: mensaje,
+      fechaEnvio: DateTime.now(),
+      estado: 'En trámite',
+    );
+    _questions.insert(0, question);
+    return question;
+  }
+
+  /// Modifica el estado de un servicio escolar contratado para un alumno
+  Future<void> toggleStudentService({
+    required String familiaId,
+    required String studentId,
+    required String servicio,
+    required bool activar,
+  }) async {
+    // Si la familia aún no está en _customFamilies, copiarla desde _demoFamilies
+    if (!_customFamilies.any((f) => f.id == familiaId)) {
+      final df = _demoFamilies.where((f) => f.id == familiaId).toList();
+      if (df.isNotEmpty) {
+        _customFamilies.insert(0, df.first);
+      }
+    }
+
+    for (int i = 0; i < _customFamilies.length; i++) {
+      if (_customFamilies[i].id == familiaId) {
+        final f = _customFamilies[i];
+        final updatedStudents = f.estudiantes.map((st) {
+          if (st.id == studentId) {
+            final currentServices = List<String>.from(st.serviciosActivos);
+            if (activar) {
+              if (!currentServices.contains(servicio)) currentServices.add(servicio);
+            } else {
+              currentServices.remove(servicio);
+            }
+            return Student(
+              id: st.id,
+              colegioId: st.colegioId,
+              familiaId: st.familiaId,
+              matricula: st.matricula,
+              nombres: st.nombres,
+              apellidos: st.apellidos,
+              fechaNacimiento: st.fechaNacimiento,
+              genero: st.genero,
+              gradoNombre: st.gradoNombre,
+              seccionNombre: st.seccionNombre,
+              fotoUrl: st.fotoUrl,
+              serviciosActivos: currentServices,
+            );
+          }
+          return st;
+        }).toList();
+
+        _customFamilies[i] = Family(
+          id: f.id,
+          colegioId: f.colegioId,
+          codigoFamilia: f.codigoFamilia,
+          nombreFamilia: f.nombreFamilia,
+          balancePendiente: f.balancePendiente,
+          telefonoPrincipal: f.telefonoPrincipal,
+          emailPrincipal: f.emailPrincipal,
+          direccion: f.direccion,
+          activo: f.activo,
+          tutores: f.tutores,
+          estudiantes: updatedStudents,
         );
         break;
       }

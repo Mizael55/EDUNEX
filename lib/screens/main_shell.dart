@@ -6,6 +6,10 @@ import '../features/families/repositories/family_repository.dart';
 import '../features/families/screens/family_directory_screen.dart';
 import '../features/dashboard/screens/dashboard_overview_screen.dart';
 import '../features/parent_portal/screens/parent_portal_screen.dart';
+import '../features/parent_portal/screens/parent_payments_screen.dart';
+import '../features/parent_portal/screens/parent_services_screen.dart';
+import '../features/parent_portal/screens/parent_store_screen.dart';
+import '../features/parent_portal/screens/parent_questions_screen.dart';
 import '../features/superadmin/repositories/school_repository.dart';
 import '../features/superadmin/screens/superadmin_dashboard_screen.dart';
 import '../features/superadmin/models/school.dart';
@@ -91,16 +95,20 @@ class _MainShellState extends State<MainShell> {
           icon: Icons.family_restroom_rounded,
         ),
         const NavigationItem(
-          title: 'Pagos & Recibos',
+          title: 'Pagos, Acuerdos & NCF',
           icon: Icons.receipt_long_rounded,
         ),
         const NavigationItem(
-          title: 'Servicios (Cuido & Rutas)',
-          icon: Icons.child_care_rounded,
+          title: 'Servicios Escolares',
+          icon: Icons.room_service_rounded,
         ),
         const NavigationItem(
           title: 'Tienda Escolar',
           icon: Icons.shopping_bag_rounded,
+        ),
+        const NavigationItem(
+          title: 'Consultas & Preguntas',
+          icon: Icons.question_answer_rounded,
         ),
       ];
     }
@@ -198,16 +206,28 @@ class _MainShellState extends State<MainShell> {
           return ParentPortalScreen(
             userProfile: widget.userProfile,
             familyRepository: _familyRepository,
+            onNavigateTab: (index) => setState(() => _selectedIndex = index),
           );
         case 1:
-          return FinanceOverviewScreen(
-            isSuperAdmin: false,
+          return ParentPaymentsScreen(
+            userProfile: widget.userProfile,
             familyRepository: _familyRepository,
           );
         case 2:
-          return const ServicesManagementScreen(moduleType: ServiceModuleType.cuido);
+          return ParentServicesScreen(
+            userProfile: widget.userProfile,
+            familyRepository: _familyRepository,
+          );
         case 3:
-          return const ServicesManagementScreen(moduleType: ServiceModuleType.tienda);
+          return ParentStoreScreen(
+            userProfile: widget.userProfile,
+            familyRepository: _familyRepository,
+          );
+        case 4:
+          return ParentQuestionsScreen(
+            userProfile: widget.userProfile,
+            familyRepository: _familyRepository,
+          );
         default:
           return _buildPlaceholderScreen(_navItems[_selectedIndex].title);
       }

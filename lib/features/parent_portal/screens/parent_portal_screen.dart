@@ -4,16 +4,22 @@ import '../../auth/models/user_profile.dart';
 import '../../families/models/family.dart';
 import '../../families/models/student.dart';
 import '../../families/repositories/family_repository.dart';
+import 'parent_payments_screen.dart';
+import 'parent_services_screen.dart';
+import 'parent_store_screen.dart';
+import 'parent_questions_screen.dart';
 
 /// Portal de Padres y Tutores en EDUNEX
 class ParentPortalScreen extends StatefulWidget {
   final UserProfile userProfile;
   final FamilyRepository familyRepository;
+  final void Function(int tabIndex)? onNavigateTab;
 
   const ParentPortalScreen({
     super.key,
     required this.userProfile,
     required this.familyRepository,
+    this.onNavigateTab,
   });
 
   @override
@@ -47,6 +53,16 @@ class _ParentPortalScreenState extends State<ParentPortalScreen> {
     }
   }
 
+  void _navigateToSection(int tabIndex, Widget fallbackWidget) {
+    if (widget.onNavigateTab != null) {
+      widget.onNavigateTab!(tabIndex);
+    } else {
+      Navigator.of(context).push(
+        MaterialPageRoute(builder: (_) => fallbackWidget),
+      ).then((_) => _loadFamily());
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
@@ -61,6 +77,7 @@ class _ParentPortalScreenState extends State<ParentPortalScreen> {
     final family = _family;
     if (family == null) {
       return const Scaffold(
+        backgroundColor: AppColors.backgroundLight,
         body: Center(child: Text('No se encontró información familiar.')),
       );
     }
@@ -159,7 +176,35 @@ class _ParentPortalScreenState extends State<ParentPortalScreen> {
               ),
             ),
 
-            const SizedBox(height: 24),
+            const SizedBox(height: 16),
+
+            // Banner Institucional de Matrícula Oficial Exclusiva de Secretaría
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              decoration: BoxDecoration(
+                color: const Color(0xFFEFF6FF),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFFBFDBFE)),
+              ),
+              child: const Row(
+                children: [
+                  Icon(Icons.shield_rounded, color: AppColors.electricBlue, size: 22),
+                  SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      'Estudiantes Matriculados Oficialmente — Las admisiones, creaciones de familias y matrículas son tramitadas exclusivamente por la secretaría del centro.',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: AppColors.navyPrimary,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: 20),
 
             // Estado de Cuenta Consolidado
             Container(
@@ -215,9 +260,7 @@ class _ParentPortalScreenState extends State<ParentPortalScreen> {
                         ),
                         const SizedBox(height: 2),
                         Text(
-                          family.estaAlDia
-                              ? 'RD\$ 0.00'
-                              : 'RD\$ ${family.balancePendiente.toStringAsFixed(2)}',
+                          'RD\$ ${family.balancePendiente.toStringAsFixed(2)}',
                           style: TextStyle(
                             fontSize: 26,
                             fontWeight: FontWeight.w900,
@@ -238,15 +281,16 @@ class _ParentPortalScreenState extends State<ParentPortalScreen> {
                   ),
                   ElevatedButton.icon(
                     onPressed: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Abriendo pasarela de pago seguro CardNET / Banco BHD'),
-                          backgroundColor: AppColors.navyPrimary,
+                      _navigateToSection(
+                        1,
+                        ParentPaymentsScreen(
+                          userProfile: widget.userProfile,
+                          familyRepository: widget.familyRepository,
                         ),
                       );
                     },
                     icon: const Icon(Icons.payment_rounded, size: 18),
-                    label: Text(family.estaAlDia ? 'Ver Recibos' : 'Pagar RD\$ 7,500.00'),
+                    label: Text(family.estaAlDia ? 'Ver Recibos & NCF' : 'Pagar RD\$ ${family.balancePendiente.toStringAsFixed(2)}'),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.navyPrimary,
                       foregroundColor: AppColors.surfaceWhite,
@@ -259,6 +303,116 @@ class _ParentPortalScreenState extends State<ParentPortalScreen> {
             ),
 
             const SizedBox(height: 28),
+
+            // Accesos Rápidos del Tutor (6 Acciones Permitidas de QA)
+            const Text(
+              'Acciones & Servicios Disponibles para el Tutor',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: AppColors.textPrimary,
+              ),
+            ),
+            const SizedBox(height: 14),
+
+            Wrap(
+              spacing: 12,
+              runSpacing: 12,
+              children: [
+                _buildActionCard(
+                  title: '1. Comprar en la Tienda',
+                  subtitle: 'Uniformes, libros de texto y útiles',
+                  icon: Icons.shopping_bag_rounded,
+                  color: AppColors.navyPrimary,
+                  onTap: () {
+                    _navigateToSection(
+                      3,
+                      ParentStoreScreen(
+                        userProfile: widget.userProfile,
+                        familyRepository: widget.familyRepository,
+                      ),
+                    );
+                  },
+                ),
+                _buildActionCard(
+                  title: '2. Pagar Colegiatura',
+                  subtitle: 'Pasarela en línea y abono a cuenta',
+                  icon: Icons.credit_card_rounded,
+                  color: AppColors.accentGreen,
+                  onTap: () {
+                    _navigateToSection(
+                      1,
+                      ParentPaymentsScreen(
+                        userProfile: widget.userProfile,
+                        familyRepository: widget.familyRepository,
+                      ),
+                    );
+                  },
+                ),
+                _buildActionCard(
+                  title: '3. Realizar Acuerdos de Pago',
+                  subtitle: 'Fraccionamiento y convenios ("Sujeto a mejora")',
+                  icon: Icons.handshake_rounded,
+                  color: const Color(0xFFB45309),
+                  onTap: () {
+                    _navigateToSection(
+                      1,
+                      ParentPaymentsScreen(
+                        userProfile: widget.userProfile,
+                        familyRepository: widget.familyRepository,
+                      ),
+                    );
+                  },
+                ),
+                _buildActionCard(
+                  title: '4. Hacer Preguntas al Centro',
+                  subtitle: 'Canal de comunicación con dirección y profesores',
+                  icon: Icons.question_answer_rounded,
+                  color: AppColors.electricBlue,
+                  onTap: () {
+                    _navigateToSection(
+                      4,
+                      ParentQuestionsScreen(
+                        userProfile: widget.userProfile,
+                        familyRepository: widget.familyRepository,
+                      ),
+                    );
+                  },
+                ),
+                _buildActionCard(
+                  title: '5. Gestionar Servicios',
+                  subtitle: 'Cuido vespertino, rutas y comedor por hijo',
+                  icon: Icons.child_care_rounded,
+                  color: const Color(0xFF7C3AED),
+                  onTap: () {
+                    _navigateToSection(
+                      2,
+                      ParentServicesScreen(
+                        userProfile: widget.userProfile,
+                        familyRepository: widget.familyRepository,
+                      ),
+                    );
+                  },
+                ),
+                _buildActionCard(
+                  title: '6. Validar Comprobantes (NCF)',
+                  subtitle: 'Descarga e impresión de facturas oficiales',
+                  icon: Icons.receipt_long_rounded,
+                  color: const Color(0xFF0284C7),
+                  onTap: () {
+                    _navigateToSection(
+                      1,
+                      ParentPaymentsScreen(
+                        userProfile: widget.userProfile,
+                        familyRepository: widget.familyRepository,
+                      ),
+                    );
+                  },
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 32),
 
             // Mis Hijos Matriculados
             Row(
@@ -297,83 +451,73 @@ class _ParentPortalScreenState extends State<ParentPortalScreen> {
                 );
               },
             ),
-
-            const SizedBox(height: 32),
-
-            // Servicios Escolares Contratados & Opciones
-            const Text(
-              'Servicios Escolares & Accesos Rápidos',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: AppColors.textPrimary,
-              ),
-            ),
-            const SizedBox(height: 14),
-
-            Wrap(
-              spacing: 12,
-              runSpacing: 12,
-              children: [
-                _buildServiceAction(
-                  title: 'Cuido Vespertino',
-                  subtitle: 'Mateo & Sofía inscritos (3:00–6:00 PM)',
-                  icon: Icons.child_care_rounded,
-                  color: AppColors.electricBlue,
-                  onTap: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Gestión del servicio de cuido escolar'),
-                        backgroundColor: AppColors.electricBlue,
-                      ),
-                    );
-                  },
-                ),
-                _buildServiceAction(
-                  title: 'Transporte Escolar',
-                  subtitle: 'Ruta 1 Naco-Piantini (Chofer: Manuel)',
-                  icon: Icons.directions_bus_rounded,
-                  color: const Color(0xFFB45309),
-                  onTap: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Monitoreo en vivo de la ruta de transporte'),
-                        backgroundColor: Color(0xFFB45309),
-                      ),
-                    );
-                  },
-                ),
-                _buildServiceAction(
-                  title: 'Tienda Escolar',
-                  subtitle: 'Polos, pantalones y uniformes',
-                  icon: Icons.shopping_bag_rounded,
-                  color: AppColors.navyPrimary,
-                  onTap: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Abriendo catálogo de uniformes y útiles escolares'),
-                        backgroundColor: AppColors.navyPrimary,
-                      ),
-                    );
-                  },
-                ),
-                _buildServiceAction(
-                  title: 'Autorizar Retiro Temporal',
-                  subtitle: 'Permitir que un familiar retire a tu hijo hoy',
-                  icon: Icons.security_rounded,
-                  color: AppColors.accentGreen,
-                  onTap: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Creando pase digital de retiro autorizado'),
-                        backgroundColor: AppColors.accentGreen,
-                      ),
-                    );
-                  },
-                ),
-              ],
-            ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildActionCard({
+    required String title,
+    required String subtitle,
+    required IconData icon,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(14),
+        child: Container(
+          width: 320,
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: AppColors.surfaceWhite,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: const Color(0xFFE2E8F0)),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.02),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(icon, color: color, size: 24),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 13,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      subtitle,
+                      style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
+                    ),
+                  ],
+                ),
+              ),
+              const Icon(Icons.chevron_right_rounded, color: Color(0xFFCBD5E1)),
+            ],
+          ),
         ),
       ),
     );
@@ -450,28 +594,55 @@ class _ParentPortalScreenState extends State<ParentPortalScreen> {
           Wrap(
             spacing: 6,
             runSpacing: 6,
-            children: student.serviciosActivos.map((service) {
-              return Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                  color: AppColors.navyPrimary.withValues(alpha: 0.07),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(
-                  service,
-                  style: const TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.navyPrimary,
-                  ),
-                ),
-              );
-            }).toList(),
+            children: student.serviciosActivos.isEmpty
+                ? [
+                    const Text(
+                      'Sin servicios adicionales contratados.',
+                      style: TextStyle(fontSize: 11, fontStyle: FontStyle.italic, color: AppColors.textSecondary),
+                    )
+                  ]
+                : student.serviciosActivos.map((service) {
+                    return Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: AppColors.navyPrimary.withValues(alpha: 0.07),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        service,
+                        style: const TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.navyPrimary,
+                        ),
+                      ),
+                    );
+                  }).toList(),
           ),
           const Spacer(),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.end,
+          Wrap(
+            alignment: WrapAlignment.spaceBetween,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 8,
+            runSpacing: 8,
             children: [
+              TextButton.icon(
+                onPressed: () {
+                  _navigateToSection(
+                    2,
+                    ParentServicesScreen(
+                      userProfile: widget.userProfile,
+                      familyRepository: widget.familyRepository,
+                    ),
+                  );
+                },
+                icon: const Icon(Icons.settings_suggest_rounded, size: 16),
+                label: const Text('Gestionar Servicios'),
+                style: TextButton.styleFrom(
+                  foregroundColor: AppColors.navyPrimary,
+                  textStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                ),
+              ),
               OutlinedButton.icon(
                 onPressed: () {
                   ScaffoldMessenger.of(context).showSnackBar(
@@ -492,65 +663,6 @@ class _ParentPortalScreenState extends State<ParentPortalScreen> {
             ],
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildServiceAction({
-    required String title,
-    required String subtitle,
-    required IconData icon,
-    required Color color,
-    required VoidCallback onTap,
-  }) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(14),
-        child: Container(
-          width: 320,
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: AppColors.surfaceWhite,
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: const Color(0xFFE2E8F0)),
-          ),
-          child: Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(icon, color: color, size: 24),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14,
-                        color: AppColors.textPrimary,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      subtitle,
-                      style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
-                    ),
-                  ],
-                ),
-              ),
-              const Icon(Icons.chevron_right_rounded, color: Color(0xFFCBD5E1)),
-            ],
-          ),
-        ),
       ),
     );
   }

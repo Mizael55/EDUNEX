@@ -10,11 +10,13 @@ import '../../finances/screens/record_payment_dialog.dart';
 class FamilyDirectoryScreen extends StatefulWidget {
   final FamilyRepository repository;
   final String? colegioId;
+  final bool canCreateFamily;
 
   const FamilyDirectoryScreen({
     super.key,
     required this.repository,
     this.colegioId,
+    this.canCreateFamily = true,
   });
 
   @override
@@ -94,24 +96,25 @@ class _FamilyDirectoryScreenState extends State<FamilyDirectoryScreen> {
                     ],
                   ),
                 ),
-                ElevatedButton.icon(
-                  onPressed: () {
-                    CreateFamilyDialog.show(
-                      context,
-                      repository: widget.repository,
-                      colegioId: widget.colegioId ?? 'a0000000-0000-0000-0000-000000000001',
-                      onFamilyCreated: (_) => _loadFamilies(),
-                    );
-                  },
-                  icon: const Icon(Icons.add_rounded, size: 20),
-                  label: const Text('Nueva Familia'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.navyPrimary,
-                    foregroundColor: AppColors.surfaceWhite,
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                if (widget.canCreateFamily)
+                  ElevatedButton.icon(
+                    onPressed: () {
+                      CreateFamilyDialog.show(
+                        context,
+                        repository: widget.repository,
+                        colegioId: widget.colegioId ?? 'a0000000-0000-0000-0000-000000000001',
+                        onFamilyCreated: (_) => _loadFamilies(),
+                      );
+                    },
+                    icon: const Icon(Icons.add_rounded, size: 20),
+                    label: const Text('Nueva Familia'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.navyPrimary,
+                      foregroundColor: AppColors.surfaceWhite,
+                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
                   ),
-                ),
               ],
             ),
 
