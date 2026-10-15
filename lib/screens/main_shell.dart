@@ -29,6 +29,7 @@ import '../features/store/repositories/store_repository.dart';
 import '../features/store/screens/admin_store_screen.dart';
 import '../features/superadmin/repositories/school_repository.dart';
 import '../features/superadmin/screens/superadmin_dashboard_screen.dart';
+import '../features/superadmin/widgets/edit_school_logo_dialog.dart';
 import '../features/superadmin/models/school.dart';
 import '../features/finances/screens/finance_overview_screen.dart';
 import '../features/services/screens/services_management_screen.dart';
@@ -66,6 +67,7 @@ class _MainShellState extends State<MainShell> {
   late final AcademicRepository _academicRepository;
   late final StoreRepository _storeRepository;
   String _schoolName = 'Colegio Cliente EDUNEX';
+  String? _schoolLogoUrl;
   School? _inspectedSchool;
 
   @override
@@ -84,10 +86,43 @@ class _MainShellState extends State<MainShell> {
 
   Future<void> _loadSchoolName() async {
     if (widget.userProfile.colegioId != null) {
-      final name = await _schoolRepository.getSchoolNameById(widget.userProfile.colegioId!);
-      if (name != null && mounted) {
-        setState(() => _schoolName = name);
+      final school = await _schoolRepository.getSchoolById(widget.userProfile.colegioId!);
+      if (school != null && mounted) {
+        setState(() {
+          _schoolName = school.nombre;
+          _schoolLogoUrl = school.logoUrl;
+        });
+      } else {
+        final name = await _schoolRepository.getSchoolNameById(widget.userProfile.colegioId!);
+        if (name != null && mounted) {
+          setState(() => _schoolName = name);
+        }
       }
+    }
+  }
+
+  void _openEditSchoolLogoDialog() async {
+    final schoolId = widget.userProfile.colegioId ?? 'a0000000-0000-0000-0000-000000000001';
+    final updatedLogo = await EditSchoolLogoDialog.show(
+      context,
+      schoolId: schoolId,
+      schoolName: _schoolName,
+      currentLogoUrl: _schoolLogoUrl,
+      schoolRepository: _schoolRepository,
+      onLogoUpdated: (newLogo) {
+        if (mounted) {
+          setState(() => _schoolLogoUrl = newLogo);
+        }
+      },
+    );
+    if (updatedLogo != null && mounted) {
+      setState(() => _schoolLogoUrl = updatedLogo);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('¡Logo del centro educativo actualizado con éxito!'),
+          backgroundColor: AppColors.accentGreen,
+        ),
+      );
     }
   }
 
@@ -656,11 +691,11 @@ class _MainShellState extends State<MainShell> {
                   ),
                 ),
 
-                // Badge de Institución
+                // Badge de Institución con Logo de Perfil (Issue #15)
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   child: Container(
-                    padding: const EdgeInsets.all(12),
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                     decoration: BoxDecoration(
                       color: AppColors.surfaceWhite.withValues(alpha: 0.08),
                       borderRadius: BorderRadius.circular(12),
@@ -668,23 +703,58 @@ class _MainShellState extends State<MainShell> {
                     ),
                     child: Row(
                       children: [
-                        Icon(
-                          _isSuperAdmin ? Icons.hub_rounded : Icons.location_city_rounded,
-                          color: _isSuperAdmin ? AppColors.amberAccent : AppColors.surfaceWhite,
-                          size: 16,
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            _isSuperAdmin ? 'Red Central EDUNEX (SaaS)' : _schoolName,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              color: AppColors.surfaceWhite,
-                              fontSize: 11,
-                              fontWeight: FontWeight.w600,
+                        if (!_isSuperAdmin && _schoolLogoUrl != null && _schoolLogoUrl!.isNotEmpty)
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(8),
+                            child: Image.network(
+                              _schoolLogoUrl!,
+                              width: 32,
+                              height: 32,
+                              fit: BoxFit.cover,
+                              errorBuilder: (_, __, ___) => const Icon(
+                                Icons.school_rounded,
+                                color: AppColors.surfaceWhite,
+                                size: 24,
+                              ),
                             ),
+                          )
+                        else
+                          Icon(
+                            _isSuperAdmin ? Icons.hub_rounded : Icons.school_rounded,
+                            color: _isSuperAdmin ? AppColors.amberAccent : AppColors.surfaceWhite,
+                            size: 22,
+                          ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                _isSuperAdmin ? 'Red Central EDUNEX (SaaS)' : _schoolName,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  color: AppColors.surfaceWhite,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              if (!_isSuperAdmin)
+                                const Text(
+                                  'Logo Institucional',
+                                  style: TextStyle(
+                                    color: Colors.white70,
+                                    fontSize: 10,
+                                  ),
+                                ),
+                            ],
                           ),
                         ),
+                        if (!_isSuperAdmin)
+                          IconButton(
+                            icon: const Icon(Icons.camera_alt_rounded, color: AppColors.amberAccent, size: 18),
+                            tooltip: 'Cambiar Logo del Centro',
+                            onPressed: _openEditSchoolLogoDialog,
+                          ),
                       ],
                     ),
                   ),

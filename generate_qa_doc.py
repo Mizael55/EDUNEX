@@ -526,6 +526,21 @@ html_content = """<!DOCTYPE html>
     </ol>
   </div>
 
+  <div class="step-box">
+    <div class="step-header">
+      <span>Personalización del Logo y Perfil Institucional del Centro (Issue #15)</span>
+      <span class="role-badge role-admin">Admin</span>
+    </div>
+    <ol>
+      <li>Inicia sesión como <strong>Administrador del Centro</strong>.</li>
+      <li>En la barra lateral izquierda (Sidebar), localiza el avatar con el logo oficial del colegio.</li>
+      <li>Pasa el cursor y haz clic sobre el botón de edición (ícono de cámara) para abrir el diálogo <code>EditSchoolLogoDialog</code>.</li>
+      <li>Verifica la previsualización circular tipo perfil institucional con insignia escolar.</li>
+      <li>Selecciona uno de los emblemas predefinidos o ingresa una URL personalizada de imagen.</li>
+      <li>Guarda los cambios y comprueba que el logo se actualiza de inmediato en el sidebar y en toda la plataforma reactivamente.</li>
+    </ol>
+  </div>
+
   <!-- ==================== CASOS DE PRUEBA 3 Y 4 (PÁGINA 4) ==================== -->
   <div class="page-break"></div>
   <h1>2. Matriz de Casos de Prueba (Continuación)</h1>
@@ -547,19 +562,35 @@ html_content = """<!DOCTYPE html>
     </ol>
   </div>
 
-  <h2>Módulo 4: Finanzas, Cobros en Caja y Recibos Oficiales</h2>
+  <h2>Módulo 4: Finanzas, Cobros en Caja y Control de Abonos (Issue #17)</h2>
   <div class="step-box">
     <div class="step-header">
-      <span>Cobro en Caja, Generación de Recibo y Balance Familiar</span>
+      <span>Cobro Automático de Deuda Total y Restricción de Abonos Familiares</span>
       <span class="role-badge role-admin">Admin</span>
     </div>
     <ol>
-      <li>Navega a <strong>"Finanzas & Pagos"</strong>.</li>
-      <li>Verifica las tarjetas de resumen: <em>Total Recaudado este Mes, Pagos Registrados, Saldo Pendiente y Tasa de Cobranza</em>.</li>
-      <li>Haz clic en <strong>"Registrar Cobro"</strong>.</li>
-      <li>Selecciona la familia (ej. <em>Familia Pérez González</em>), el estudiante asociado y el concepto de pago (Colegiatura, Matrícula o Transporte).</li>
-      <li>Ingresa el monto cobrado (ej. RD$ 14,500.00) y el método (Efectivo, Tarjeta de Crédito o Transferencia Bancaria).</li>
-      <li>Confirma la transacción. Verifica que se genere el <strong>Recibo Oficial con número correlativo único</strong> y que el saldo pendiente de la familia disminuya automáticamente.</li>
+      <li>Navega a <strong>"Finanzas & Pagos"</strong> y haz clic en <strong>"Registrar Cobro"</strong>.</li>
+      <li>Selecciona una familia con balance pendiente (ej. <em>Familia Pérez González</em>).</li>
+      <li><strong>Regla de Deuda Automática:</strong> Verifica que el sistema coloque de forma automática la <strong>Deuda Total</strong> y bloquee el campo de monto en modo solo lectura para evitar alteraciones no autorizadas.</li>
+      <li>El botón principal debe decir: <code>Cobrar Deuda Total (RD$ X.XX)</code>.</li>
+      <li><strong>Solicitud de Abono Familia:</strong> Marca la casilla <strong>"Abono familia"</strong>. Verifica que el sistema desbloquee el campo de monto y despliegue el campo obligatorio <em>"Motivo o Justificación del Abono"</em> con una advertencia en ámbar: <em>"Abono Requiere Autorización"</em>.</li>
+      <li>Ingresa un monto parcial (ej. RD$ 3,500.00) y el motivo. Observa que el botón cambia a <strong>"Solicitar Permiso de Abono"</strong>.</li>
+      <li>Haz clic en solicitar permiso. Verifica el diálogo de confirmación informando que la solicitud formal fue enviada y que <strong>no se puede cobrar el abono sin previa autorización</strong>.</li>
+    </ol>
+  </div>
+
+  <div class="step-box">
+    <div class="step-header">
+      <span>Aprobación de Abonos por Administración y Cobro Autorizado</span>
+      <span class="role-badge role-admin">Admin</span>
+    </div>
+    <ol>
+      <li>En <strong>"Finanzas & Pagos"</strong>, haz clic en la pestaña <strong>"Autorizaciones Abonos"</strong> (observa el contador de pendientes).</li>
+      <li>Localiza la solicitud enviada con los datos de la familia, deuda total, monto propuesto y motivo expuesto.</li>
+      <li>Haz clic en <strong>"Aprobar Abono"</strong>. Verifica la confirmación visual de autorización.</li>
+      <li>Vuelve a abrir <strong>"Registrar Cobro"</strong> para dicha familia y marca <strong>"Abono familia"</strong>.</li>
+      <li>Verifica que ahora aparezca el banner verde: <code>Abono Autorizado por Administración</code> y el botón habilitado: <code>Cobrar Abono Autorizado (RD$ 3,500.00)</code>.</li>
+      <li>Procesa el cobro y valida la emisión del recibo oficial y la rebaja del saldo familiar.</li>
     </ol>
   </div>
 

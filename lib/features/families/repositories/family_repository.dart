@@ -10,6 +10,7 @@ import '../../parent_portal/models/payment_receipt.dart';
 import '../../parent_portal/models/payment_agreement_request.dart';
 import '../../parent_portal/models/parent_question.dart';
 import '../../finances/models/billing_models.dart';
+import '../../finances/models/payment_approval_request.dart';
 
 /// Repositorio de Cuentas Familiares y Estudiantes en EDUNEX
 class FamilyRepository {
@@ -1147,5 +1148,96 @@ class FamilyRepository {
     }
 
     return count;
+  }
+
+  // =========================================================================
+  // GESTIÓN DE AUTORIZACIÓN DE ABONOS (Issue #17)
+  // =========================================================================
+
+  static final List<PaymentApprovalRequest> _abonoApprovalRequests = [
+    PaymentApprovalRequest(
+      id: 'req-abono-demo-1',
+      familiaId: 'e0000000-0000-0000-0000-000000000001',
+      familiaNombre: 'Familia Pérez González',
+      codigoFamilia: 'FAM-2026-001',
+      balanceTotal: 7500.00,
+      montoAbonoPropuesto: 3500.00,
+      concepto: 'Mensualidad Febrero 2026',
+      motivoAbono: 'Dificultad temporal de liquidez por gastos médicos imprevistos',
+      solicitadoPor: 'Cajero / Recepción (Lic. Gómez)',
+      fechaSolicitud: DateTime.now().subtract(const Duration(hours: 3)),
+      estado: PaymentApprovalStatus.pendiente,
+    ),
+  ];
+
+  /// Obtener solicitudes de aprobación de abono (Issue #17)
+  Future<List<PaymentApprovalRequest>> getAbonoApprovalRequests({
+    String? familiaId,
+    PaymentApprovalStatus? status,
+  }) async {
+    var list = List<PaymentApprovalRequest>.from(_abonoApprovalRequests);
+    if (familiaId != null) {
+      list = list.where((r) => r.familiaId == familiaId).toList();
+    }
+    if (status != null) {
+      list = list.where((r) => r.estado == status).toList();
+    }
+    list.sort((a, b) => b.fechaSolicitud.compareTo(a.fechaSolicitud));
+    return list;
+  }
+
+  /// Crear una nueva solicitud de abono para aprobación de administración/contabilidad (Issue #17)
+  Future<PaymentApprovalRequest> createAbonoApprovalRequest({
+    required String familiaId,
+    required double montoAbono,
+    required String motivo,
+    String? concepto,
+    String? solicitadoPor,
+  }) async {
+    final family = await getFamilyById(familiaId);
+    final req = PaymentApprovalRequest(
+      id: 'req-abono-${DateTime.now().millisecondsSinceEpoch}',
+      familiaId: familiaId,
+      familiaNombre: family?.nombreFamilia ?? 'Familia no identificada',
+      codigoFamilia: family?.codigoFamilia ?? 'FAM-N/A',
+      balanceTotal: family?.balancePendiente ?? 0.0,
+      montoAbonoPropuesto: montoAbono,
+      concepto: concepto ?? 'Abono a balance adeudado',
+      motivoAbono: motivo,
+      solicitadoPor: solicitadoPor ?? 'Caja / Recepción',
+      fechaSolicitud: DateTime.now(),
+      estado: PaymentApprovalStatus.pendiente,
+    );
+    _abonoApprovalRequests.insert(0, req);
+    return req;
+  }
+
+  /// Resolver (aprobar o rechazar) una solicitud de abono (Issue #17)
+  Future<bool> resolveAbonoApprovalRequest({
+    required String requestId,
+    required bool approve,
+    required String revisorNombre,
+    String? notas,
+  }) async {
+    final index = _abonoApprovalRequests.indexWhere((r) => r.id == requestId);
+    if (index == -1) return false;
+
+    final current = _abonoApprovalRequests[index];
+    _abonoApprovalRequests[index] = current.copyWith(
+      estado: approve ? PaymentApprovalStatus.aprobado : PaymentApprovalStatus.rechazado,
+      aprobadoPor: revisorNombre,
+      fechaResolucion: DateTime.now(),
+      notasResolucion: notas,
+    );
+    return true;
+  }
+
+  /// Obtener solicitud de abono aprobada y vigente para una familia (Issue #17)
+  Future<PaymentApprovalRequest?> getApprovedAbonoForFamily(String familiaId) async {
+    final requests = await getAbonoApprovalRequests(
+      familiaId: familiaId,
+      status: PaymentApprovalStatus.aprobado,
+    );
+    return requests.isNotEmpty ? requests.first : null;
   }
 }

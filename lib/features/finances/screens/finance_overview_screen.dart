@@ -4,6 +4,7 @@ import '../../../theme/app_colors.dart';
 import '../../families/repositories/family_repository.dart';
 import '../../superadmin/repositories/school_repository.dart';
 import '../models/billing_models.dart';
+import '../models/payment_approval_request.dart';
 import 'record_payment_dialog.dart';
 import 'monthly_billing_dialog.dart';
 
@@ -33,7 +34,11 @@ class _FinanceOverviewScreenState extends State<FinanceOverviewScreen> {
   double _totalPorCobrar = 0.0;
   final List<Map<String, dynamic>> _transacciones = [];
   DebtAgingSummary? _agingSummary;
-  int _selectedTab = 0; // 0: Historial de Recibos, 1: Antigüedad de Cartera & Mora
+  List<PaymentApprovalRequest> _abonoRequests = [];
+  int get _pendingAbonosCount =>
+      _abonoRequests.where((r) => r.estado == PaymentApprovalStatus.pendiente).length;
+
+  int _selectedTab = 0; // 0: Historial de Recibos, 1: Antigüedad de Cartera, 2: Autorizaciones de Abonos
 
   @override
   void initState() {
@@ -50,15 +55,35 @@ class _FinanceOverviewScreenState extends State<FinanceOverviewScreen> {
         pending += f.balancePendiente;
       }
       final aging = await widget.familyRepository.getDebtAgingReport();
+      final abonos = await widget.familyRepository.getAbonoApprovalRequests();
       if (mounted) {
         setState(() {
           _totalPorCobrar = pending;
           _agingSummary = aging;
+          _abonoRequests = abonos;
           _isLoading = false;
         });
       }
     } catch (_) {
       if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _resolveAbono(String requestId, bool approve) async {
+    final success = await widget.familyRepository.resolveAbonoApprovalRequest(
+      requestId: requestId,
+      approve: approve,
+      revisorNombre: 'Administrador Escolar (Lic. Martínez)',
+    );
+    if (!mounted) return;
+    if (success) {
+      await _loadFinances();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(approve ? 'Abono autorizado correctamente.' : 'Abono rechazado.'),
+          backgroundColor: approve ? AppColors.accentGreen : const Color(0xFFDC2626),
+        ),
+      );
     }
   }
 
@@ -237,6 +262,7 @@ class _FinanceOverviewScreenState extends State<FinanceOverviewScreen> {
                   children: [
                     Expanded(
                       child: InkWell(
+                        key: const Key('tab_historial_cobros'),
                         onTap: () => setState(() => _selectedTab = 0),
                         borderRadius: BorderRadius.circular(10),
                         child: Container(
@@ -262,6 +288,7 @@ class _FinanceOverviewScreenState extends State<FinanceOverviewScreen> {
                     ),
                     Expanded(
                       child: InkWell(
+                        key: const Key('tab_antiguedad_cartera'),
                         onTap: () => setState(() => _selectedTab = 1),
                         borderRadius: BorderRadius.circular(10),
                         child: Container(
@@ -307,6 +334,54 @@ class _FinanceOverviewScreenState extends State<FinanceOverviewScreen> {
                         ),
                       ),
                     ),
+                    Expanded(
+                      child: InkWell(
+                        key: const Key('tab_autorizaciones_abonos'),
+                        onTap: () => setState(() => _selectedTab = 2),
+                        borderRadius: BorderRadius.circular(10),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(vertical: 10),
+                          decoration: BoxDecoration(
+                            color: _selectedTab == 2 ? AppColors.surfaceWhite : Colors.transparent,
+                            borderRadius: BorderRadius.circular(10),
+                            boxShadow: _selectedTab == 2
+                                ? [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 4, offset: const Offset(0, 2))]
+                                : null,
+                          ),
+                          alignment: Alignment.center,
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Flexible(
+                                child: Text(
+                                  'Autorizaciones Abonos',
+                                  style: TextStyle(
+                                    fontWeight: _selectedTab == 2 ? FontWeight.bold : FontWeight.w500,
+                                    color: _selectedTab == 2 ? AppColors.navyPrimary : AppColors.textSecondary,
+                                    fontSize: 13,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              if (_pendingAbonosCount > 0) ...[
+                                const SizedBox(width: 6),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFFEF3C7),
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  child: Text(
+                                    '$_pendingAbonosCount',
+                                    style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFFB45309)),
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -315,6 +390,8 @@ class _FinanceOverviewScreenState extends State<FinanceOverviewScreen> {
 
             if (_selectedTab == 1 && !widget.isSuperAdmin) ...[
               _buildAgingSection(),
+            ] else if (_selectedTab == 2 && !widget.isSuperAdmin) ...[
+              _buildAbonoApprovalsSection(),
             ] else ...[
               // Tabla de Movimientos / Recibos
               Container(
@@ -755,6 +832,324 @@ Le agradecemos regularizar su cuenta a través del Portal de Padres o contactand
     ],
   );
 }
+
+  Widget _buildAbonoApprovalsSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Tarjetas resumen de solicitudes de abonos
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final isWide = constraints.maxWidth >= 900;
+            return GridView.count(
+              crossAxisCount: isWide ? 3 : 1,
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              crossAxisSpacing: 14,
+              mainAxisSpacing: 14,
+              childAspectRatio: isWide ? 2.2 : 2.5,
+              children: [
+                _buildFinanceCard(
+                  title: 'Solicitudes Pendientes',
+                  amount: '$_pendingAbonosCount',
+                  subtitle: 'Esperando autorización de Administración',
+                  icon: Icons.pending_actions_rounded,
+                  color: const Color(0xFFD97706),
+                ),
+                _buildFinanceCard(
+                  title: 'Abonos Autorizados',
+                  amount: '${_abonoRequests.where((r) => r.estado == PaymentApprovalStatus.aprobado).length}',
+                  subtitle: 'Habilitados para cobro en caja',
+                  icon: Icons.check_circle_rounded,
+                  color: AppColors.accentGreen,
+                ),
+                _buildFinanceCard(
+                  title: 'Abonos Rechazados',
+                  amount: '${_abonoRequests.where((r) => r.estado == PaymentApprovalStatus.rechazado).length}',
+                  subtitle: 'Debe cobrarse la deuda total',
+                  icon: Icons.cancel_rounded,
+                  color: const Color(0xFFDC2626),
+                ),
+              ],
+            );
+          },
+        ),
+
+        const SizedBox(height: 20),
+
+        // Contenedor principal de la lista
+        Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: AppColors.surfaceWhite,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: const Color(0xFFE2E8F0)),
+            boxShadow: [
+              BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 10, offset: const Offset(0, 3)),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Bandeja de Autorizaciones de Abonos',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.navyPrimary,
+                          ),
+                        ),
+                        SizedBox(height: 2),
+                        Text(
+                          'Control institucional: los cajeros no pueden cobrar abonos sin el visto bueno de Contabilidad o Dirección.',
+                          style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 14),
+                  OutlinedButton.icon(
+                    onPressed: _loadFinances,
+                    icon: const Icon(Icons.refresh_rounded, size: 16),
+                    label: const Text('Actualizar'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppColors.navyPrimary,
+                      side: const BorderSide(color: Color(0xFFCBD5E1)),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              const Divider(height: 1, color: Color(0xFFE2E8F0)),
+              const SizedBox(height: 16),
+
+              if (_abonoRequests.isEmpty)
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(32),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF8FAFC),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Column(
+                    children: [
+                      Icon(Icons.assignment_turned_in_rounded, size: 48, color: Color(0xFF94A3B8)),
+                      SizedBox(height: 12),
+                      Text(
+                        'No hay solicitudes de abono registradas.',
+                        style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+                      ),
+                      SizedBox(height: 4),
+                      Text(
+                        'Cuando un cajero intente cobrar un monto parcial desde Caja, la solicitud aparecerá aquí.',
+                        style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                      ),
+                    ],
+                  ),
+                )
+              else
+                ListView.separated(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: _abonoRequests.length,
+                  separatorBuilder: (_, __) => const SizedBox(height: 12),
+                  itemBuilder: (context, index) {
+                    final req = _abonoRequests[index];
+                    final isPendiente = req.estado == PaymentApprovalStatus.pendiente;
+                    final isAprobado = req.estado == PaymentApprovalStatus.aprobado;
+
+                    final Color statusColor = isPendiente
+                        ? const Color(0xFFD97706)
+                        : (isAprobado ? AppColors.accentGreen : const Color(0xFFDC2626));
+                    final Color statusBg = isPendiente
+                        ? const Color(0xFFFEF3C7)
+                        : (isAprobado ? const Color(0xFFDCFCE7) : const Color(0xFFFEE2E2));
+
+                    return Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFAFAFA),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: isPendiente ? const Color(0xFFFDE68A) : const Color(0xFFE2E8F0),
+                        ),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(10),
+                                decoration: BoxDecoration(
+                                  color: statusBg,
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: Icon(
+                                  isPendiente
+                                      ? Icons.hourglass_top_rounded
+                                      : (isAprobado ? Icons.check_circle_rounded : Icons.cancel_rounded),
+                                  color: statusColor,
+                                  size: 22,
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      children: [
+                                        Text(
+                                          req.familiaNombre,
+                                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: AppColors.navyPrimary),
+                                        ),
+                                        const SizedBox(width: 8),
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                          decoration: BoxDecoration(
+                                            color: const Color(0xFFE2E8F0),
+                                            borderRadius: BorderRadius.circular(4),
+                                          ),
+                                          child: Text(
+                                            req.codigoFamilia,
+                                            style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppColors.textSecondary),
+                                          ),
+                                        ),
+                                        const Spacer(),
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                          decoration: BoxDecoration(
+                                            color: statusBg,
+                                            borderRadius: BorderRadius.circular(6),
+                                          ),
+                                          child: Text(
+                                            req.estado.label,
+                                            style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: statusColor),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 6),
+                                    Text(
+                                      'Concepto: ${req.concepto}  •  Solicitado por: ${req.solicitadoPor}',
+                                      style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                      decoration: BoxDecoration(
+                                        color: Colors.white,
+                                        borderRadius: BorderRadius.circular(6),
+                                        border: Border.all(color: const Color(0xFFE2E8F0)),
+                                      ),
+                                      child: Text(
+                                        'Motivo expuesto: "${req.motivoAbono}"',
+                                        style: const TextStyle(fontSize: 12, fontStyle: FontStyle.italic, color: Color(0xFF334155)),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+                          const Divider(height: 1, color: Color(0xFFE2E8F0)),
+                          const SizedBox(height: 10),
+                          Wrap(
+                            alignment: WrapAlignment.spaceBetween,
+                            crossAxisAlignment: WrapCrossAlignment.center,
+                            spacing: 16,
+                            runSpacing: 10,
+                            children: [
+                              Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      const Text('Deuda Total:', style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+                                      Text(
+                                        'RD\$ ${req.balanceTotal.toStringAsFixed(2)}',
+                                        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF64748B)),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(width: 24),
+                                  Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      const Text('Abono Propuesto:', style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+                                      Text(
+                                        'RD\$ ${req.montoAbonoPropuesto.toStringAsFixed(2)}',
+                                        style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: statusColor),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+
+                              if (isPendiente)
+                                Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    OutlinedButton.icon(
+                                      key: Key('btn_rechazar_${req.id}'),
+                                      onPressed: () => _resolveAbono(req.id, false),
+                                      icon: const Icon(Icons.close_rounded, size: 16),
+                                      label: const Text('Rechazar'),
+                                      style: OutlinedButton.styleFrom(
+                                        foregroundColor: const Color(0xFFDC2626),
+                                        side: const BorderSide(color: Color(0xFFFCA5A5)),
+                                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 10),
+                                    ElevatedButton.icon(
+                                      key: Key('btn_aprobar_${req.id}'),
+                                      onPressed: () => _resolveAbono(req.id, true),
+                                      icon: const Icon(Icons.check_rounded, size: 16),
+                                      label: const Text('Aprobar Abono'),
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: AppColors.accentGreen,
+                                        foregroundColor: Colors.white,
+                                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                      ),
+                                    ),
+                                  ],
+                                )
+                              else
+                                Text(
+                                  isAprobado
+                                      ? 'Autorizado por ${req.aprobadoPor ?? "Administración"}'
+                                      : 'Rechazado por Administración',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                    color: statusColor,
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
 
   Widget _buildFinanceCard({
     required String title,

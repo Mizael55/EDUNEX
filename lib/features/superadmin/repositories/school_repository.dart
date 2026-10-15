@@ -279,6 +279,16 @@ class SchoolRepository {
     return null;
   }
 
+  /// Obtiene un colegio completo por ID
+  Future<School?> getSchoolById(String id) async {
+    final list = await getSchools();
+    try {
+      return list.firstWhere((s) => s.id == id);
+    } catch (_) {
+      return null;
+    }
+  }
+
   /// Crea un nuevo colegio en Supabase (método simplificado)
   Future<School> createSchool({
     required String nombre,
@@ -337,6 +347,48 @@ class SchoolRepository {
         createdAt: old.createdAt,
         totalEstudiantes: old.totalEstudiantes,
         totalFamilias: old.totalFamilias,
+      );
+    }
+  }
+
+  /// Actualiza el logotipo oficial del colegio tipo perfil
+  Future<void> updateSchoolLogo({
+    required String schoolId,
+    required String logoUrl,
+  }) async {
+    if (_supabaseClient != null && SupabaseConfig.isConfigured) {
+      try {
+        await _supabaseClient
+            .from('colegios')
+            .update({'logo_url': logoUrl.trim()})
+            .eq('id', schoolId);
+      } catch (e) {
+        debugPrint('Aviso: Logo actualizado localmente: $e');
+      }
+    }
+
+    final index = _demoSchools.indexWhere((s) => s.id == schoolId);
+    if (index != -1) {
+      final old = _demoSchools[index];
+      _demoSchools[index] = School(
+        id: old.id,
+        nombre: old.nombre,
+        rnc: old.rnc,
+        siglas: old.siglas,
+        telefono: old.telefono,
+        emailContacto: old.emailContacto,
+        direccion: old.direccion,
+        logoUrl: logoUrl.trim(),
+        estadoSuscripcion: old.estadoSuscripcion,
+        maxEstudiantes: old.maxEstudiantes,
+        createdAt: old.createdAt,
+        totalEstudiantes: old.totalEstudiantes,
+        totalFamilias: old.totalFamilias,
+        precioInicial: old.precioInicial,
+        precioPrimaria: old.precioPrimaria,
+        precioSecundaria: old.precioSecundaria,
+        precioMatricula: old.precioMatricula,
+        sujetoAMejoraPago: old.sujetoAMejoraPago,
       );
     }
   }

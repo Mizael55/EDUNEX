@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import '../../../theme/app_colors.dart';
 import '../../families/models/family.dart';
 import '../../families/repositories/family_repository.dart';
+import '../models/payment_approval_request.dart';
 
 /// Modal para registrar pagos, abonos y emisión de recibos escolares
 class RecordPaymentDialog extends StatefulWidget {
@@ -46,7 +47,13 @@ class _RecordPaymentDialogState extends State<RecordPaymentDialog> {
   bool _isLoadingFamilies = true;
   bool _isSubmitting = false;
 
-  final _montoController = TextEditingController(text: '5000.00');
+  // Issue #17: Control de Abono y Autorización
+  bool _isAbonoFamilia = false;
+  PaymentApprovalRequest? _approvedAbono;
+  bool _isLoadingApproval = false;
+  final _motivoAbonoController = TextEditingController();
+
+  final _montoController = TextEditingController(text: '0.00');
   final _referenciaController = TextEditingController();
   final _notasController = TextEditingController();
 
@@ -85,29 +92,77 @@ class _RecordPaymentDialogState extends State<RecordPaymentDialog> {
     _montoController.dispose();
     _referenciaController.dispose();
     _notasController.dispose();
+    _motivoAbonoController.dispose();
     super.dispose();
+  }
+
+  Future<void> _checkApprovedAbono(String familiaId) async {
+    setState(() => _isLoadingApproval = true);
+    try {
+      final approved = await widget.repository.getApprovedAbonoForFamily(familiaId);
+      if (mounted) {
+        setState(() {
+          _approvedAbono = approved;
+          _isLoadingApproval = false;
+          if (_isAbonoFamilia && approved != null) {
+            _montoController.text = approved.montoAbonoPropuesto.toStringAsFixed(2);
+          }
+        });
+      }
+    } catch (_) {
+      if (mounted) setState(() => _isLoadingApproval = false);
+    }
   }
 
   Future<void> _loadFamilies() async {
     try {
       final list = await widget.repository.getFamilies();
       if (mounted) {
+        Family? initial;
+        if (widget.initialFamily != null) {
+          initial = list.firstWhere(
+            (f) => f.id == widget.initialFamily!.id,
+            orElse: () => widget.initialFamily!,
+          );
+        } else if (list.isNotEmpty) {
+          initial = list.first;
+        }
+
         setState(() {
           _families = list;
           _isLoadingFamilies = false;
-          if (widget.initialFamily != null) {
-            _selectedFamily = list.firstWhere(
-              (f) => f.id == widget.initialFamily!.id,
-              orElse: () => widget.initialFamily!,
-            );
-          } else if (list.isNotEmpty) {
-            _selectedFamily = list.first;
+          _selectedFamily = initial;
+          if (initial != null) {
+            _montoController.text = initial.balancePendiente.toStringAsFixed(2);
           }
         });
+
+        if (initial != null) {
+          _checkApprovedAbono(initial.id);
+        }
       }
     } catch (_) {
       if (mounted) setState(() => _isLoadingFamilies = false);
     }
+  }
+
+  void _onToggleAbono(bool value) {
+    setState(() {
+      _isAbonoFamilia = value;
+      if (value) {
+        _selectedConcepto = 'Abono a Saldo Pendiente';
+        if (_approvedAbono != null) {
+          _montoController.text = _approvedAbono!.montoAbonoPropuesto.toStringAsFixed(2);
+        } else {
+          final currentDebt = _selectedFamily?.balancePendiente ?? 0.0;
+          final half = (currentDebt / 2).roundToDouble();
+          _montoController.text = half > 0 ? half.toStringAsFixed(2) : '1000.00';
+        }
+      } else {
+        _montoController.text = (_selectedFamily?.balancePendiente ?? 0.0).toStringAsFixed(2);
+        _selectedConcepto = 'Colegiatura Mensual';
+      }
+    });
   }
 
   Future<void> _submit() async {
@@ -119,10 +174,80 @@ class _RecordPaymentDialogState extends State<RecordPaymentDialog> {
       return;
     }
 
+    final monto = double.tryParse(_montoController.text.trim()) ?? 0.0;
+
+    // Issue #17: Si es abono y NO cuenta con autorización de administración/contabilidad:
+    if (_isAbonoFamilia && _approvedAbono == null) {
+      if (_motivoAbonoController.text.trim().isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            backgroundColor: Color(0xFFD97706),
+            content: Text('Debe especificar el motivo del abono para enviar la solicitud de autorización.'),
+          ),
+        );
+        return;
+      }
+
+      setState(() => _isSubmitting = true);
+      try {
+        await widget.repository.createAbonoApprovalRequest(
+          familiaId: _selectedFamily!.id,
+          montoAbono: monto,
+          motivo: _motivoAbonoController.text.trim(),
+          concepto: _selectedConcepto,
+          solicitadoPor: 'Cajero / Recepción',
+        );
+
+        if (mounted) {
+          setState(() => _isSubmitting = false);
+          await showDialog(
+            context: context,
+            builder: (ctx) => AlertDialog(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              title: const Row(
+                children: [
+                  Icon(Icons.mark_email_read_rounded, color: Color(0xFFD97706), size: 28),
+                  SizedBox(width: 10),
+                  Text('Solicitud de Permiso Enviada'),
+                ],
+              ),
+              content: Text(
+                'Se ha enviado la solicitud de autorización a Administración y Contabilidad por RD\$ ${monto.toStringAsFixed(2)} para ${_selectedFamily!.nombreFamilia}.\n\nPor directriz del centro, no se puede cobrar abonos sin previa autorización.',
+                style: const TextStyle(fontSize: 14),
+              ),
+              actions: [
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.navyPrimary,
+                    foregroundColor: Colors.white,
+                  ),
+                  onPressed: () {
+                    Navigator.of(ctx).pop();
+                    Navigator.of(context).pop();
+                  },
+                  child: const Text('Entendido'),
+                ),
+              ],
+            ),
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          setState(() => _isSubmitting = false);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              backgroundColor: Colors.red.shade800,
+              content: Text('Error al enviar la solicitud: $e'),
+            ),
+          );
+        }
+      }
+      return;
+    }
+
     setState(() => _isSubmitting = true);
 
     try {
-      final monto = double.tryParse(_montoController.text.trim()) ?? 0.0;
       await widget.repository.recordPayment(
         familiaId: _selectedFamily!.id,
         monto: monto,
@@ -417,18 +542,168 @@ Estado: APROBADO & ASENTADO
                                   return DropdownMenuItem<Family>(
                                     value: f,
                                     child: Text(
-                                      '${f.nombreFamilia} (${f.codigoFamilia}) - Saldo: RD\$ ${f.balancePendiente.toStringAsFixed(2)}',
+                                      '${f.nombreFamilia} (${f.codigoFamilia}) - Deuda: RD\$ ${f.balancePendiente.toStringAsFixed(2)}',
                                       overflow: TextOverflow.ellipsis,
                                       style: const TextStyle(fontSize: 13),
                                     ),
                                   );
                                 }).toList(),
                                 onChanged: (f) {
-                                  if (f != null) setState(() => _selectedFamily = f);
+                                  if (f != null) {
+                                    setState(() {
+                                      _selectedFamily = f;
+                                      if (!_isAbonoFamilia) {
+                                        _montoController.text = f.balancePendiente.toStringAsFixed(2);
+                                      }
+                                    });
+                                    _checkApprovedAbono(f.id);
+                                  }
                                 },
                               ),
 
-                            const SizedBox(height: 18),
+                            const SizedBox(height: 12),
+
+                            // Resumen de Deuda Total Automática
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFF1F5F9),
+                                borderRadius: BorderRadius.circular(10),
+                                border: Border.all(color: const Color(0xFFE2E8F0)),
+                              ),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  const Row(
+                                    children: [
+                                      Icon(Icons.account_balance_wallet_rounded, size: 18, color: AppColors.navyPrimary),
+                                      SizedBox(width: 8),
+                                      Text('Deuda Total Pendiente:', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: AppColors.navyPrimary)),
+                                    ],
+                                  ),
+                                  Text(
+                                    'RD\$ ${(_selectedFamily?.balancePendiente ?? 0.0).toStringAsFixed(2)}',
+                                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Color(0xFFDC2626)),
+                                  ),
+                                ],
+                              ),
+                            ),
+
+                            // Checkbox Abono Familia (Issue #17)
+                            Container(
+                              margin: const EdgeInsets.symmetric(vertical: 12),
+                              decoration: BoxDecoration(
+                                color: _isAbonoFamilia ? const Color(0xFFEFF6FF) : const Color(0xFFF8FAFC),
+                                borderRadius: BorderRadius.circular(10),
+                                border: Border.all(color: _isAbonoFamilia ? AppColors.electricBlue : const Color(0xFFE2E8F0)),
+                              ),
+                              child: Material(
+                                color: Colors.transparent,
+                                child: CheckboxListTile(
+                                  key: const Key('checkbox_abono_familia'),
+                                  value: _isAbonoFamilia,
+                                  onChanged: (val) => _onToggleAbono(val ?? false),
+                                  activeColor: AppColors.navyPrimary,
+                                  title: const Text(
+                                    'Abono familia',
+                                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: AppColors.navyPrimary),
+                                  ),
+                                  subtitle: Text(
+                                    _isAbonoFamilia
+                                        ? 'Modo abono activo: Permite ingresar monto parcial y requiere permiso previo.'
+                                        : 'Desmarcado: Solo se permite cobrar el total adeudado de forma automática.',
+                                    style: const TextStyle(fontSize: 12),
+                                  ),
+                                  controlAffinity: ListTileControlAffinity.leading,
+                                  dense: true,
+                                ),
+                              ),
+                            ),
+
+                            // Si es abono: banner de estado y motivo
+                            if (_isAbonoFamilia) ...[
+                              if (_isLoadingApproval)
+                                const Center(
+                                  child: Padding(
+                                    padding: EdgeInsets.all(8.0),
+                                    child: CircularProgressIndicator(),
+                                  ),
+                                )
+                              else if (_approvedAbono != null)
+                                Container(
+                                  padding: const EdgeInsets.all(12),
+                                  margin: const EdgeInsets.only(bottom: 12),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFF0FDF4),
+                                    borderRadius: BorderRadius.circular(10),
+                                    border: Border.all(color: const Color(0xFF86EFAC)),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      const Icon(Icons.verified_rounded, color: Color(0xFF166534), size: 22),
+                                      const SizedBox(width: 10),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            const Text('Abono Autorizado por Administración', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF166534), fontSize: 13)),
+                                            Text(
+                                              'Aprobado por ${_approvedAbono!.aprobadoPor ?? "Administración"} por hasta RD\$ ${_approvedAbono!.montoAbonoPropuesto.toStringAsFixed(2)}. Puede proceder con el cobro.',
+                                              style: const TextStyle(fontSize: 12, color: Color(0xFF14532D)),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                )
+                              else
+                                Container(
+                                  padding: const EdgeInsets.all(12),
+                                  margin: const EdgeInsets.only(bottom: 12),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFFEF3C7),
+                                    borderRadius: BorderRadius.circular(10),
+                                    border: Border.all(color: const Color(0xFFFDE68A)),
+                                  ),
+                                  child: const Row(
+                                    children: [
+                                      Icon(Icons.shield_outlined, color: Color(0xFFB45309), size: 22),
+                                      SizedBox(width: 10),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Text('Abono Requiere Autorización', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF92400E), fontSize: 13)),
+                                            Text(
+                                              'No se puede cobrar sin autorización. Al hacer clic abajo, se enviará la solicitud al administrador o contable para su aprobación.',
+                                              style: TextStyle(fontSize: 12, color: Color(0xFF78350F)),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+
+                              const Text('Motivo o Justificación del Abono *', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppColors.navyPrimary)),
+                              const SizedBox(height: 6),
+                              TextFormField(
+                                key: const Key('input_motivo_abono'),
+                                controller: _motivoAbonoController,
+                                decoration: InputDecoration(
+                                  hintText: 'Ej: Dificultad económica temporal, pago parcial de mensualidad...',
+                                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                                ),
+                                validator: (v) {
+                                  if (_isAbonoFamilia && (v == null || v.trim().isEmpty)) {
+                                    return 'Indique el motivo del abono para la solicitud de permiso';
+                                  }
+                                  return null;
+                                },
+                              ),
+                              const SizedBox(height: 14),
+                            ],
 
                             // Concepto y Monto
                             Row(
@@ -463,10 +738,15 @@ Estado: APROBADO & ASENTADO
                                       const Text('Monto (RD\$) *', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppColors.navyPrimary)),
                                       const SizedBox(height: 6),
                                       TextFormField(
+                                        key: const Key('input_monto_pago'),
                                         controller: _montoController,
+                                        readOnly: !_isAbonoFamilia,
                                         keyboardType: const TextInputType.numberWithOptions(decimal: true),
                                         decoration: InputDecoration(
                                           prefixText: 'RD\$ ',
+                                          filled: !_isAbonoFamilia,
+                                          fillColor: !_isAbonoFamilia ? const Color(0xFFF1F5F9) : Colors.white,
+                                          helperText: !_isAbonoFamilia ? 'Total adeudado automático' : null,
                                           border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
                                         ),
                                         validator: (v) {
@@ -553,8 +833,11 @@ Estado: APROBADO & ASENTADO
                       border: Border(top: BorderSide(color: Color(0xFFE2E8F0))),
                       borderRadius: BorderRadius.vertical(bottom: Radius.circular(20)),
                     ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
+                    child: Wrap(
+                      alignment: WrapAlignment.end,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      spacing: 12,
+                      runSpacing: 8,
                       children: [
                         OutlinedButton(
                           onPressed: _isSubmitting ? null : () => Navigator.of(context).pop(),
@@ -565,8 +848,8 @@ Estado: APROBADO & ASENTADO
                           ),
                           child: const Text('Cancelar'),
                         ),
-                        const SizedBox(width: 12),
                         ElevatedButton.icon(
+                          key: const Key('btn_submit_pago_abono'),
                           onPressed: _isSubmitting ? null : _submit,
                           icon: _isSubmitting
                               ? const SizedBox(
@@ -574,10 +857,25 @@ Estado: APROBADO & ASENTADO
                                   height: 16,
                                   child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                                 )
-                              : const Icon(Icons.check_circle_rounded, size: 18),
-                          label: Text(_isSubmitting ? 'Registrando...' : 'Registrar Pago & Emitir Recibo'),
+                              : Icon(
+                                  _isAbonoFamilia
+                                      ? (_approvedAbono != null ? Icons.verified_rounded : Icons.send_rounded)
+                                      : Icons.check_circle_rounded,
+                                  size: 18,
+                                ),
+                          label: Text(
+                            _isSubmitting
+                                ? 'Procesando...'
+                                : _isAbonoFamilia
+                                    ? (_approvedAbono != null
+                                        ? 'Cobrar Abono Autorizado (RD\$ ${_montoController.text})'
+                                        : 'Solicitar Permiso de Abono')
+                                    : 'Cobrar Deuda Total (RD\$ ${_montoController.text})',
+                          ),
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.accentGreen,
+                            backgroundColor: _isAbonoFamilia && _approvedAbono == null
+                                ? const Color(0xFFD97706)
+                                : AppColors.accentGreen,
                             foregroundColor: Colors.white,
                             padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 12),
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),

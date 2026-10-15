@@ -43,6 +43,9 @@ import 'package:edunex/features/parent_portal/widgets/receipt_details_dialog.dar
 import 'package:edunex/features/store/models/store_item.dart';
 import 'package:edunex/features/store/repositories/store_repository.dart';
 import 'package:edunex/features/store/screens/admin_store_screen.dart';
+import 'package:edunex/features/finances/models/payment_approval_request.dart';
+import 'package:edunex/features/finances/screens/record_payment_dialog.dart';
+import 'package:edunex/features/superadmin/widgets/edit_school_logo_dialog.dart';
 import 'package:edunex/screens/login_screen.dart';
 import 'package:edunex/screens/main_shell.dart';
 
@@ -1613,6 +1616,172 @@ void main() {
     final orders = await storeRepo.getOrders(familiaId: 'e0000000-0000-0000-0000-000000000001');
     expect(orders.length, greaterThanOrEqualTo(2));
     expect(orders.first.items.first.productName, 'Polo Oficial Institucional EDUNEX');
+  });
+
+  testWidgets('Issue #15: EditSchoolLogoDialog renders presets and updates school logo', (WidgetTester tester) async {
+    tester.view.physicalSize = const Size(1280, 900);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+
+    final schoolRepo = SchoolRepository();
+    String? selectedLogo;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: EditSchoolLogoDialog(
+            schoolId: 'a0000000-0000-0000-0000-000000000001',
+            schoolName: 'Colegio Bilingüe San Juan',
+            currentLogoUrl: 'https://images.unsplash.com/photo-1546410531-bb4caa6b424d?w=150',
+            schoolRepository: schoolRepo,
+            onLogoUpdated: (newLogo) {
+              selectedLogo = newLogo;
+            },
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // Verify dialog header
+    expect(find.text('Logo Oficial del Centro'), findsOneWidget);
+    expect(find.textContaining('Colegio Bilingüe San Juan'), findsOneWidget);
+
+    // Verify preset emblems
+    expect(find.text('Seleccionar Emblema Institucional Recomendado:'), findsOneWidget);
+
+    // Save and verify callback
+    await tester.tap(find.text('Guardar Logo de Perfil'));
+    await tester.pumpAndSettle();
+
+    expect(selectedLogo, isNotNull);
+  });
+
+  test('Issue #17: FamilyRepository manages abono approval requests lifecycle', () async {
+    final repo = FamilyRepository();
+
+    // 1. Initial requests count
+    final initial = await repo.getAbonoApprovalRequests();
+    final initialCount = initial.length;
+
+    // 2. Create approval request
+    final req = await repo.createAbonoApprovalRequest(
+      familiaId: 'e0000000-0000-0000-0000-000000000001',
+      montoAbono: 2500.0,
+      motivo: 'Compromiso de pago en dos cuotas quincenales',
+      solicitadoPor: 'Cajero de Turno',
+    );
+    expect(req.id, startsWith('req-abono-'));
+    expect(req.estado, PaymentApprovalStatus.pendiente);
+
+    // 3. Verify in pending list
+    final pending = await repo.getAbonoApprovalRequests(status: PaymentApprovalStatus.pendiente);
+    expect(pending.length, initialCount + 1);
+
+    // 4. Resolve approval (approve)
+    final ok = await repo.resolveAbonoApprovalRequest(
+      requestId: req.id,
+      approve: true,
+      revisorNombre: 'Director Financiero',
+      notas: 'Autorizado abono parcial por acuerdo previo',
+    );
+    expect(ok, isTrue);
+
+    // 5. Verify approved abono for family
+    final approved = await repo.getApprovedAbonoForFamily('e0000000-0000-0000-0000-000000000001');
+    expect(approved, isNotNull);
+    expect(approved!.montoAbonoPropuesto, 2500.0);
+    expect(approved.estado, PaymentApprovalStatus.aprobado);
+  });
+
+  testWidgets('Issue #17: RecordPaymentDialog auto-fills debt, locks input, and enforces abono approval workflow', (WidgetTester tester) async {
+    tester.view.physicalSize = const Size(1280, 900);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+
+    final familyRepo = FamilyRepository();
+    final family = (await familyRepo.getFamilies()).first;
+    final debtStr = family.balancePendiente.toStringAsFixed(2);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: RecordPaymentDialog(
+            repository: familyRepo,
+            initialFamily: family,
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // 1. Verify automatic full debt display
+    expect(find.text('Deuda Total Pendiente:'), findsOneWidget);
+    expect(find.text('Abono familia'), findsOneWidget);
+    expect(find.textContaining('RD\$ $debtStr'), findsWidgets);
+
+    // 2. Default button is "Cobrar Deuda Total"
+    expect(find.textContaining('Cobrar Deuda Total'), findsOneWidget);
+
+    // 3. Toggle "Abono familia" checkbox
+    await tester.tap(find.byKey(const Key('checkbox_abono_familia')));
+    await tester.pumpAndSettle();
+
+    // 4. Mode active: motive field is now shown
+    expect(find.byKey(const Key('input_motivo_abono')), findsOneWidget);
+    expect(find.text('Solicitar Permiso de Abono'), findsOneWidget);
+
+    // 5. Enter motive
+    await tester.enterText(find.byKey(const Key('input_motivo_abono')), 'Acuerdo firmado en dirección para pago en 2 partes');
+    await tester.pumpAndSettle();
+
+    // 6. Submit abono permission request
+    await tester.tap(find.byKey(const Key('btn_submit_pago_abono')));
+    await tester.pumpAndSettle();
+
+    // 7. Verify permission sent confirmation dialog
+    expect(find.text('Solicitud de Permiso Enviada'), findsOneWidget);
+    expect(find.textContaining('Por directriz del centro, no se puede cobrar abonos sin previa autorización'), findsOneWidget);
+  });
+
+  testWidgets('Issue #17: FinanceOverviewScreen allows administrator to approve abono request', (WidgetTester tester) async {
+    tester.view.physicalSize = const Size(1280, 900);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+
+    final familyRepo = FamilyRepository();
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: FinanceOverviewScreen(
+            isSuperAdmin: false,
+            familyRepository: familyRepo,
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // 1. Switch to Autorizaciones Abonos tab
+    expect(find.byKey(const Key('tab_autorizaciones_abonos')), findsOneWidget);
+    await tester.tap(find.byKey(const Key('tab_autorizaciones_abonos')));
+    await tester.pumpAndSettle();
+
+    // 2. Verify bandeja header
+    expect(find.text('Bandeja de Autorizaciones de Abonos'), findsOneWidget);
+    expect(find.text('Aprobar Abono'), findsWidgets);
+
+    // 3. Scroll to approve button and approve first pending request
+    final approveButtons = find.text('Aprobar Abono');
+    await tester.ensureVisible(approveButtons.first);
+    await tester.pumpAndSettle();
+
+    await tester.tap(approveButtons.first);
+    await tester.pumpAndSettle();
+
+    // 4. Verify snackbar confirmation
+    expect(find.text('Abono autorizado correctamente.'), findsOneWidget);
   });
 }
 
