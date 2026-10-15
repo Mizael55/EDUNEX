@@ -277,8 +277,8 @@ html_content = """<!DOCTYPE html>
       <div class="cover-title">Protocolo de Certificación y Pruebas QA (UAT)</div>
       <div class="cover-subtitle">Manual Exhaustivo de Validación Funcional de Sistema Integral</div>
       <div class="badge-bar">
-        <span class="badge badge-primary">Versión Staging v1.4.0</span>
-        <span class="badge badge-success">35 / 35 Tests Aprobados</span>
+        <span class="badge badge-primary">Versión Staging v1.5.0</span>
+        <span class="badge badge-success">38 / 38 Tests Aprobados (100% Verde)</span>
         <span class="badge badge-warning">Listo para QA</span>
         <span class="badge badge-info">Multi-Rol & Multi-Tenant</span>
       </div>
@@ -450,6 +450,12 @@ html_content = """<!DOCTYPE html>
         <td>Portal Padres &gt; <em>Pagar con Tarjeta</em></td>
         <td>Padre / Tutor</td>
         <td>Pago con tarjeta seguro CardNET, simulación y recibo NCF digital</td>
+      </tr>
+      <tr>
+        <td><strong>Tienda Escolar & Uniformes</strong></td>
+        <td>Menú Admin / Portal Padres &gt; <em>Tienda Escolar</em></td>
+        <td>Admin / Padre</td>
+        <td>Catálogo oficial, inventario físico, pedidos con NCF y despacho</td>
       </tr>
       <tr>
         <td><strong>Portal para Padres</strong></td>
@@ -710,7 +716,31 @@ html_content = """<!DOCTYPE html>
     </ol>
   </div>
 
-  <h2>Módulos 13 y 14: Portal de Padres Completo y Portal Estudiantil</h2>
+  <h2>Módulo 13: Tienda Escolar, Uniformes & Despacho de Pedidos</h2>
+  <div class="step-box">
+    <div class="step-header">
+      <span>Gestión de Catálogo, Ajustes de Stock y Entrega de Pedidos</span>
+      <span class="role-badge role-admin">Administrador</span>
+      <span class="role-badge role-parent">Padres</span>
+    </div>
+    <ol>
+      <li><strong>Como Administrador:</strong> Dirígete al menú lateral <strong>"Tienda Escolar"</strong>.</li>
+      <li>Observa las 4 tarjetas de KPIs superiores: <strong>Artículos Catálogo</strong>, <strong>Stock Físico</strong>, <strong>Por Despachar</strong> y <strong>Ventas Tienda</strong>.</li>
+      <li>Filtra el catálogo por categoría usando los chips: <em>Todos, Uniformes, Libros & Textos, Útiles Escolares</em>.</li>
+      <li>Verifica las alertas de stock (verde: <em>En Stock</em>, naranja: <em>Bajo Stock</em>, rojo: <em>Agotado</em>).</li>
+      <li>En cualquier producto, pulsa los botones de ajuste rápido <strong>"+5"</strong> o <strong>"-1"</strong> y verifica cómo se recalculan inmediatamente el stock y el KPI global.</li>
+      <li>Haz clic en <strong>"+ Nuevo Producto"</strong>, completa el formulario (Nombre, Categoría, Precio RD$, Stock inicial, Descripción, Tallas/Variantes e Icono) y pulsa <strong>"Guardar en Catálogo"</strong>. Comprueba su aparición inmediata.</li>
+      <li>Cambia a la pestaña <strong>"Pedidos & Despacho a Familias"</strong>. Revisa los pedidos de las familias con su detalle de artículos, tallas, importe y NCF.</li>
+      <li>En un pedido en estado "Listo para Retiro" (ej. Pedido #ord-001), haz clic en <strong>"Confirmar Entrega"</strong>. Observa la notificación y verifica que el estado cambie a verde <strong>"Entregado"</strong> con fecha y hora formal de entrega.</li>
+      <li><strong>Como Padre de Familia:</strong> Conmuta al perfil de Padre de Familia y accede a <strong>"Tienda Escolar"</strong>.</li>
+      <li>Explora los productos, selecciona la talla requerida en el desplegable y haz clic en <strong>"Agregar"</strong>.</li>
+      <li>Comprueba la actualización del botón flotante del carrito en el encabezado con el monto acumulado en RD$.</li>
+      <li>Abre el <strong>Carrito</strong>, revisa el resumen de ítems, cantidades y el cálculo del total general.</li>
+      <li>Haz clic en <strong>"Completar Pedido & Pagar"</strong>. El sistema procesa la transacción, descuenta automáticamente las existencias del inventario físico, emite el <strong>Comprobante Oficial de Pago con NCF</strong> y registra la orden en <strong>"Mis Pedidos"</strong> para su posterior retiro en el colegio.</li>
+    </ol>
+  </div>
+
+  <h2>Módulos 14 y 15: Portal de Padres Completo y Portal Estudiantil</h2>
   <div class="step-box">
     <div class="step-header">
       <span>Autoservicio Familiar y Vista de Estudiantes</span>
@@ -718,7 +748,7 @@ html_content = """<!DOCTYPE html>
       <span class="role-badge role-student">Alumnos</span>
     </div>
     <ol>
-      <li><strong>Portal de Padres (10 Módulos):</strong> Revisa la navegación entre hijos con el switch selector y verifica el acceso a: Pagos, Estado de Cuenta, Ficha Médica, Circulares, Asistencia, Transporte, Eventos, Horarios, Rutas y Boletín.</li>
+      <li><strong>Portal de Padres (11 Módulos):</strong> Revisa la navegación entre hijos con el switch selector y verifica el acceso a: Pagos, Estado de Cuenta, Tienda Escolar, Ficha Médica, Circulares, Asistencia, Transporte, Eventos, Horarios, Rutas y Boletín.</li>
       <li><strong>Portal Estudiantil:</strong> Inicia sesión con el botón <strong>"Acceso Rápido: Estudiante"</strong> y corrobora que Mateo Pérez solo tenga acceso a su horario, asignaturas y eventos, manteniendo protegida la información financiera y de cobros del hogar.</li>
     </ol>
   </div>
@@ -843,6 +873,12 @@ html_content = """<!DOCTYPE html>
       <tr>
         <td><strong>18. Pasarela de Pagos</strong></td>
         <td>Simulación de tarjeta con marca dinámica, CVV, autorización y generación de recibo NCF.</td>
+        <td>[ ] Pasa &nbsp; [ ] Falla</td>
+        <td></td>
+      </tr>
+      <tr>
+        <td><strong>19. Tienda Escolar & Uniformes</strong></td>
+        <td>Catálogo oficial, control de stock físico, selección de tallas, cobro con NCF y módulo de despacho.</td>
         <td>[ ] Pasa &nbsp; [ ] Falla</td>
         <td></td>
       </tr>

@@ -15,6 +15,7 @@ import '../../events/repositories/event_repository.dart';
 import '../../attendance/repositories/attendance_repository.dart';
 import '../../circulars/repositories/circular_repository.dart';
 import '../../academics/repositories/academic_repository.dart';
+import '../../store/repositories/store_repository.dart';
 import 'parent_grades_screen.dart';
 
 /// Portal de Padres y Tutores en EDUNEX
@@ -25,6 +26,7 @@ class ParentPortalScreen extends StatefulWidget {
   final AttendanceRepository? attendanceRepository;
   final CircularRepository? circularRepository;
   final AcademicRepository? academicRepository;
+  final StoreRepository? storeRepository;
   final void Function(int tabIndex)? onNavigateTab;
 
   const ParentPortalScreen({
@@ -35,6 +37,7 @@ class ParentPortalScreen extends StatefulWidget {
     this.attendanceRepository,
     this.circularRepository,
     this.academicRepository,
+    this.storeRepository,
     this.onNavigateTab,
   });
 
@@ -346,6 +349,7 @@ class _ParentPortalScreenState extends State<ParentPortalScreen> {
                       ParentStoreScreen(
                         userProfile: widget.userProfile,
                         familyRepository: widget.familyRepository,
+                        storeRepository: widget.storeRepository,
                       ),
                     );
                   },

@@ -34,6 +34,7 @@ class AppColors {
   static const Color textLight = Color(0xFFE2E8F0);
   static const Color navySecondary = navyLight;
   static const Color amberAccent = accentOrange;
+  static const Color crimsonAlert = Color(0xFFDC2626);
 
   // Degradados corporativos
   static const LinearGradient primaryGradient = LinearGradient(

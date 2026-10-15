@@ -40,6 +40,9 @@ import 'package:edunex/features/parent_portal/screens/parent_grades_screen.dart'
 import 'package:edunex/features/inquiries/screens/admin_inquiries_screen.dart';
 import 'package:edunex/features/parent_portal/screens/online_payment_gateway_dialog.dart';
 import 'package:edunex/features/parent_portal/widgets/receipt_details_dialog.dart';
+import 'package:edunex/features/store/models/store_item.dart';
+import 'package:edunex/features/store/repositories/store_repository.dart';
+import 'package:edunex/features/store/screens/admin_store_screen.dart';
 import 'package:edunex/screens/login_screen.dart';
 import 'package:edunex/screens/main_shell.dart';
 
@@ -1428,6 +1431,188 @@ void main() {
     // Verify payment callback and receipt dialog
     expect(paymentSucceeded, isTrue);
     expect(find.textContaining('Comprobante Oficial de Pago'), findsOneWidget);
+  });
+
+  test('StoreRepository manages catalog, stock adjustments, orders, and fulfillment end-to-end', () async {
+    final repo = StoreRepository();
+
+    // 1. Catalog loading
+    final products = await repo.getProducts();
+    expect(products.length, greaterThanOrEqualTo(9));
+    final polo = products.firstWhere((p) => p.id == 'prod-001');
+    expect(polo.name, 'Polo Oficial Institucional EDUNEX');
+    final initialStock = polo.stock;
+
+    // 2. Adjust stock
+    await repo.adjustStock(productId: 'prod-001', delta: 5);
+    final updatedProducts = await repo.getProducts();
+    expect(updatedProducts.firstWhere((p) => p.id == 'prod-001').stock, initialStock + 5);
+
+    // 3. Add product
+    const newProduct = StoreProduct(
+      id: 'prod-test-01',
+      colegioId: 'school-001',
+      name: 'Gorra Institucional Escolar',
+      category: 'Uniformes',
+      price: 450.0,
+      description: 'Gorra azul marino con logo bordado.',
+      sizes: ['Única'],
+      stock: 30,
+      icon: Icons.dry_cleaning_rounded,
+    );
+    await repo.addProduct(newProduct);
+    final withNewProd = await repo.getProducts();
+    expect(withNewProd.any((p) => p.id == 'prod-test-01'), isTrue);
+
+    // 4. Create Order and verify stock decrease
+    final initialStockPolo = withNewProd.firstWhere((p) => p.id == 'prod-001').stock;
+    final order = await repo.createOrder(
+      colegioId: 'school-001',
+      familiaId: 'fam-001',
+      familiaNombre: 'Familia Pérez Gómez',
+      estudianteNombre: 'Mateo Pérez',
+      items: const [
+        StoreOrderItem(
+          productId: 'prod-001',
+          productName: 'Polo Oficial Institucional EDUNEX',
+          size: 'Talla 8',
+          quantity: 2,
+          unitPrice: 850.0,
+        ),
+      ],
+      metodoPago: 'Tarjeta de Crédito / CardNET',
+      ncf: 'B0200000025',
+    );
+    expect(order.total, 1700.0);
+    expect(order.status, StoreOrderStatus.pendiente);
+
+    final afterOrderProds = await repo.getProducts();
+    expect(afterOrderProds.firstWhere((p) => p.id == 'prod-001').stock, initialStockPolo - 2);
+
+    // 5. Update order status to listo and entregado
+    await repo.updateOrderStatus(orderId: order.id, newStatus: StoreOrderStatus.listo);
+    var currentOrders = await repo.getOrders(familiaId: 'fam-001');
+    expect(currentOrders.firstWhere((o) => o.id == order.id).status, StoreOrderStatus.listo);
+
+    await repo.updateOrderStatus(orderId: order.id, newStatus: StoreOrderStatus.entregado);
+    currentOrders = await repo.getOrders(familiaId: 'fam-001');
+    expect(currentOrders.firstWhere((o) => o.id == order.id).status, StoreOrderStatus.entregado);
+    expect(currentOrders.firstWhere((o) => o.id == order.id).fechaEntrega, isNotNull);
+  });
+
+  testWidgets('AdminStoreScreen renders catalog metrics, filters categories, adjusts stock, and dispatches orders', (WidgetTester tester) async {
+    tester.view.physicalSize = const Size(1280, 900);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+
+    final storeRepo = StoreRepository();
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: AdminStoreScreen(
+            storeRepository: storeRepo,
+            colegioId: 'school-001',
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // Verify Title & KPIs
+    expect(find.text('Tienda & Uniformes Oficiales'), findsOneWidget);
+    expect(find.text('Artículos Catálogo'), findsOneWidget);
+    expect(find.text('Stock Físico'), findsOneWidget);
+    expect(find.text('Por Despachar'), findsOneWidget);
+    expect(find.text('Ventas Tienda'), findsOneWidget);
+
+    // Verify Catalog items rendered
+    expect(find.text('Polo Oficial Institucional EDUNEX'), findsOneWidget);
+    expect(find.text('Pantalón Escolar Caqui Reforzado'), findsOneWidget);
+
+    // Tap +5 stock on first product
+    final plusFiveBtn = find.text('+5');
+    expect(plusFiveBtn, findsWidgets);
+    await tester.tap(plusFiveBtn.first);
+    await tester.pumpAndSettle();
+
+    // Switch to Orders Tab
+    await tester.tap(find.textContaining('Pedidos & Despacho a Familias'));
+    await tester.pumpAndSettle();
+
+    // Verify orders are displayed
+    expect(find.textContaining('Pedido #ord-001'), findsOneWidget);
+    expect(find.textContaining('Familia Pérez Gómez'), findsOneWidget);
+
+    // Tap "Confirmar Entrega" on ord-001 (which is in status listo)
+    final confirmEntregaBtn = find.text('Confirmar Entrega');
+    expect(confirmEntregaBtn, findsWidgets);
+    await tester.tap(confirmEntregaBtn.first);
+    await tester.pumpAndSettle();
+
+    // Check snackbar
+    expect(find.textContaining('¡Pedido formalmente entregado al tutor/alumno!'), findsOneWidget);
+  });
+
+  testWidgets('ParentStoreScreen loads catalog from StoreRepository, adds items to cart, and completes checkout creating order', (WidgetTester tester) async {
+    tester.view.physicalSize = const Size(1280, 900);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+
+    final familyRepo = FamilyRepository(useDemoFallback: true);
+    final storeRepo = StoreRepository();
+    final parentUser = UserProfile(
+      id: 'usr-parent-01',
+      email: 'familia@edunex.edu',
+      nombres: 'Roberto',
+      apellidos: 'Pérez',
+      rol: UserRole.tutorFamiliar,
+      colegioId: 'a0000000-0000-0000-0000-000000000001',
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: ParentStoreScreen(
+            userProfile: parentUser,
+            familyRepository: familyRepo,
+            storeRepository: storeRepo,
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // Verify Store Title & Products
+    expect(find.text('Tienda Escolar EDUNEX'), findsOneWidget);
+    expect(find.text('Mis Pedidos (1)'), findsOneWidget);
+
+    // Add item to cart
+    final addButtons = find.text('Agregar');
+    expect(addButtons, findsWidgets);
+    await tester.tap(addButtons.first);
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 2));
+
+    // Cart button should have updated
+    expect(find.textContaining('Carrito (RD\$ 850.00)'), findsOneWidget);
+
+    // Open Cart Modal
+    await tester.tap(find.textContaining('Carrito (RD\$ 850.00)'));
+    await tester.pumpAndSettle();
+
+    // Complete Checkout
+    await tester.tap(find.text('Completar Pedido & Pagar'));
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 2));
+
+    // Verify Receipt Dialog was triggered
+    expect(find.textContaining('Comprobante Oficial de Pago'), findsOneWidget);
+
+    // Verify order was registered in store repository
+    final orders = await storeRepo.getOrders(familiaId: 'e0000000-0000-0000-0000-000000000001');
+    expect(orders.length, greaterThanOrEqualTo(2));
+    expect(orders.first.items.first.productName, 'Polo Oficial Institucional EDUNEX');
   });
 }
 

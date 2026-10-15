@@ -188,7 +188,7 @@ class FamilyRepository {
   }) async {
     List<Family> families = [];
 
-    if (_supabaseClient != null && SupabaseConfig.isConfigured) {
+    if (_supabaseClient != null && SupabaseConfig.isConfigured && !_useDemoFallback) {
       try {
         final response = await _supabaseClient
             .from('familias')
@@ -517,7 +517,7 @@ class FamilyRepository {
       telefono: tutorTelefono,
     );
 
-    if (_supabaseClient != null && SupabaseConfig.isConfigured) {
+    if (_supabaseClient != null && SupabaseConfig.isConfigured && !_useDemoFallback) {
       try {
         final familyData = await _supabaseClient.from('familias').insert({
           'colegio_id': colegioId,
@@ -596,7 +596,7 @@ class FamilyRepository {
     required String metodo,
     String? referencia,
   }) async {
-    if (_supabaseClient != null && SupabaseConfig.isConfigured) {
+    if (_supabaseClient != null && SupabaseConfig.isConfigured && !_useDemoFallback) {
       try {
         await _supabaseClient.from('pagos').insert({
           'familia_id': familiaId,
@@ -905,7 +905,7 @@ class FamilyRepository {
       serviciosActivos: servicios,
     );
 
-    if (_supabaseClient != null && SupabaseConfig.isConfigured) {
+    if (_supabaseClient != null && SupabaseConfig.isConfigured && !_useDemoFallback) {
       try {
         await _supabaseClient.from('estudiantes').insert({
           'colegio_id': colegioId,

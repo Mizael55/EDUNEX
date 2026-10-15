@@ -25,6 +25,8 @@ import '../features/academics/repositories/academic_repository.dart';
 import '../features/academics/screens/admin_grades_screen.dart';
 import '../features/parent_portal/screens/parent_grades_screen.dart';
 import '../features/inquiries/screens/admin_inquiries_screen.dart';
+import '../features/store/repositories/store_repository.dart';
+import '../features/store/screens/admin_store_screen.dart';
 import '../features/superadmin/repositories/school_repository.dart';
 import '../features/superadmin/screens/superadmin_dashboard_screen.dart';
 import '../features/superadmin/models/school.dart';
@@ -38,6 +40,7 @@ class MainShell extends StatefulWidget {
   final FamilyRepository? familyRepository;
   final SchoolRepository? schoolRepository;
   final AcademicRepository? academicRepository;
+  final StoreRepository? storeRepository;
 
   const MainShell({
     super.key,
@@ -45,6 +48,7 @@ class MainShell extends StatefulWidget {
     this.familyRepository,
     this.schoolRepository,
     this.academicRepository,
+    this.storeRepository,
   });
 
   @override
@@ -60,6 +64,7 @@ class _MainShellState extends State<MainShell> {
   late final TransportRepository _transportRepository;
   late final CircularRepository _circularRepository;
   late final AcademicRepository _academicRepository;
+  late final StoreRepository _storeRepository;
   String _schoolName = 'Colegio Cliente EDUNEX';
   School? _inspectedSchool;
 
@@ -73,6 +78,7 @@ class _MainShellState extends State<MainShell> {
     _transportRepository = TransportRepository(familyRepository: _familyRepository);
     _circularRepository = CircularRepository(familyRepository: _familyRepository);
     _academicRepository = widget.academicRepository ?? AcademicRepository();
+    _storeRepository = widget.storeRepository ?? StoreRepository();
     _loadSchoolName();
   }
 
@@ -273,6 +279,7 @@ class _MainShellState extends State<MainShell> {
             attendanceRepository: _attendanceRepository,
             circularRepository: _circularRepository,
             academicRepository: _academicRepository,
+            storeRepository: _storeRepository,
             onNavigateTab: (index) => setState(() => _selectedIndex = index),
           );
         case 1:
@@ -289,6 +296,7 @@ class _MainShellState extends State<MainShell> {
           return ParentStoreScreen(
             userProfile: widget.userProfile,
             familyRepository: _familyRepository,
+            storeRepository: _storeRepository,
           );
         case 4:
           return ParentEventsScreen(
@@ -390,7 +398,10 @@ class _MainShellState extends State<MainShell> {
           colegioId: widget.userProfile.colegioId,
         );
       case 10:
-        return const ServicesManagementScreen(moduleType: ServiceModuleType.tienda);
+        return AdminStoreScreen(
+          storeRepository: _storeRepository,
+          colegioId: widget.userProfile.colegioId,
+        );
       default:
         return _buildPlaceholderScreen(_navItems[_selectedIndex].title);
     }
