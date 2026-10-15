@@ -24,6 +24,7 @@ import '../features/parent_portal/screens/parent_circulars_screen.dart';
 import '../features/academics/repositories/academic_repository.dart';
 import '../features/academics/screens/admin_grades_screen.dart';
 import '../features/parent_portal/screens/parent_grades_screen.dart';
+import '../features/inquiries/screens/admin_inquiries_screen.dart';
 import '../features/superadmin/repositories/school_repository.dart';
 import '../features/superadmin/screens/superadmin_dashboard_screen.dart';
 import '../features/superadmin/models/school.dart';
@@ -210,6 +211,10 @@ class _MainShellState extends State<MainShell> {
         icon: Icons.school_rounded,
       ),
       const NavigationItem(
+        title: 'Atención a Familias',
+        icon: Icons.support_agent_rounded,
+      ),
+      const NavigationItem(
         title: 'Tienda & Uniformes',
         icon: Icons.shopping_bag_rounded,
       ),
@@ -380,6 +385,11 @@ class _MainShellState extends State<MainShell> {
           academicRepository: _academicRepository,
         );
       case 9:
+        return AdminInquiriesScreen(
+          familyRepository: _familyRepository,
+          colegioId: widget.userProfile.colegioId,
+        );
+      case 10:
         return const ServicesManagementScreen(moduleType: ServiceModuleType.tienda);
       default:
         return _buildPlaceholderScreen(_navItems[_selectedIndex].title);

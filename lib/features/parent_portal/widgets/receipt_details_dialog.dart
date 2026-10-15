@@ -231,19 +231,21 @@ class ReceiptDetailsDialog extends StatelessWidget {
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          const Text(
-                            'MONTO TOTAL PAGADO:',
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 14,
-                              color: AppColors.navyPrimary,
+                          const Flexible(
+                            child: Text(
+                              'MONTO TOTAL PAGADO:',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 13,
+                                color: AppColors.navyPrimary,
+                              ),
                             ),
                           ),
                           Text(
                             'RD\$ ${receipt.monto.toStringAsFixed(2)}',
                             style: const TextStyle(
                               fontWeight: FontWeight.w900,
-                              fontSize: 22,
+                              fontSize: 20,
                               color: AppColors.navyPrimary,
                             ),
                           ),

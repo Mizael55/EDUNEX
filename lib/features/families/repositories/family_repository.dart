@@ -348,6 +348,16 @@ class FamilyRepository {
       respuestaCentro: 'Aprobado por el Consejo Directivo. Cuotas de RD\$ 3,750 los días 15 y 30 de cada mes.',
       fechaRespuesta: DateTime(2026, 2, 3, 14, 20),
     ),
+    PaymentAgreementRequest(
+      id: 'agr-002',
+      familiaId: 'e0000000-0000-0000-0000-000000000003',
+      nombreFamilia: 'Familia Castillo Almonte',
+      tipoAcuerdo: 'Prórroga de Colegiatura & Servicios',
+      propuestaCuota: 6200.00,
+      justificacion: 'Solicitud de prórroga para pagar el saldo acumulado en dos cuotas iguales a fin de mes.',
+      fechaSolicitud: DateTime(2026, 2, 14, 11, 40),
+      estado: 'En revisión por Dirección',
+    ),
   ];
 
   /// Preguntas y consultas directas de tutores
@@ -374,6 +384,29 @@ class FamilyRepository {
       mensaje: 'Saludos, por favor requerimos que la próxima factura sea emitida con comprobante fiscal gubernamental para nuestra empresa.',
       fechaEnvio: DateTime(2026, 2, 12, 14, 05),
       estado: 'En trámite',
+    ),
+    ParentQuestion(
+      id: 'qst-003',
+      familiaId: 'e0000000-0000-0000-0000-000000000003',
+      tutorNombre: 'Carlos Castillo',
+      departamento: 'Psicología y Orientación',
+      asunto: 'Cita de seguimiento psicopedagógico para Camila',
+      mensaje: 'Hola cordiales. Deseamos coordinar una reunión presencial con la psicóloga escolar para revisar los avances de adaptación de Camila en Maternal.',
+      fechaEnvio: DateTime(2026, 2, 14, 9, 30),
+      estado: 'En trámite',
+    ),
+    ParentQuestion(
+      id: 'qst-004',
+      familiaId: 'e0000000-0000-0000-0000-000000000002',
+      tutorNombre: 'Laura Méndez',
+      departamento: 'Secretaría Escolar',
+      asunto: 'Solicitud de récord de notas y constancia de matrícula',
+      mensaje: 'Buenos días, necesito una constancia de inscripción oficial timbrada para el trámite de seguro médico familiar de Diego.',
+      fechaEnvio: DateTime(2026, 2, 15, 10, 15),
+      estado: 'Respondida',
+      respuestaCentro: 'Estimada Laura, el documento timbrado está listo para retiro en recepción o puede descargarlo firmado digitalmente en el portal.',
+      fechaRespuesta: DateTime(2026, 2, 15, 15, 00),
+      respondidoPor: 'Secretaría General EDUNEX',
     ),
   ];
 
@@ -687,9 +720,74 @@ class FamilyRepository {
     return agreement;
   }
 
+  /// Obtiene todas las preguntas y consultas formuladas por familias al centro escolar
+  Future<List<ParentQuestion>> getAllQuestions({String? colegioId}) async {
+    return List<ParentQuestion>.from(_questions);
+  }
+
   /// Obtiene las preguntas y consultas formuladas por la familia
   Future<List<ParentQuestion>> getQuestionsForFamily(String familiaId) async {
     return _questions.where((q) => q.familiaId == familiaId).toList();
+  }
+
+  /// Responde oficialmente a una consulta familiar desde la administración
+  Future<ParentQuestion> answerQuestion({
+    required String questionId,
+    required String respuesta,
+    required String respondidoPor,
+  }) async {
+    final idx = _questions.indexWhere((q) => q.id == questionId);
+    if (idx != -1) {
+      final old = _questions[idx];
+      final updated = ParentQuestion(
+        id: old.id,
+        familiaId: old.familiaId,
+        tutorNombre: old.tutorNombre,
+        departamento: old.departamento,
+        asunto: old.asunto,
+        mensaje: old.mensaje,
+        fechaEnvio: old.fechaEnvio,
+        estado: 'Respondida',
+        respuestaCentro: respuesta.trim(),
+        fechaRespuesta: DateTime.now(),
+        respondidoPor: respondidoPor.trim(),
+      );
+      _questions[idx] = updated;
+      return updated;
+    }
+    throw Exception('Consulta no encontrada');
+  }
+
+  /// Obtiene todos los acuerdos o convenios de pago para revisión administrativa
+  Future<List<PaymentAgreementRequest>> getAllAgreements({String? colegioId}) async {
+    return List<PaymentAgreementRequest>.from(_agreements);
+  }
+
+  /// Revisa, aprueba o rechaza una solicitud de acuerdo de pago
+  Future<PaymentAgreementRequest> reviewAgreement({
+    required String agreementId,
+    required bool approve,
+    required String respuestaCentro,
+  }) async {
+    final idx = _agreements.indexWhere((a) => a.id == agreementId);
+    if (idx != -1) {
+      final old = _agreements[idx];
+      final updated = PaymentAgreementRequest(
+        id: old.id,
+        familiaId: old.familiaId,
+        nombreFamilia: old.nombreFamilia,
+        tipoAcuerdo: old.tipoAcuerdo,
+        propuestaCuota: old.propuestaCuota,
+        justificacion: old.justificacion,
+        fechaSolicitud: old.fechaSolicitud,
+        estado: approve ? 'Aprobado' : 'Rechazado',
+        respuestaCentro: respuestaCentro.trim(),
+        fechaRespuesta: DateTime.now(),
+      );
+      _agreements[idx] = updated;
+      return updated;
+    }
+    throw Exception('Solicitud de acuerdo no encontrada');
   }
 
   /// Envía una nueva consulta o pregunta al centro escolar

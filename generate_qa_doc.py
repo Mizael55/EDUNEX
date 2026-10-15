@@ -278,7 +278,7 @@ html_content = """<!DOCTYPE html>
       <div class="cover-subtitle">Manual Exhaustivo de Validación Funcional de Sistema Integral</div>
       <div class="badge-bar">
         <span class="badge badge-primary">Versión Staging v1.4.0</span>
-        <span class="badge badge-success">32 / 32 Tests Aprobados</span>
+        <span class="badge badge-success">35 / 35 Tests Aprobados</span>
         <span class="badge badge-warning">Listo para QA</span>
         <span class="badge badge-info">Multi-Rol & Multi-Tenant</span>
       </div>
@@ -438,6 +438,18 @@ html_content = """<!DOCTYPE html>
         <td>Menú Lateral: <em>Eventos</em></td>
         <td>Admin / Padre</td>
         <td>Calendario escolar e inscripción interactiva de alumnos</td>
+      </tr>
+      <tr>
+        <td><strong>Atención a Familias</strong></td>
+        <td>Menú Lateral: <em>Atención a Familias</em></td>
+        <td>Admin / Dirección</td>
+        <td>Bandeja de consultas multi-área y aprobación de convenios de pago</td>
+      </tr>
+      <tr>
+        <td><strong>Pasarela de Pago Online</strong></td>
+        <td>Portal Padres &gt; <em>Pagar con Tarjeta</em></td>
+        <td>Padre / Tutor</td>
+        <td>Pago con tarjeta seguro CardNET, simulación y recibo NCF digital</td>
       </tr>
       <tr>
         <td><strong>Portal para Padres</strong></td>
@@ -665,7 +677,40 @@ html_content = """<!DOCTYPE html>
     </ol>
   </div>
 
-  <h2>Módulos 11 y 12: Portal de Padres y Portal Estudiantil</h2>
+  <h2>Módulo 11: Centro de Atención a Familias & Mesa de Ayuda Escolar</h2>
+  <div class="step-box">
+    <div class="step-header">
+      <span>Gestión Multidepartamental y Acuerdos de Pago</span>
+      <span class="role-badge role-admin">Admin</span>
+      <span class="role-badge role-parent">Padres</span>
+    </div>
+    <ol>
+      <li><strong>Como Administrador:</strong> Entra a <strong>"Atención a Familias"</strong> en el menú lateral.</li>
+      <li>Observa los 4 KPIs estratégicos: <em>Total Consultas, Pendientes de Respuesta, Respondidas y Convenios por Revisar</em>.</li>
+      <li>Filtra por departamento utilizando los chips: <strong>Dirección Académica, Caja y Facturación, Psicología y Orientación, Secretaría Escolar</strong>.</li>
+      <li>En una consulta pendiente (ej. "Revisión de nota final de Matemáticas"), haz clic en <strong>"Responder Consulta"</strong>, redacta la respuesta formal con tu nombre o cargo y presiona <strong>"Enviar Respuesta Oficial"</strong>. Comprueba que el estado pase a verde <strong>"Respondida"</strong>.</li>
+      <li>Cambia a la pestaña <strong>"Convenios de Pago (2)"</strong>. Revisa la solicitud de cuotas de la familia Pérez, pulsa <strong>"Aprobar Acuerdo"</strong> o <strong>"Rechazar"</strong>, escribe la resolución del centro y verifica la actualización inmediata del estado.</li>
+    </ol>
+  </div>
+
+  <h2>Módulo 12: Pasarela de Pago Online con Tarjeta (CardNET / 256-bit SSL)</h2>
+  <div class="step-box">
+    <div class="step-header">
+      <span>Pasarela Digital Segura y Emisión de Recibo Fiscal</span>
+      <span class="role-badge role-parent">Padres</span>
+    </div>
+    <ol>
+      <li><strong>Como Padre de Familia:</strong> Entra a <strong>"Pagos & Facturas"</strong> en el Portal de Padres.</li>
+      <li>Haz clic en el botón destacado <strong>"Pagar con Tarjeta"</strong>.</li>
+      <li>Se abre el modal interactivo con la tarjeta de crédito visual animada (chip EMV, número en relieve, fecha de vencimiento y titular dinámico).</li>
+      <li>Selecciona abonar el balance total o digita un monto parcial personalizado.</li>
+      <li>Ingresa un número de tarjeta (ej. empezando por 4 para Visa o 5 para Mastercard) y observa cómo el logo cambia en tiempo real en la tarjeta visual.</li>
+      <li>Completa el nombre del titular, fecha MM/AA y CVV de 3 dígitos.</li>
+      <li>Haz clic en <strong>"Pagar Ahora"</strong>. Observa el spinner de verificación bancaria con cifrado 256-bit SSL y la posterior confirmación con emisión de recibo fiscal digital con número NCF.</li>
+    </ol>
+  </div>
+
+  <h2>Módulos 13 y 14: Portal de Padres Completo y Portal Estudiantil</h2>
   <div class="step-box">
     <div class="step-header">
       <span>Autoservicio Familiar y Vista de Estudiantes</span>
@@ -786,6 +831,18 @@ html_content = """<!DOCTYPE html>
       <tr>
         <td><strong>16. Portal Estudiantil</strong></td>
         <td>El estudiante visualiza su perfil, horario y profesores sin acceso a datos financieros familiares.</td>
+        <td>[ ] Pasa &nbsp; [ ] Falla</td>
+        <td></td>
+      </tr>
+      <tr>
+        <td><strong>17. Atención a Familias</strong></td>
+        <td>Filtrado por departamento, respuesta oficial a padres y resolución de convenios de pago.</td>
+        <td>[ ] Pasa &nbsp; [ ] Falla</td>
+        <td></td>
+      </tr>
+      <tr>
+        <td><strong>18. Pasarela de Pagos</strong></td>
+        <td>Simulación de tarjeta con marca dinámica, CVV, autorización y generación de recibo NCF.</td>
         <td>[ ] Pasa &nbsp; [ ] Falla</td>
         <td></td>
       </tr>

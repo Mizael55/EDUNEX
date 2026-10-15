@@ -6,6 +6,7 @@ import '../../families/repositories/family_repository.dart';
 import '../models/payment_receipt.dart';
 import '../models/payment_agreement_request.dart';
 import '../widgets/receipt_details_dialog.dart';
+import 'online_payment_gateway_dialog.dart';
 
 /// Pantalla del Tutor para Pagos de Colegiatura, Acuerdos de Pago y Validación de Comprobantes Oficiales (NCF)
 class ParentPaymentsScreen extends StatefulWidget {
@@ -552,128 +553,16 @@ class _ParentPaymentsScreenState extends State<ParentPaymentsScreen> with Single
     );
   }
 
-  void _showPaymentDialog(BuildContext context, Family family) {
-    final amountController = TextEditingController(text: family.balancePendiente.toStringAsFixed(2));
-    final conceptController = TextEditingController(text: 'Pago mensualidad escolar consolidada');
-    String selectedMethod = 'Tarjeta de Crédito / CardNET';
-    bool isProcessing = false;
-
-    showDialog(
+  void _showPaymentDialog(BuildContext context, Family family) async {
+    final receipt = await OnlinePaymentGatewayDialog.show(
       context: context,
-      barrierDismissible: false,
-      builder: (ctx) => StatefulBuilder(
-        builder: (context, setModalState) => AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-          title: const Row(
-            children: [
-              Icon(Icons.payment_rounded, color: AppColors.navyPrimary),
-              SizedBox(width: 10),
-              Text('Realizar Pago de Colegiatura', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
-            ],
-          ),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Familia: ${family.nombreFamilia}',
-                  style: const TextStyle(fontWeight: FontWeight.w600, color: AppColors.navyPrimary),
-                ),
-                Text(
-                  'Balance actual: RD\$ ${family.balancePendiente.toStringAsFixed(2)}',
-                  style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
-                ),
-                const SizedBox(height: 16),
-                TextField(
-                  controller: amountController,
-                  keyboardType: TextInputType.number,
-                  decoration: const InputDecoration(
-                    labelText: 'Monto a Pagar (RD\$)',
-                    prefixText: 'RD\$ ',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                const SizedBox(height: 14),
-                TextField(
-                  controller: conceptController,
-                  decoration: const InputDecoration(
-                    labelText: 'Concepto',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                const SizedBox(height: 14),
-                DropdownButtonFormField<String>(
-                  value: selectedMethod,
-                  isExpanded: true,
-                  decoration: const InputDecoration(
-                    labelText: 'Método de Pago',
-                    border: OutlineInputBorder(),
-                  ),
-                  items: const [
-                    DropdownMenuItem(value: 'Tarjeta de Crédito / CardNET', child: Text('Tarjeta de Crédito / Débito (CardNET)')),
-                    DropdownMenuItem(value: 'Transferencia Bancaria BHD', child: Text('Transferencia Bancaria - Banco BHD')),
-                    DropdownMenuItem(value: 'Transferencia Banreservas', child: Text('Transferencia Bancaria - Banreservas')),
-                    DropdownMenuItem(value: 'Transferencia Banco Popular', child: Text('Transferencia Bancaria - Banco Popular')),
-                  ],
-                  onChanged: (val) {
-                    if (val != null) setModalState(() => selectedMethod = val);
-                  },
-                ),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: isProcessing ? null : () => Navigator.of(ctx).pop(),
-              child: const Text('Cancelar'),
-            ),
-            ElevatedButton(
-              onPressed: isProcessing
-                  ? null
-                  : () async {
-                      final amount = double.tryParse(amountController.text.replaceAll(',', '')) ?? 0.0;
-                      if (amount <= 0) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Por favor ingresa un monto válido mayor a 0')),
-                        );
-                        return;
-                      }
-
-                      setModalState(() => isProcessing = true);
-                      final receipt = await widget.familyRepository.recordPayment(
-                        familiaId: family.id,
-                        monto: amount,
-                        concepto: conceptController.text.trim().isEmpty ? 'Pago de Colegiatura' : conceptController.text.trim(),
-                        metodo: selectedMethod,
-                      );
-
-                      if (context.mounted) {
-                        Navigator.of(ctx).pop();
-                        await _loadData();
-                        if (context.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text('¡Pago completado con éxito! Comprobante emitido con NCF ${receipt.ncf}'),
-                              backgroundColor: AppColors.accentGreen,
-                            ),
-                          );
-                          ReceiptDetailsDialog.show(context, receipt);
-                        }
-                      }
-                    },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.navyPrimary,
-                foregroundColor: AppColors.surfaceWhite,
-              ),
-              child: isProcessing
-                  ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                  : const Text('Procesar Pago Seguro'),
-            ),
-          ],
-        ),
-      ),
+      family: family,
+      familyRepository: widget.familyRepository,
+      onPaymentSuccess: _loadData,
     );
+    if (receipt != null && context.mounted) {
+      ReceiptDetailsDialog.show(context, receipt);
+    }
   }
 
   void _showAgreementRequestDialog(BuildContext context, Family family) {

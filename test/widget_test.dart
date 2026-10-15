@@ -37,6 +37,9 @@ import 'package:edunex/features/academics/models/grade_report.dart';
 import 'package:edunex/features/academics/repositories/academic_repository.dart';
 import 'package:edunex/features/academics/screens/admin_grades_screen.dart';
 import 'package:edunex/features/parent_portal/screens/parent_grades_screen.dart';
+import 'package:edunex/features/inquiries/screens/admin_inquiries_screen.dart';
+import 'package:edunex/features/parent_portal/screens/online_payment_gateway_dialog.dart';
+import 'package:edunex/features/parent_portal/widgets/receipt_details_dialog.dart';
 import 'package:edunex/screens/login_screen.dart';
 import 'package:edunex/screens/main_shell.dart';
 
@@ -1255,7 +1258,179 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.textContaining('Generando Boletín Oficial en formato PDF'), findsOneWidget);
   });
+
+  test('FamilyRepository manages questions, answers, and agreement reviews end-to-end', () async {
+    final repo = FamilyRepository(useDemoFallback: true);
+
+    // Get all questions
+    final allQuestions = await repo.getAllQuestions();
+    expect(allQuestions.length, greaterThanOrEqualTo(3));
+
+    // Submit a new question
+    final newQ = await repo.submitQuestion(
+      familiaId: 'e0000000-0000-0000-0000-000000000001',
+      tutorNombre: 'Roberto Pérez',
+      departamento: 'Psicología y Orientación',
+      asunto: 'Consulta sobre taller para padres',
+      mensaje: '¿Cuándo se impartirá el próximo taller de orientación vocacional?',
+    );
+    expect(newQ.id, startsWith('qst-'));
+    expect(newQ.estado, 'En trámite');
+
+    // Answer the question
+    final answered = await repo.answerQuestion(
+      questionId: newQ.id,
+      respuesta: 'El taller será el próximo jueves a las 6:00 PM vía Zoom.',
+      respondidoPor: 'Dra. Altagracia Peña (Orientación)',
+    );
+    expect(answered.estado, 'Respondida');
+    expect(answered.respuestaCentro, contains('próximo jueves'));
+    expect(answered.respondidoPor, 'Dra. Altagracia Peña (Orientación)');
+
+    // Agreements
+    final agreements = await repo.getAllAgreements();
+    expect(agreements.isNotEmpty, isTrue);
+
+    // Review agreement
+    final pendingAgr = agreements.firstWhere((a) => a.estado == 'En revisión por Dirección');
+    final reviewed = await repo.reviewAgreement(
+      agreementId: pendingAgr.id,
+      approve: true,
+      respuestaCentro: 'Aprobado formalmente por Consejo Financiero.',
+    );
+    expect(reviewed.estado, 'Aprobado');
+    expect(reviewed.respuestaCentro, contains('Aprobado formalmente'));
+  });
+
+  testWidgets('AdminInquiriesScreen displays inquiries, filters by department, and answers parent question', (WidgetTester tester) async {
+    tester.view.physicalSize = const Size(1280, 900);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+
+    final familyRepo = FamilyRepository(useDemoFallback: true);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: AdminInquiriesScreen(familyRepository: familyRepo),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // Verify header and KPI metrics
+    expect(find.text('Atención a Familias & Consultas Escolares'), findsOneWidget);
+    expect(find.text('Total de Consultas'), findsOneWidget);
+    expect(find.text('Pendientes de Respuesta'), findsOneWidget);
+    expect(find.text('Respondidas & Resueltas'), findsOneWidget);
+    expect(find.text('Convenios por Revisar'), findsOneWidget);
+
+    // Verify tabs
+    expect(find.textContaining('Bandeja de Consultas de Tutores'), findsOneWidget);
+    expect(find.textContaining('Solicitudes de Acuerdos de Pago'), findsOneWidget);
+
+    // Verify departments filter chips
+    expect(find.text('Todos'), findsWidgets);
+    expect(find.text('Dirección Académica'), findsWidgets);
+    expect(find.text('Caja y Facturación'), findsWidgets);
+
+    // Open answer dialog
+    final replyButtons = find.text('Responder Consulta');
+    expect(replyButtons, findsWidgets);
+    await tester.ensureVisible(replyButtons.first);
+    await tester.tap(replyButtons.first);
+    await tester.pumpAndSettle();
+
+    // Dialog appears
+    expect(find.text('Enviar Respuesta Oficial'), findsOneWidget);
+    expect(find.text('Cancelar'), findsOneWidget);
+
+    // Close dialog
+    await tester.tap(find.text('Cancelar'));
+    await tester.pumpAndSettle();
+    expect(find.text('Enviar Respuesta Oficial'), findsNothing);
+
+    // Switch to Agreements tab
+    final agreementsTab = find.textContaining('Solicitudes de Acuerdos de Pago');
+    await tester.ensureVisible(agreementsTab);
+    await tester.tap(agreementsTab);
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('Propuesta de Cuota Familiar:'), findsWidgets);
+  });
+
+  testWidgets('OnlinePaymentGatewayDialog validates card inputs, simulates banking authorization, and records receipt', (WidgetTester tester) async {
+    tester.view.physicalSize = const Size(1280, 900);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+
+    final familyRepo = FamilyRepository(useDemoFallback: true);
+    final families = await familyRepo.getFamilies();
+    final family = families.first;
+
+    bool paymentSucceeded = false;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: Builder(
+            builder: (context) => ElevatedButton(
+              onPressed: () async {
+                final receipt = await OnlinePaymentGatewayDialog.show(
+                  context: context,
+                  family: family,
+                  familyRepository: familyRepo,
+                  onPaymentSuccess: () => paymentSucceeded = true,
+                );
+                if (receipt != null && context.mounted) {
+                  ReceiptDetailsDialog.show(context, receipt);
+                }
+              },
+              child: const Text('Abrir Pasarela'),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // Open gateway
+    await tester.tap(find.text('Abrir Pasarela'));
+    await tester.pumpAndSettle();
+
+    // Verify gateway interface
+    expect(find.text('Pasarela de Pago Seguro en Línea'), findsOneWidget);
+    expect(find.text('TITULAR'), findsOneWidget);
+    expect(find.text('EXPIRA'), findsOneWidget);
+    expect(find.textContaining('Pagar Balance Total'), findsOneWidget);
+    expect(find.textContaining('Encriptación Bancaria 256-Bit SSL'), findsOneWidget);
+
+    // Enter valid card details
+    await tester.enterText(find.byType(TextFormField).at(2), '4000123456789010'); // Card Number (Visa)
+    await tester.enterText(find.byType(TextFormField).at(3), 'ROBERTO PEREZ'); // Cardholder
+    await tester.enterText(find.byType(TextFormField).at(4), '1228'); // Expiry MM/YY
+    await tester.enterText(find.byType(TextFormField).at(5), '888'); // CVV
+    await tester.pumpAndSettle();
+
+    // Verify card brand updated to VISA
+    expect(find.text('VISA'), findsWidgets);
+
+    // Tap Pay button
+    final payButton = find.textContaining('Pagar RD\$');
+    expect(payButton, findsWidgets);
+    await tester.tap(payButton.last);
+
+    // Pump during banking simulation
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 900));
+    await tester.pumpAndSettle();
+
+    // Verify payment callback and receipt dialog
+    expect(paymentSucceeded, isTrue);
+    expect(find.textContaining('Comprobante Oficial de Pago'), findsOneWidget);
+  });
 }
+
 
 
 
