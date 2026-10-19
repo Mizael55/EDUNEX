@@ -35,6 +35,8 @@ import '../features/finances/screens/finance_overview_screen.dart';
 import '../features/services/screens/services_management_screen.dart';
 import '../features/teacher_portal/repositories/teacher_repository.dart';
 import '../features/teacher_portal/screens/teacher_portal_screen.dart';
+import '../features/guidance/repositories/guidance_repository.dart';
+import '../features/guidance/screens/guidance_management_screen.dart';
 import 'login_screen.dart';
 
 /// Shell principal responsivo de EDUNEX con navegación adaptativa
@@ -45,6 +47,7 @@ class MainShell extends StatefulWidget {
   final AcademicRepository? academicRepository;
   final StoreRepository? storeRepository;
   final TeacherRepository? teacherRepository;
+  final GuidanceRepository? guidanceRepository;
 
   const MainShell({
     super.key,
@@ -54,6 +57,7 @@ class MainShell extends StatefulWidget {
     this.academicRepository,
     this.storeRepository,
     this.teacherRepository,
+    this.guidanceRepository,
   });
 
   @override
@@ -71,6 +75,7 @@ class _MainShellState extends State<MainShell> {
   late final AcademicRepository _academicRepository;
   late final StoreRepository _storeRepository;
   late final TeacherRepository _teacherRepository;
+  late final GuidanceRepository _guidanceRepository;
   String _schoolName = 'Colegio Cliente EDUNEX';
   String? _schoolLogoUrl;
   School? _inspectedSchool;
@@ -87,6 +92,7 @@ class _MainShellState extends State<MainShell> {
     _academicRepository = widget.academicRepository ?? AcademicRepository();
     _storeRepository = widget.storeRepository ?? StoreRepository();
     _teacherRepository = widget.teacherRepository ?? TeacherRepository();
+    _guidanceRepository = widget.guidanceRepository ?? GuidanceRepository();
     _loadSchoolName();
   }
 
@@ -287,6 +293,10 @@ class _MainShellState extends State<MainShell> {
         title: 'Tienda & Uniformes',
         icon: Icons.shopping_bag_rounded,
       ),
+      const NavigationItem(
+        title: 'Psicología & Convivencia',
+        icon: Icons.psychology_rounded,
+      ),
     ];
   }
 
@@ -477,6 +487,11 @@ class _MainShellState extends State<MainShell> {
         return AdminStoreScreen(
           storeRepository: _storeRepository,
           colegioId: widget.userProfile.colegioId,
+        );
+      case 11:
+        return GuidanceManagementScreen(
+          guidanceRepository: _guidanceRepository,
+          colegioId: widget.userProfile.colegioId ?? 'a0000000-0000-0000-0000-000000000001',
         );
       default:
         return _buildPlaceholderScreen(_navItems[_selectedIndex].title);

@@ -784,6 +784,28 @@ html_content = """<!DOCTYPE html>
     </ol>
   </div>
 
+  <h2>Módulo 16: Psicología, Orientación Escolar & Convivencia (Punto 2)</h2>
+  <div class="step-box">
+    <div class="step-header">
+      <span>Expedientes Psicopedagógicos, Bitácora Confidencial, Citaciones a Tutores y Acuerdos de Convivencia</span>
+      <span class="role-badge role-admin">Director / Psicología</span>
+      <span class="role-badge role-teacher">Docente</span>
+    </div>
+    <ol>
+      <li><strong>Acceso al Módulo:</strong> Inicia sesión como Director del Centro o Administrador Escolar y navega al ítem <strong>"Psicología & Convivencia"</strong> en el menú lateral.</li>
+      <li><strong>Tablero de Control e Indicadores:</strong> Verifica los 4 KPIs estratégicos: <em>Casos Activos, Urgencia Alta, Citas a Familias y Casos en Evaluación</em>.</li>
+      <li><strong>Filtros y Búsqueda:</strong> Utiliza el buscador en tiempo real por estudiante, matrícula o motivo, y filtra por estado (<em>En Evaluación, En Intervención, Citación a Tutores, Cerrado</em>) y nivel de urgencia (<em>Baja, Media, Alta</em>).</li>
+      <li><strong>Apertura de Caso:</strong> Presiona <strong>"+ Nuevo Caso de Orientación"</strong>, completa el estudiante, matrícula, grado, nivel de urgencia, motivo confidencial y profesional asignado. Presiona <strong>"Abrir Expediente"</strong> y corrobora su adición inmediata a la lista.</li>
+      <li><strong>Expediente Psicopedagógico Integral:</strong> En cualquier caso (ej. Mateo Pérez), haz clic en <strong>"Ver Expediente"</strong>:</li>
+      <ul>
+        <li><strong>Pestaña 1 - Sesiones Confidenciales:</strong> Consulta la bitácora de sesiones individuales con fecha, tema, observaciones clínicas y recomendaciones. Pulsa <strong>"+ Registrar Sesión"</strong> para agregar una nueva intervención.</li>
+        <li><strong>Pestaña 2 - Citaciones a Familias:</strong> Visualiza las citas a padres con modalidad (Presencial / Virtual) y estado (Pendiente / Realizada / No asistió). Programa una nueva citación con <strong>"+ Programar Cita"</strong> y actualiza el estado de las existentes.</li>
+        <li><strong>Pestaña 3 - Acuerdos de Convivencia:</strong> Revisa el checklist de compromisos conductuales/académicos (ej. ubicación preferencial, tutorías de apoyo). Marca o desmarca el checkbox de cumplimiento y añade nuevos acuerdos con <strong>"+ Añadir Compromiso"</strong>.</li>
+      </ul>
+      <li><strong>Interconexión con Docentes:</strong> En el Observador del Docente, al marcar una incidencia con <em>"Remisión a Psicología y Orientación"</em>, el caso queda disponible para su incorporación directa en el departamento de orientación.</li>
+    </ol>
+  </div>
+
   <!-- ==================== FORMULARIO DE ACEPTACIÓN QA (PÁGINA 8) ==================== -->
   <div class="page-break"></div>
   <h1>3. Matriz de Aceptación QA (Formulario de Evaluación)</h1>
@@ -940,6 +962,12 @@ html_content = """<!DOCTYPE html>
       <tr>
         <td><strong>24. Portal del Docente (Punto 1)</strong></td>
         <td>Libro de Clases y nóminas de aula, Calificador interactivo por componentes ponderados con cálculo automático de promedios de período, Pase de lista por asignatura y Observador de convivencia escolar.</td>
+        <td>[ ] Pasa &nbsp; [ ] Falla</td>
+        <td></td>
+      </tr>
+      <tr>
+        <td><strong>25. Psicología & Orientación (Punto 2)</strong></td>
+        <td>Expedientes confidenciales, bitácora de sesiones clínicas, citaciones a padres con modalidad presencial/virtual, checklist de acuerdos de convivencia y remisión directa desde el observador docente.</td>
         <td>[ ] Pasa &nbsp; [ ] Falla</td>
         <td></td>
       </tr>

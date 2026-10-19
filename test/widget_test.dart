@@ -58,6 +58,9 @@ import 'package:edunex/features/teacher_portal/models/teacher_evaluation.dart';
 import 'package:edunex/features/teacher_portal/models/student_behavior_log.dart';
 import 'package:edunex/features/teacher_portal/repositories/teacher_repository.dart';
 import 'package:edunex/features/teacher_portal/screens/teacher_portal_screen.dart';
+import 'package:edunex/features/guidance/models/guidance_case.dart';
+import 'package:edunex/features/guidance/repositories/guidance_repository.dart';
+import 'package:edunex/features/guidance/screens/guidance_management_screen.dart';
 
 void main() {
   testWidgets('EdunexApp desktop smoke test', (WidgetTester tester) async {
@@ -1998,6 +2001,15 @@ void main() {
     expect((await teacherRepo.getClasses(docenteId: 'docente-001')).isEmpty, isTrue);
     TeacherRepository.restoreSeedData();
     expect((await teacherRepo.getClasses(docenteId: 'docente-001')).isNotEmpty, isTrue);
+
+    // 4. Verify clearAllData and restore on GuidanceRepository
+    GuidanceRepository.restoreSeedData();
+    final guidanceRepo = GuidanceRepository(useDemoFallback: true);
+    expect((await guidanceRepo.getCases()).isNotEmpty, isTrue);
+    GuidanceRepository.clearAllData();
+    expect((await guidanceRepo.getCases()).isEmpty, isTrue);
+    GuidanceRepository.restoreSeedData();
+    expect((await guidanceRepo.getCases()).isNotEmpty, isTrue);
   });
 
   group('Teacher Portal - Unit Tests', () {
@@ -2156,6 +2168,198 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.textContaining('Filtro:'), findsOneWidget);
       expect(find.byKey(const Key('btn_add_observacion_docente')), findsOneWidget);
+    });
+  });
+
+  group('Psychology & Guidance - Unit Tests', () {
+    test('GuidanceRepository manages cases, sessions, parent interviews and agreements', () async {
+      GuidanceRepository.restoreSeedData();
+      final repo = GuidanceRepository(useDemoFallback: true);
+
+      // Create new case
+      final newCase = await repo.createCase(
+        colegioId: 'a0000000-0000-0000-0000-000000000001',
+        studentId: 'stud-test-01',
+        studentName: 'Gabriel Santos',
+        matricula: 'EST-2026-99',
+        grado: '3ro de Primaria',
+        seccion: 'Sección A',
+        remitidoPor: 'Prof. Carlos Ramírez',
+        motivoRemision: 'Aislamiento social y dificultades de integración en el recreo',
+        nivelUrgencia: 'Alta',
+      );
+      expect(newCase.id.isNotEmpty, isTrue);
+
+      // Add session
+      final withSession = await repo.addSession(
+        newCase.id,
+        GuidanceSession(
+          id: 'ses-test',
+          fecha: DateTime.now(),
+          tipo: 'Individual con Alumno',
+          notasConfidenciales: 'Estudiante expresa timidez y ansiedad al interactuar.',
+          acuerdos: 'Participación en dinámicas grupales guiadas.',
+          profesionalACargo: 'Lic. Laura Medina',
+        ),
+      );
+      expect(withSession.sesiones.length, 1);
+      expect(withSession.estado, 'En Intervención');
+
+      // Schedule interview
+      final withInterview = await repo.scheduleParentInterview(
+        newCase.id,
+        ParentInterview(
+          id: 'cita-test',
+          fecha: DateTime.now().add(const Duration(days: 3)),
+          hora: '10:00 AM',
+          modalidad: 'Presencial',
+          motivo: 'Entrevista de seguimiento con tutores',
+          estado: 'Programada',
+        ),
+      );
+      expect(withInterview.citasPadres.length, 1);
+      expect(withInterview.estado, 'Citación a Tutores');
+
+      // Add agreement and toggle status
+      final withAgreement = await repo.addAgreement(
+        newCase.id,
+        ConvivenciaAgreement(
+          id: 'agr-test',
+          fecha: DateTime.now(),
+          descripcion: 'Fomentar actividades extracurriculares artísticas',
+          responsable: 'Padres / Tutores',
+          cumplido: false,
+        ),
+      );
+      expect(withAgreement.compromisos.length, 1);
+
+      final toggled = await repo.toggleAgreementStatus(newCase.id, 'agr-test');
+      expect(toggled.compromisos.first.cumplido, isTrue);
+
+      // Verify stats
+      final stats = await repo.getStats('a0000000-0000-0000-0000-000000000001');
+      expect(stats['totalCasos']! >= 3, isTrue);
+      expect(stats['casosActivos']! >= 3, isTrue);
+    });
+
+    test('GuidanceRepository creates case seamlessly from teacher behavior log referral', () async {
+      GuidanceRepository.restoreSeedData();
+      final repo = GuidanceRepository(useDemoFallback: true);
+
+      final behaviorLog = StudentBehaviorLog(
+        id: 'log-099',
+        classId: 'class-cie-2b',
+        studentId: 'stud-ref-001',
+        studentName: 'Camila Peña',
+        grado: '2do de Primaria',
+        docenteId: 'docente-001',
+        docenteNombre: 'Prof. Carlos Ramírez',
+        tipo: 'Remisión a Psicología',
+        categoria: 'Conducta',
+        descripcion: 'Crisis de llanto recurrente ante evaluaciones escritas.',
+        fecha: DateTime.now(),
+        notificadoTutor: true,
+        notificadoPsicologia: true,
+      );
+
+      final createdCase = await repo.createCaseFromTeacherLog(
+        log: behaviorLog,
+        colegioId: 'a0000000-0000-0000-0000-000000000001',
+        matricula: 'EST-2026-88',
+        seccion: 'Sección B',
+      );
+
+      expect(createdCase.studentName, 'Camila Peña');
+      expect(createdCase.motivoRemision, contains('Crisis de llanto'));
+      expect(createdCase.esActivo, isTrue);
+    });
+  });
+
+  group('Psychology & Guidance - Widget Tests', () {
+    testWidgets('MainShell renders GuidanceManagementScreen with KPIs, cases list and modals', (WidgetTester tester) async {
+      tester.view.physicalSize = const Size(1280, 900);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+
+      GuidanceRepository.restoreSeedData();
+      final guidanceRepo = GuidanceRepository(useDemoFallback: true);
+
+      final adminUser = UserProfile(
+        id: 'dir-001',
+        colegioId: 'a0000000-0000-0000-0000-000000000001',
+        rol: UserRole.adminColegio,
+        email: 'director@colegio.edu.do',
+        nombres: 'Roberto',
+        apellidos: 'Santos',
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: MainShell(
+            userProfile: adminUser,
+            guidanceRepository: guidanceRepo,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Navigate to Psicología & Convivencia (Nav item)
+      final guidanceNavItem = find.text('Psicología & Convivencia');
+      await tester.scrollUntilVisible(guidanceNavItem, 100.0, scrollable: find.byType(Scrollable).first);
+      await tester.pumpAndSettle();
+      expect(guidanceNavItem, findsOneWidget);
+      await tester.tap(guidanceNavItem);
+      await tester.pumpAndSettle();
+
+      // Verify Screen Header and KPIs
+      expect(find.text('Psicología & Convivencia Escolar'), findsOneWidget);
+      expect(find.text('Casos Activos'), findsOneWidget);
+      expect(find.text('Urgencia Alta'), findsWidgets);
+      expect(find.text('Citas a Familias'), findsOneWidget);
+
+      // Verify Cases List
+      expect(find.text('Mateo Pérez González'), findsOneWidget);
+      expect(find.text('Lucas Gómez'), findsOneWidget);
+
+      // Open new case modal
+      await tester.tap(find.byKey(const Key('btn_nuevo_caso_psicologia')));
+      await tester.pumpAndSettle();
+      expect(find.text('Registrar Nuevo Caso de Orientación'), findsOneWidget);
+
+      // Enter student details
+      await tester.enterText(find.byKey(const Key('input_guidance_student_name')), 'Ana Sofía Rivas');
+      await tester.enterText(find.byKey(const Key('input_guidance_matricula')), 'EST-2026-77');
+      await tester.enterText(find.byKey(const Key('input_guidance_motivo')), 'Dificultad de aprendizaje en lectoescritura.');
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const Key('btn_submit_guidance_case')));
+      await tester.pumpAndSettle();
+
+      // Verify case added
+      expect(find.text('Ana Sofía Rivas'), findsOneWidget);
+
+      // Open expediente for Mateo Pérez (case-001)
+      final btnExpediente = find.byKey(const Key('btn_ver_expediente_case-001'));
+      expect(btnExpediente, findsOneWidget);
+      await tester.ensureVisible(btnExpediente);
+      await tester.pumpAndSettle();
+      await tester.tap(btnExpediente);
+      await tester.pumpAndSettle();
+
+      // Verify dialog header
+      expect(find.textContaining('Expediente: Mateo Pérez González'), findsOneWidget);
+      expect(find.text('Sesiones'), findsOneWidget);
+      expect(find.text('Citaciones Tutores'), findsOneWidget);
+      expect(find.text('Acuerdos Convivencia'), findsOneWidget);
+
+      // Switch to Acuerdos Convivencia
+      await tester.tap(find.text('Acuerdos Convivencia'));
+      await tester.pumpAndSettle();
+      expect(find.text('Ubicación preferencial en primera fila cerca de la pizarra'), findsOneWidget);
+
+      // Close Dialog
+      await tester.tap(find.text('Cerrar Expediente'));
+      await tester.pumpAndSettle();
     });
   });
 }
