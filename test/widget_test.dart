@@ -53,6 +53,11 @@ import 'package:edunex/features/families/models/student_document.dart';
 import 'package:edunex/features/families/models/tutor.dart';
 import 'package:edunex/screens/login_screen.dart';
 import 'package:edunex/screens/main_shell.dart';
+import 'package:edunex/features/teacher_portal/models/teacher_class.dart';
+import 'package:edunex/features/teacher_portal/models/teacher_evaluation.dart';
+import 'package:edunex/features/teacher_portal/models/student_behavior_log.dart';
+import 'package:edunex/features/teacher_portal/repositories/teacher_repository.dart';
+import 'package:edunex/features/teacher_portal/screens/teacher_portal_screen.dart';
 
 void main() {
   testWidgets('EdunexApp desktop smoke test', (WidgetTester tester) async {
@@ -1984,6 +1989,174 @@ void main() {
     expect((await familyRepo.getFamilies()).isNotEmpty, isTrue);
     FamilyRepository.clearAllData();
     expect((await familyRepo.getFamilies()).isEmpty, isTrue);
+
+    // 3. Verify clearAllData and restore on TeacherRepository
+    TeacherRepository.restoreSeedData();
+    final teacherRepo = TeacherRepository(useDemoFallback: true);
+    expect((await teacherRepo.getClasses(docenteId: 'docente-001')).isNotEmpty, isTrue);
+    TeacherRepository.clearAllData();
+    expect((await teacherRepo.getClasses(docenteId: 'docente-001')).isEmpty, isTrue);
+    TeacherRepository.restoreSeedData();
+    expect((await teacherRepo.getClasses(docenteId: 'docente-001')).isNotEmpty, isTrue);
+  });
+
+  group('Teacher Portal - Unit Tests', () {
+    test('TeacherRepository calculates weighted period averages and publishes to AcademicRepository', () async {
+      TeacherRepository.restoreSeedData();
+      final teacherRepo = TeacherRepository(useDemoFallback: true);
+      final academicRepo = AcademicRepository();
+
+      final classes = await teacherRepo.getClasses(docenteId: 'docente-001');
+      expect(classes.isNotEmpty, isTrue);
+      final testClass = classes.first;
+
+      // Create a 20% Quiz evaluation
+      final newEval = await teacherRepo.createEvaluation(
+        classId: testClass.id,
+        periodo: 'P1',
+        titulo: 'Examen Diagnóstico',
+        tipo: 'Quiz',
+        porcentaje: 20.0,
+        fecha: DateTime.now(),
+      );
+      expect(newEval.id.isNotEmpty, isTrue);
+
+      // Score the first student
+      final studentId = testClass.estudiantes.first.id;
+      await teacherRepo.saveStudentScores(newEval.id, {studentId: 95.0});
+
+      // Calculate period averages
+      final averages = await teacherRepo.calculatePeriodAverages(testClass.id, 'P1');
+      expect(averages.containsKey(studentId), isTrue);
+      expect(averages[studentId]! > 0, isTrue);
+
+      // Publish grades to AcademicRepository
+      await teacherRepo.publishPeriodGradesToAcademic(
+        classId: testClass.id,
+        periodo: 'P1',
+        academicRepo: academicRepo,
+      );
+
+      final report = await academicRepo.getReportForStudent(studentId);
+      if (report != null) {
+        final sub = report.materias.firstWhere((a) => a.materia.toLowerCase().contains('mat'));
+        expect(sub.periodo1, isNotNull);
+      }
+    });
+
+    test('TeacherRepository records class attendance and behavior logs correctly', () async {
+      TeacherRepository.restoreSeedData();
+      final teacherRepo = TeacherRepository(useDemoFallback: true);
+      final attendanceRepo = AttendanceRepository();
+
+      final classes = await teacherRepo.getClasses(docenteId: 'docente-001');
+      final testClass = classes.first;
+      final student = testClass.estudiantes.first;
+
+      // Record attendance
+      await teacherRepo.recordClassAttendance(
+        classId: testClass.id,
+        fecha: DateTime(2026, 3, 20),
+        statuses: {student.id: 'Tardanza'},
+        attendanceRepo: attendanceRepo,
+      );
+
+      final studentAttendance = await attendanceRepo.getAttendanceForStudent(student.id);
+      expect(studentAttendance.any((r) => r.estado == 'Tardanza'), isTrue);
+
+      // Add behavior observation log
+      final log = await teacherRepo.addBehaviorLog(
+        classId: testClass.id,
+        studentId: student.id,
+        studentName: student.nombreCompleto,
+        grado: testClass.grado,
+        docenteId: 'docente-001',
+        docenteNombre: 'Prof. María González',
+        tipo: 'Mérito / Felicitación',
+        categoria: 'Académico',
+        descripcion: 'Excelente desempeño en resolución de problemas matemáticos',
+        notificadoTutor: true,
+        notificadoPsicologia: false,
+      );
+      expect(log.id.isNotEmpty, isTrue);
+
+      final logs = await teacherRepo.getBehaviorLogs(classId: testClass.id);
+      expect(logs.any((l) => l.studentId == student.id), isTrue);
+    });
+  });
+
+  group('Teacher Portal - Widget Tests', () {
+    testWidgets('MainShell renders TeacherPortalScreen for UserRole.docente with 4 tabs', (WidgetTester tester) async {
+      tester.view.physicalSize = const Size(1280, 900);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+
+      TeacherRepository.restoreSeedData();
+      final teacherRepo = TeacherRepository(useDemoFallback: true);
+      final academicRepo = AcademicRepository();
+      final attendanceRepo = AttendanceRepository();
+
+      final teacherUser = UserProfile(
+        id: 'docente-001',
+        colegioId: 'a0000000-0000-0000-0000-000000000001',
+        rol: UserRole.docente,
+        email: 'docente@edunex.edu.do',
+        nombres: 'María',
+        apellidos: 'González',
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: MainShell(
+            userProfile: teacherUser,
+            teacherRepository: teacherRepo,
+            academicRepository: academicRepo,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Verify Teacher Nav Items
+      expect(find.text('Libro de Clases'), findsWidgets);
+      expect(find.text('Calificador de Aula'), findsWidgets);
+      expect(find.text('Pase de Lista'), findsWidgets);
+      expect(find.text('Observador & Convivencia'), findsWidgets);
+
+      // Verify default tab (Libro de Clases) content
+      expect(find.textContaining('Horario Pedagógico'), findsOneWidget);
+      expect(find.text('Matemáticas'), findsWidgets);
+
+      // Switch to Calificador de Aula
+      await tester.tap(find.text('Calificador de Aula').first);
+      await tester.pumpAndSettle();
+      expect(find.textContaining('Período Académico'), findsOneWidget);
+      expect(find.byKey(const Key('btn_add_evaluacion')), findsOneWidget);
+
+      // Open Add Evaluation Modal
+      await tester.tap(find.byKey(const Key('btn_add_evaluacion')));
+      await tester.pumpAndSettle();
+      expect(find.text('Nueva Evaluación Pedagógica'), findsOneWidget);
+
+      // Fill and submit evaluation
+      await tester.enterText(find.byKey(const Key('input_eval_title')), 'Práctica Semana 4');
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('btn_submit_eval')));
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('Práctica Semana 4'), findsWidgets);
+
+      // Switch to Pase de Lista
+      await tester.tap(find.text('Pase de Lista').first);
+      await tester.pumpAndSettle();
+      expect(find.textContaining('Fecha de Clase'), findsOneWidget);
+      expect(find.byKey(const Key('btn_guardar_asistencia_docente')), findsOneWidget);
+
+      // Switch to Observador & Convivencia
+      await tester.tap(find.text('Observador & Convivencia').first);
+      await tester.pumpAndSettle();
+      expect(find.textContaining('Filtro:'), findsOneWidget);
+      expect(find.byKey(const Key('btn_add_observacion_docente')), findsOneWidget);
+    });
   });
 }
 

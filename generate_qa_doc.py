@@ -937,6 +937,12 @@ html_content = """<!DOCTYPE html>
         <td>[ ] Pasa &nbsp; [ ] Falla</td>
         <td></td>
       </tr>
+      <tr>
+        <td><strong>24. Portal del Docente (Punto 1)</strong></td>
+        <td>Libro de Clases y nóminas de aula, Calificador interactivo por componentes ponderados con cálculo automático de promedios de período, Pase de lista por asignatura y Observador de convivencia escolar.</td>
+        <td>[ ] Pasa &nbsp; [ ] Falla</td>
+        <td></td>
+      </tr>
     </tbody>
   </table>
 

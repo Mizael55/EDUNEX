@@ -33,6 +33,8 @@ import '../features/superadmin/widgets/edit_school_logo_dialog.dart';
 import '../features/superadmin/models/school.dart';
 import '../features/finances/screens/finance_overview_screen.dart';
 import '../features/services/screens/services_management_screen.dart';
+import '../features/teacher_portal/repositories/teacher_repository.dart';
+import '../features/teacher_portal/screens/teacher_portal_screen.dart';
 import 'login_screen.dart';
 
 /// Shell principal responsivo de EDUNEX con navegación adaptativa
@@ -42,6 +44,7 @@ class MainShell extends StatefulWidget {
   final SchoolRepository? schoolRepository;
   final AcademicRepository? academicRepository;
   final StoreRepository? storeRepository;
+  final TeacherRepository? teacherRepository;
 
   const MainShell({
     super.key,
@@ -50,6 +53,7 @@ class MainShell extends StatefulWidget {
     this.schoolRepository,
     this.academicRepository,
     this.storeRepository,
+    this.teacherRepository,
   });
 
   @override
@@ -66,6 +70,7 @@ class _MainShellState extends State<MainShell> {
   late final CircularRepository _circularRepository;
   late final AcademicRepository _academicRepository;
   late final StoreRepository _storeRepository;
+  late final TeacherRepository _teacherRepository;
   String _schoolName = 'Colegio Cliente EDUNEX';
   String? _schoolLogoUrl;
   School? _inspectedSchool;
@@ -81,6 +86,7 @@ class _MainShellState extends State<MainShell> {
     _circularRepository = CircularRepository(familyRepository: _familyRepository);
     _academicRepository = widget.academicRepository ?? AcademicRepository();
     _storeRepository = widget.storeRepository ?? StoreRepository();
+    _teacherRepository = widget.teacherRepository ?? TeacherRepository();
     _loadSchoolName();
   }
 
@@ -129,8 +135,30 @@ class _MainShellState extends State<MainShell> {
   bool get _isSuperAdmin => widget.userProfile.rol == UserRole.superadmin;
   bool get _isParent => widget.userProfile.rol == UserRole.tutorFamiliar;
   bool get _isStudent => widget.userProfile.rol == UserRole.estudiante;
+  bool get _isTeacher => widget.userProfile.rol == UserRole.docente;
 
   List<NavigationItem> get _navItems {
+    if (_isTeacher) {
+      return [
+        const NavigationItem(
+          title: 'Libro de Clases',
+          icon: Icons.auto_stories_rounded,
+        ),
+        const NavigationItem(
+          title: 'Calificador de Aula',
+          icon: Icons.grading_rounded,
+        ),
+        const NavigationItem(
+          title: 'Pase de Lista',
+          icon: Icons.fact_check_rounded,
+        ),
+        const NavigationItem(
+          title: 'Observador & Convivencia',
+          icon: Icons.psychology_rounded,
+        ),
+      ];
+    }
+
     if (_isSuperAdmin) {
       return [
         const NavigationItem(
@@ -263,6 +291,19 @@ class _MainShellState extends State<MainShell> {
   }
 
   Widget _buildBody() {
+    if (_isTeacher) {
+      return TeacherPortalScreen(
+        userProfile: widget.userProfile,
+        teacherRepository: _teacherRepository,
+        academicRepository: _academicRepository,
+        attendanceRepository: _attendanceRepository,
+        initialTabIndex: _selectedIndex.clamp(0, 3),
+        onTabChanged: (idx) {
+          if (_selectedIndex != idx) setState(() => _selectedIndex = idx);
+        },
+      );
+    }
+
     if (_isSuperAdmin) {
       switch (_selectedIndex) {
         case 0:
