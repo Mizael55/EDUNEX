@@ -3,6 +3,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/config/supabase_config.dart';
 import '../models/family.dart';
 import '../models/student.dart';
+import '../models/student_document.dart';
 import '../models/tutor.dart';
 import '../../auth/repositories/auth_repository.dart';
 import '../../auth/models/user_role.dart';
@@ -41,6 +42,13 @@ class FamilyRepository {
     _demoFamilies.clear();
     _customFamilies.clear();
     _abonoApprovalRequests.clear();
+  }
+
+  /// Restaura las familias piloto para pruebas y modo demo
+  static void restoreSeedData() {
+    _demoFamilies.clear();
+    _demoFamilies.addAll(_seedFamilies);
+    _customFamilies.clear();
   }
 
   static final List<Family> _seedFamilies = [
@@ -706,6 +714,56 @@ class FamilyRepository {
     }
   }
 
+  /// Issue #19: Adjunta y persiste un documento oficial en el expediente digital de un estudiante
+  Future<void> addDocumentToStudent({
+    required String studentId,
+    required StudentDocument document,
+  }) async {
+    bool updated = false;
+    for (int i = 0; i < _customFamilies.length; i++) {
+      final f = _customFamilies[i];
+      final sIndex = f.estudiantes.indexWhere((s) => s.id == studentId);
+      if (sIndex != -1) {
+        final currentStudent = f.estudiantes[sIndex];
+        final updatedDocs = List<StudentDocument>.from(currentStudent.documentosExpediente)..add(document);
+        final updatedStudent = currentStudent.copyWith(
+          documentosExpediente: updatedDocs,
+          fotoAdjunta: currentStudent.fotoAdjunta || document.tipo.toLowerCase().contains('foto'),
+          actaNacimientoAdjunta: currentStudent.actaNacimientoAdjunta || document.tipo.toLowerCase().contains('acta'),
+          certificadoNotasAdjunto: currentStudent.certificadoNotasAdjunto || document.tipo.toLowerCase().contains('nota') || document.tipo.toLowerCase().contains('calificac'),
+          cartaSaldoConductaAdjunta: currentStudent.cartaSaldoConductaAdjunta || document.tipo.toLowerCase().contains('conducta') || document.tipo.toLowerCase().contains('saldo'),
+        );
+        final updatedStudents = List<Student>.from(f.estudiantes);
+        updatedStudents[sIndex] = updatedStudent;
+        _customFamilies[i] = f.copyWith(estudiantes: updatedStudents);
+        updated = true;
+        break;
+      }
+    }
+
+    if (!updated) {
+      for (int i = 0; i < _demoFamilies.length; i++) {
+        final f = _demoFamilies[i];
+        final sIndex = f.estudiantes.indexWhere((s) => s.id == studentId);
+        if (sIndex != -1) {
+          final currentStudent = f.estudiantes[sIndex];
+          final updatedDocs = List<StudentDocument>.from(currentStudent.documentosExpediente)..add(document);
+          final updatedStudent = currentStudent.copyWith(
+            documentosExpediente: updatedDocs,
+            fotoAdjunta: currentStudent.fotoAdjunta || document.tipo.toLowerCase().contains('foto'),
+            actaNacimientoAdjunta: currentStudent.actaNacimientoAdjunta || document.tipo.toLowerCase().contains('acta'),
+            certificadoNotasAdjunto: currentStudent.certificadoNotasAdjunto || document.tipo.toLowerCase().contains('nota') || document.tipo.toLowerCase().contains('calificac'),
+            cartaSaldoConductaAdjunta: currentStudent.cartaSaldoConductaAdjunta || document.tipo.toLowerCase().contains('conducta') || document.tipo.toLowerCase().contains('saldo'),
+          );
+          final updatedStudents = List<Student>.from(f.estudiantes);
+          updatedStudents[sIndex] = updatedStudent;
+          _demoFamilies[i] = f.copyWith(estudiantes: updatedStudents);
+          break;
+        }
+      }
+    }
+  }
+
   /// Registra un abono o pago a una familia y emite su comprobante fiscal oficial
   Future<PaymentReceipt> recordPayment({
     required String familiaId,
@@ -992,7 +1050,7 @@ class FamilyRepository {
     }
   }
 
-  /// Matricula un nuevo alumno en una familia
+  /// Matricula un nuevo alumno en una familia (Issue #19: incluye expediente de documentos y tutores)
   Future<Student> enrollStudent({
     required String familiaId,
     required String colegioId,
@@ -1003,6 +1061,8 @@ class FamilyRepository {
     DateTime? fechaNacimiento,
     String? genero,
     List<String> servicios = const [],
+    List<StudentDocument> documentos = const [],
+    List<Tutor> additionalTutors = const [],
   }) async {
     final now = DateTime.now();
     final uniqueSuffix = now.millisecondsSinceEpoch.toString().substring(8);
@@ -1021,7 +1081,17 @@ class FamilyRepository {
       gradoNombre: gradoNombre,
       seccionNombre: seccionNombre ?? 'Sección A',
       serviciosActivos: servicios,
+      documentosExpediente: documentos,
+      fotoAdjunta: documentos.any((d) => d.tipo.toLowerCase().contains('foto')),
+      actaNacimientoAdjunta: documentos.any((d) => d.tipo.toLowerCase().contains('acta')),
+      certificadoNotasAdjunto: documentos.any((d) => d.tipo.toLowerCase().contains('nota')),
+      cartaSaldoConductaAdjunta: documentos.any((d) => d.tipo.toLowerCase().contains('conducta') || d.tipo.toLowerCase().contains('saldo')),
     );
+
+    // Issue #19: Registrar tutores adicionales o personas autorizadas vinculadas a esta matrícula
+    for (final tutor in additionalTutors) {
+      await addTutorToFamily(familiaId, tutor);
+    }
 
     if (_supabaseClient != null && SupabaseConfig.isConfigured && !_useDemoFallback) {
       try {
@@ -1041,23 +1111,23 @@ class FamilyRepository {
     }
 
     // Actualizar familia en memoria
+    bool enrolledInCustom = false;
     for (int i = 0; i < _customFamilies.length; i++) {
       if (_customFamilies[i].id == familiaId) {
         final f = _customFamilies[i];
-        _customFamilies[i] = Family(
-          id: f.id,
-          colegioId: f.colegioId,
-          codigoFamilia: f.codigoFamilia,
-          nombreFamilia: f.nombreFamilia,
-          balancePendiente: f.balancePendiente,
-          telefonoPrincipal: f.telefonoPrincipal,
-          emailPrincipal: f.emailPrincipal,
-          direccion: f.direccion,
-          activo: f.activo,
-          tutores: f.tutores,
-          estudiantes: [...f.estudiantes, student],
-        );
+        _customFamilies[i] = f.copyWith(estudiantes: [...f.estudiantes, student]);
+        enrolledInCustom = true;
         break;
+      }
+    }
+
+    if (!enrolledInCustom) {
+      for (int i = 0; i < _demoFamilies.length; i++) {
+        if (_demoFamilies[i].id == familiaId) {
+          final f = _demoFamilies[i];
+          _demoFamilies[i] = f.copyWith(estudiantes: [...f.estudiantes, student]);
+          break;
+        }
       }
     }
 

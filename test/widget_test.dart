@@ -47,6 +47,8 @@ import 'package:edunex/features/finances/models/payment_approval_request.dart';
 import 'package:edunex/features/finances/screens/record_payment_dialog.dart';
 import 'package:edunex/features/superadmin/widgets/edit_school_logo_dialog.dart';
 import 'package:edunex/features/families/screens/family_detail_dialog.dart';
+import 'package:edunex/features/families/screens/enroll_student_dialog.dart';
+import 'package:edunex/features/families/screens/family_directory_screen.dart';
 import 'package:edunex/features/dashboard/screens/dashboard_overview_screen.dart';
 import 'package:edunex/features/parent_portal/screens/parent_portal_screen.dart';
 import 'package:edunex/features/families/models/student_document.dart';
@@ -2010,6 +2012,10 @@ void main() {
     expect((await guidanceRepo.getCases()).isEmpty, isTrue);
     GuidanceRepository.restoreSeedData();
     expect((await guidanceRepo.getCases()).isNotEmpty, isTrue);
+
+    // Restore seed data for subsequent tests
+    SchoolRepository.restoreSeedData();
+    FamilyRepository.restoreSeedData();
   });
 
   group('Teacher Portal - Unit Tests', () {
@@ -2360,6 +2366,140 @@ void main() {
       // Close Dialog
       await tester.tap(find.text('Cerrar Expediente'));
       await tester.pumpAndSettle();
+    });
+  });
+
+  group('Issue #19 - Expediente escolar y tutores autorizados en matrícula y directorio', () {
+    setUp(() {
+      FamilyRepository.restoreSeedData();
+    });
+
+    testWidgets('EnrollStudentDialog allows uploading documents and adding extra tutors', (WidgetTester tester) async {
+      tester.view.physicalSize = const Size(1280, 900);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+
+      final familyRepo = FamilyRepository(useDemoFallback: true);
+      final families = await familyRepo.getFamilies();
+      final family = families.first;
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: EnrollStudentDialog(
+              repository: familyRepo,
+              initialFamily: family,
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Check section header for expediente documents
+      expect(find.text('Documentos para el Expediente Escolar (Issue #19)'), findsOneWidget);
+      expect(find.text('Tutores y Personas Autorizadas (Issue #19)'), findsOneWidget);
+
+      // Toggle document checkboxes
+      final checkActa = find.byKey(const Key('checkbox_doc_Acta de Nacimiento'));
+      await tester.ensureVisible(checkActa);
+      await tester.pumpAndSettle();
+      await tester.tap(checkActa);
+      await tester.pumpAndSettle();
+
+      final checkFoto = find.byKey(const Key('checkbox_doc_Foto 2x2'));
+      await tester.ensureVisible(checkFoto);
+      await tester.pumpAndSettle();
+      await tester.tap(checkFoto);
+      await tester.pumpAndSettle();
+
+      // Open Add Tutor modal
+      final btnAddTutor = find.byKey(const Key('btn_enroll_add_tutor'));
+      await tester.ensureVisible(btnAddTutor);
+      await tester.pumpAndSettle();
+      await tester.tap(btnAddTutor);
+      await tester.pumpAndSettle();
+
+      expect(find.text('Agregar Tutor o Persona Autorizada'), findsOneWidget);
+      await tester.enterText(find.byKey(const Key('input_tutor_names')), 'Carmen');
+      await tester.enterText(find.byKey(const Key('input_tutor_lastnames')), 'González');
+      await tester.enterText(find.byKey(const Key('input_tutor_phone')), '809-555-8888');
+      await tester.enterText(find.byKey(const Key('input_tutor_email')), 'carmen@ejemplo.com');
+      await tester.tap(find.byKey(const Key('btn_submit_enroll_tutor')));
+      await tester.pumpAndSettle();
+
+      // Verify tutor added in preview list
+      expect(find.text('Carmen González (Madre)'), findsOneWidget);
+
+      // Enter student names
+      final inputNames = find.byKey(const Key('input_enroll_student_names'));
+      await tester.ensureVisible(inputNames);
+      await tester.pumpAndSettle();
+      await tester.enterText(inputNames, 'Diego');
+      await tester.enterText(find.byKey(const Key('input_enroll_student_apellidos')), 'Pérez González');
+      await tester.pumpAndSettle();
+
+      // Submit enrollment
+      final btnSubmit = find.byKey(const Key('btn_enroll_submit_student'));
+      await tester.ensureVisible(btnSubmit);
+      await tester.pumpAndSettle();
+      await tester.tap(btnSubmit);
+      await tester.pumpAndSettle();
+
+      // Verify success screen shows documents and tutors
+      expect(find.text('¡Matrícula Asignada con Éxito!'), findsOneWidget);
+      expect(find.textContaining('documentos oficiales vinculados'), findsOneWidget);
+      expect(find.textContaining('Tutores/Autorizados adicionales: Carmen González (Madre)'), findsOneWidget);
+      expect(find.byKey(const Key('btn_success_ver_expediente_completo')), findsOneWidget);
+
+      // Verify student and tutor persisted in repository
+      final updatedFamily = await familyRepo.getFamilyById(family.id);
+      expect(updatedFamily, isNotNull);
+      final enrolledStudent = updatedFamily!.estudiantes.firstWhere((s) => s.nombres == 'Diego');
+      expect(enrolledStudent.documentos.length, 2);
+      expect(updatedFamily.tutores.any((t) => t.nombres == 'Carmen'), isTrue);
+    });
+
+    testWidgets('FamilyDirectoryScreen displays Expediente button and FamilyDetailDialog persists attached docs', (WidgetTester tester) async {
+      tester.view.physicalSize = const Size(1280, 900);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+
+      final familyRepo = FamilyRepository(useDemoFallback: true);
+      final families = await familyRepo.getFamilies();
+      final family = families.first;
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: FamilyDirectoryScreen(repository: familyRepo),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Check Expediente & Tutores button on card
+      final btnExpediente = find.byKey(Key('btn_ver_expediente_${family.id}'));
+      expect(btnExpediente, findsOneWidget);
+      await tester.tap(btnExpediente);
+      await tester.pumpAndSettle();
+
+      // FamilyDetailDialog is opened
+      expect(find.textContaining(family.nombreFamilia), findsWidgets);
+      expect(find.textContaining('Expediente Escolar'), findsWidgets);
+
+      // Verify student docs can be attached and saved
+      final student = family.estudiantes.first;
+      final newDoc = StudentDocument(
+        id: 'doc-test-1',
+        tipo: 'certificado_medico',
+        nombreArchivo: 'Certificado_Medico_Test.pdf',
+        tamanoBytes: 1024 * 1024,
+        fechaSubida: DateTime.now(),
+      );
+      await familyRepo.addDocumentToStudent(studentId: student.id, document: newDoc);
+      final refreshedFamily = await familyRepo.getFamilyById(family.id);
+      final refreshedStudent = refreshedFamily!.estudiantes.firstWhere((s) => s.id == student.id);
+      expect(refreshedStudent.documentos.any((d) => d.id == 'doc-test-1'), isTrue);
     });
   });
 }

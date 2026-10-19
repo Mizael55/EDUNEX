@@ -141,7 +141,7 @@ class Family {
   Map<String, dynamic> toJson() {
     return {
       'id': id,
-      'colegio_id': colegioId,
+      'colegioId': colegioId,
       'codigo_familia': codigoFamilia,
       'nombre_familia': nombreFamilia,
       'balance_pendiente': balancePendiente,
@@ -157,4 +157,12 @@ class Family {
       'criterios_centro_adicionales': criteriosCentroAdicionales,
     };
   }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is Family && runtimeType == other.runtimeType && id == other.id;
+
+  @override
+  int get hashCode => id.hashCode;
 }

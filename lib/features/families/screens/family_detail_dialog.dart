@@ -236,7 +236,7 @@ class _FamilyDetailDialogState extends State<FamilyDetailDialog> {
                   leading: const Icon(Icons.attach_file_rounded, color: AppColors.electricBlue),
                   title: Text(tipo, style: const TextStyle(fontSize: 13)),
                   trailing: const Icon(Icons.add_circle_outline_rounded, color: AppColors.accentGreen, size: 20),
-                  onTap: () {
+                  onTap: () async {
                     final newDoc = StudentDocument(
                       id: 'doc-${DateTime.now().millisecondsSinceEpoch}',
                       tipo: tipo,
@@ -244,6 +244,11 @@ class _FamilyDetailDialogState extends State<FamilyDetailDialog> {
                       tamanoBytes: 1024 * 512,
                       fechaSubida: DateTime.now(),
                       verificado: true,
+                    );
+
+                    await _repository.addDocumentToStudent(
+                      studentId: student.id,
+                      document: newDoc,
                     );
 
                     final updatedStudents = _family.estudiantes.map((s) {
@@ -257,13 +262,15 @@ class _FamilyDetailDialogState extends State<FamilyDetailDialog> {
                       _family = _family.copyWith(estudiantes: updatedStudents);
                     });
 
-                    Navigator.of(ctx).pop();
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text('Documento "$tipo" adjuntado al expediente escolar de ${student.nombres}.'),
-                        backgroundColor: AppColors.accentGreen,
-                      ),
-                    );
+                    if (mounted) {
+                      Navigator.of(ctx).pop();
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('Documento "$tipo" guardado y vinculado al expediente de ${student.nombres}.'),
+                          backgroundColor: AppColors.accentGreen,
+                        ),
+                      );
+                    }
                   },
                 )),
           ],
@@ -832,57 +839,90 @@ class _FamilyDetailDialogState extends State<FamilyDetailDialog> {
             ],
           ),
           const SizedBox(height: 6),
-          Wrap(
-            spacing: 8,
-            runSpacing: 6,
-            children: (student.documentosExpediente.isNotEmpty
-                    ? student.documentosExpediente
-                    : [
-                        StudentDocument(
-                          id: 'doc-foto',
-                          tipo: 'Foto 2x2',
-                          nombreArchivo: 'foto_${student.nombres.toLowerCase().replaceAll(' ', '_')}.jpg',
-                          tamanoBytes: 1024 * 320,
-                          fechaSubida: DateTime.now(),
-                          verificado: student.fotoAdjunta,
+          Builder(
+            builder: (context) {
+              final docs = List<StudentDocument>.from(student.documentosExpediente);
+              if (docs.isEmpty) {
+                if (student.fotoAdjunta) {
+                  docs.add(StudentDocument(
+                    id: 'doc-foto',
+                    tipo: 'Foto 2x2',
+                    nombreArchivo: 'foto_${student.nombres.toLowerCase().replaceAll(' ', '_')}.jpg',
+                    tamanoBytes: 1024 * 320,
+                    fechaSubida: DateTime.now(),
+                    verificado: true,
+                  ));
+                }
+                if (student.actaNacimientoAdjunta) {
+                  docs.add(StudentDocument(
+                    id: 'doc-acta',
+                    tipo: 'Acta de Nacimiento',
+                    nombreArchivo: 'acta_legalizada.pdf',
+                    tamanoBytes: 1024 * 1450,
+                    fechaSubida: DateTime.now(),
+                    verificado: true,
+                  ));
+                }
+                if (student.certificadoNotasAdjunto) {
+                  docs.add(StudentDocument(
+                    id: 'doc-notas',
+                    tipo: 'Certificado de Notas',
+                    nombreArchivo: 'record_academico.pdf',
+                    tamanoBytes: 1024 * 890,
+                    fechaSubida: DateTime.now(),
+                    verificado: true,
+                  ));
+                }
+              }
+
+              if (docs.isEmpty) {
+                return Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFEF3C7),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: const Color(0xFFFDE68A)),
+                  ),
+                  child: const Row(
+                    children: [
+                      Icon(Icons.warning_amber_rounded, size: 14, color: Color(0xFFB45309)),
+                      SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          'Sin documentos en expediente aún. Pulsa "Adjuntar Documento" para cargar foto, acta o notas.',
+                          style: TextStyle(fontSize: 11, color: Color(0xFF92400E)),
                         ),
-                        StudentDocument(
-                          id: 'doc-acta',
-                          tipo: 'Acta de Nacimiento',
-                          nombreArchivo: 'acta_legalizada.pdf',
-                          tamanoBytes: 1024 * 1450,
-                          fechaSubida: DateTime.now(),
-                          verificado: student.actaNacimientoAdjunta,
-                        ),
-                        StudentDocument(
-                          id: 'doc-notas',
-                          tipo: 'Certificado de Notas',
-                          nombreArchivo: 'record_academico.pdf',
-                          tamanoBytes: 1024 * 890,
-                          fechaSubida: DateTime.now(),
-                          verificado: student.certificadoNotasAdjunto,
-                        ),
-                      ])
-                .map((doc) => Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFF0FDF4),
-                        borderRadius: BorderRadius.circular(6),
-                        border: Border.all(color: const Color(0xFF86EFAC)),
                       ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(Icons.check_circle_rounded, size: 12, color: Color(0xFF16A34A)),
-                          const SizedBox(width: 4),
-                          Text(
-                            '${doc.tipo}: ${doc.nombreArchivo} (${doc.tamanoFormateado})',
-                            style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: Color(0xFF14532D)),
-                          ),
-                        ],
+                    ],
+                  ),
+                );
+              }
+
+              return Wrap(
+                spacing: 8,
+                runSpacing: 6,
+                children: docs.map((doc) => Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF0FDF4),
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(color: const Color(0xFF86EFAC)),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.check_circle_rounded, size: 12, color: Color(0xFF16A34A)),
+                      const SizedBox(width: 4),
+                      Text(
+                        '${doc.tipo}: ${doc.nombreArchivo} (${doc.tamanoFormateado})',
+                        style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: Color(0xFF14532D)),
                       ),
-                    ))
-                .toList(),
+                    ],
+                  ),
+                )).toList(),
+              );
+            },
           ),
         ],
       ),

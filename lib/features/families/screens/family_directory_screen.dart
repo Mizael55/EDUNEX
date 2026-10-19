@@ -270,7 +270,7 @@ class _FamilyDirectoryScreenState extends State<FamilyDirectoryScreen> {
         borderRadius: BorderRadius.circular(16),
         child: InkWell(
           borderRadius: BorderRadius.circular(16),
-          onTap: () => FamilyDetailDialog.show(context, family),
+          onTap: () => FamilyDetailDialog.show(context, family, repository: widget.repository).then((_) => _loadFamilies()),
           child: Padding(
             padding: const EdgeInsets.all(20),
             child: Row(
@@ -347,26 +347,28 @@ class _FamilyDirectoryScreenState extends State<FamilyDirectoryScreen> {
                     children: [
                       const Icon(Icons.school_outlined, size: 18, color: AppColors.textSecondary),
                       const SizedBox(width: 6),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            '${family.estudiantes.length} ${family.estudiantes.length == 1 ? "Hijo" : "Hijos"}',
-                            style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 13,
-                              color: AppColors.textPrimary,
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              '${family.estudiantes.length} ${family.estudiantes.length == 1 ? "Hijo" : "Hijos"}',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 13,
+                                color: AppColors.textPrimary,
+                              ),
                             ),
-                          ),
-                          Text(
-                            family.estudiantes.map((e) => e.nombres.split(' ').first).join(', '),
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              fontSize: 12,
-                              color: AppColors.textSecondary,
+                            Text(
+                              family.estudiantes.map((e) => e.nombres.split(' ').first).join(', '),
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: AppColors.textSecondary,
+                              ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     ],
                   ),
@@ -411,7 +413,28 @@ class _FamilyDirectoryScreenState extends State<FamilyDirectoryScreen> {
                   ],
                 ),
 
-                const SizedBox(width: 12),
+                const SizedBox(width: 8),
+                OutlinedButton.icon(
+                  key: Key('btn_ver_expediente_${family.id}'),
+                  onPressed: () async {
+                    await FamilyDetailDialog.show(
+                      context,
+                      family,
+                      repository: widget.repository,
+                    );
+                    _loadFamilies();
+                  },
+                  icon: const Icon(Icons.folder_shared_rounded, size: 14),
+                  label: const Text('Expediente & Tutores', style: TextStyle(fontSize: 12)),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppColors.navyPrimary,
+                    side: const BorderSide(color: AppColors.navyPrimary),
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    visualDensity: VisualDensity.compact,
+                  ),
+                ),
+                const SizedBox(width: 8),
                 ElevatedButton.icon(
                   onPressed: () {
                     RecordPaymentDialog.show(

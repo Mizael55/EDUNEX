@@ -81,6 +81,12 @@ class SchoolRepository {
     _demoSchools.clear();
   }
 
+  /// Restaura los colegios de prueba para pruebas y modo demo
+  static void restoreSeedData() {
+    _demoSchools.clear();
+    _demoSchools.addAll(_seedSchools);
+  }
+
   /// Obtiene la lista de colegios registrados
   Future<List<School>> getSchools({
     String? searchQuery,

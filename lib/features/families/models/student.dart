@@ -59,6 +59,8 @@ class Student {
     this.documentosExpediente = const [],
   });
 
+  List<StudentDocument> get documentos => documentosExpediente;
+
   String get nombreCompleto => '$nombres $apellidos'.trim();
   String get gradoYSeccion => '${gradoNombre ?? "Sin grado"} ${seccionNombre ?? ""}'.trim();
 
