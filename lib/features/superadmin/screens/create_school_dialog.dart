@@ -78,9 +78,10 @@ class _CreateSchoolDialogState extends State<CreateSchoolDialog> {
   double _descuentoTrimestral = 3.0;
   double _descuentoHermanos = 10.0;
 
-  // Credenciales del Director / Administrador Escolar
+  // Credenciales del Director / Administrador Escolar (Issue #18: Cédula requerida para enrolar colegio)
   final _directorNombresController = TextEditingController(text: 'Carlos');
   final _directorApellidosController = TextEditingController(text: 'Gómez');
+  final _directorCedulaController = TextEditingController(text: '001-1827364-5');
   final _directorEmailController = TextEditingController();
   final _directorPasswordController = TextEditingController(text: '123456');
   bool _obscurePassword = false;
@@ -90,6 +91,7 @@ class _CreateSchoolDialogState extends State<CreateSchoolDialog> {
   String? _createdDirectorEmail;
   String? _createdDirectorPassword;
   String? _createdDirectorName;
+  String? _createdDirectorCedula;
 
   @override
   void dispose() {
@@ -111,6 +113,7 @@ class _CreateSchoolDialogState extends State<CreateSchoolDialog> {
     }
     _directorNombresController.dispose();
     _directorApellidosController.dispose();
+    _directorCedulaController.dispose();
     _directorEmailController.dispose();
     _directorPasswordController.dispose();
     super.dispose();
@@ -217,6 +220,7 @@ class _CreateSchoolDialogState extends State<CreateSchoolDialog> {
         directorPassword: _directorPasswordController.text.trim(),
         directorNombres: _directorNombresController.text.trim(),
         directorApellidos: _directorApellidosController.text.trim(),
+        directorCedula: _directorCedulaController.text.trim(),
         precioInicial: double.tryParse(_precioInicialController.text.trim()) ?? 6500.0,
         precioPrimaria: double.tryParse(_precioPrimariaController.text.trim()) ?? 8000.0,
         precioSecundaria: double.tryParse(_precioSecundariaController.text.trim()) ?? 9500.0,
@@ -236,6 +240,7 @@ class _CreateSchoolDialogState extends State<CreateSchoolDialog> {
           _createdDirectorEmail = _directorEmailController.text.trim();
           _createdDirectorPassword = _directorPasswordController.text.trim();
           _createdDirectorName = '${_directorNombresController.text.trim()} ${_directorApellidosController.text.trim()}'.trim();
+          _createdDirectorCedula = _directorCedulaController.text.trim();
           _isLoading = false;
         });
 
@@ -365,6 +370,8 @@ class _CreateSchoolDialogState extends State<CreateSchoolDialog> {
                     ),
                     const Divider(height: 20, color: Color(0xFFE2E8F0)),
                     Text('👤 Nombre: $directorName', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                    const SizedBox(height: 6),
+                    Text('🪪 Cédula Oficial: ${_createdDirectorCedula ?? school.directorCedula ?? "001-1827364-5"}', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF334155))),
                     const SizedBox(height: 6),
                     Text('📧 Correo: $email', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppColors.navyPrimary)),
                     const SizedBox(height: 6),
@@ -1277,6 +1284,27 @@ Contraseña: $password
                             ),
                           ),
                         ],
+                      ),
+                      const SizedBox(height: 16),
+
+                      TextFormField(
+                        key: const Key('input_director_cedula'),
+                        controller: _directorCedulaController,
+                        decoration: InputDecoration(
+                          labelText: 'Cédula de Identidad del Director / Responsable *',
+                          hintText: '001-1827364-5',
+                          helperText: 'Cédula oficial dominicana del responsable legal del centro',
+                          prefixIcon: const Icon(Icons.badge_rounded, color: AppColors.navyPrimary),
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                        ),
+                        validator: (val) {
+                          if (val == null || val.trim().isEmpty) return 'La cédula del director es obligatoria';
+                          final digits = val.replaceAll(RegExp(r'[^0-9]'), '');
+                          if (digits.length != 11) {
+                            return 'La cédula debe contener 11 dígitos (ingresados: ${digits.length})';
+                          }
+                          return null;
+                        },
                       ),
                       const SizedBox(height: 16),
 

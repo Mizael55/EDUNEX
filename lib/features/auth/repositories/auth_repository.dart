@@ -25,6 +25,7 @@ class AuthRepository {
     String? colegioId,
     String? colegioNombre,
     String? telefono,
+    String? cedula,
   }) {
     final cleanEmail = email.trim().toLowerCase();
     final profile = UserProfile(
@@ -36,8 +37,14 @@ class AuthRepository {
       rol: rol,
       colegioNombre: colegioNombre ?? 'Colegio Cliente EDUNEX',
       telefono: telefono,
+      cedula: cedula,
     );
     _registeredUsers[cleanEmail] = profile;
+  }
+
+  /// Limpia los usuarios registrados en memoria para pruebas de QA
+  static void clearAllUsers() {
+    _registeredUsers.clear();
   }
 
   /// Retorna usuarios registrados por rol para pruebas de QA

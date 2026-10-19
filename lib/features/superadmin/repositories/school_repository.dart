@@ -26,8 +26,9 @@ class SchoolRepository {
     this._useDemoFallback = false,
   }) : _supabaseClient = supabaseClient ?? _resolveClient();
 
-  /// Lista de colegios de demostración para pruebas fuera de línea
-  static final List<School> _demoSchools = [
+  /// Lista de colegios en memoria para pruebas y modo desconectado (inicialmente vacía para QA)
+  /// Semillas de demostración para fallback fuera de línea y tests
+  static final List<School> _seedSchools = [
     School(
       id: 'a0000000-0000-0000-0000-000000000001',
       nombre: 'Colegio Bilingüe EDUNEX Piloto',
@@ -71,6 +72,14 @@ class SchoolRepository {
       totalFamilias: 110,
     ),
   ];
+
+  /// Lista de colegios en memoria para pruebas y modo desconectado
+  static final List<School> _demoSchools = List.from(_seedSchools);
+
+  /// Limpia todos los colegios en memoria para pruebas de QA
+  static void clearAllData() {
+    _demoSchools.clear();
+  }
 
   /// Obtiene la lista de colegios registrados
   Future<List<School>> getSchools({
@@ -132,6 +141,7 @@ class SchoolRepository {
     required String directorPassword,
     required String directorNombres,
     String? directorApellidos,
+    String? directorCedula,
     double precioInicial = 6500.0,
     double precioPrimaria = 8000.0,
     double precioSecundaria = 9500.0,
@@ -201,11 +211,15 @@ class SchoolRepository {
           colegioId: school.id,
           colegioNombre: school.nombre,
           telefono: telefono,
+          cedula: directorCedula,
         );
 
         return {
           'school': school,
-          'director': res['director'] as Map<String, dynamic>,
+          'director': {
+            ...res['director'] as Map<String, dynamic>,
+            'cedula': directorCedula,
+          },
         };
       } catch (e) {
         debugPrint('Error creando colegio con director en Supabase RPC: $e');
@@ -235,6 +249,10 @@ class SchoolRepository {
       descuentoProntoPagoSemestralPct: descuentoProntoPagoSemestralPct,
       descuentoProntoPagoTrimestralPct: descuentoProntoPagoTrimestralPct,
       descuentoHermanosPct: descuentoHermanosPct,
+      directorNombre: '$directorNombres ${directorApellidos ?? ""}'.trim(),
+      directorEmail: directorEmail,
+      directorCedula: directorCedula,
+      directorTelefono: telefono,
     );
     _demoSchools.insert(0, fallbackSchool);
 
@@ -247,6 +265,7 @@ class SchoolRepository {
       colegioId: fallbackSchool.id,
       colegioNombre: fallbackSchool.nombre,
       telefono: telefono,
+      cedula: directorCedula,
     );
 
     return {
@@ -255,6 +274,7 @@ class SchoolRepository {
         'email': directorEmail,
         'nombres': directorNombres,
         'apellidos': directorApellidos ?? '',
+        'cedula': directorCedula,
         'rol': 'admin_colegio',
       },
     };

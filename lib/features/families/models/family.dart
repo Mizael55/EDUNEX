@@ -53,6 +53,42 @@ class Family {
   /// Conteo de estudiantes (hijos) pertenecientes a la cuenta familiar
   int get cantidadHijos => estudiantes.length;
 
+  Family copyWith({
+    String? id,
+    String? colegioId,
+    String? codigoFamilia,
+    String? nombreFamilia,
+    double? balancePendiente,
+    String? telefonoPrincipal,
+    String? emailPrincipal,
+    String? direccion,
+    bool? activo,
+    List<Tutor>? tutores,
+    List<Student>? estudiantes,
+    String? modalidadPago,
+    double? descuentoAcordadoPct,
+    String? notaAcuerdoPago,
+    List<String>? criteriosCentroAdicionales,
+  }) {
+    return Family(
+      id: id ?? this.id,
+      colegioId: colegioId ?? this.colegioId,
+      codigoFamilia: codigoFamilia ?? this.codigoFamilia,
+      nombreFamilia: nombreFamilia ?? this.nombreFamilia,
+      balancePendiente: balancePendiente ?? this.balancePendiente,
+      telefonoPrincipal: telefonoPrincipal ?? this.telefonoPrincipal,
+      emailPrincipal: emailPrincipal ?? this.emailPrincipal,
+      direccion: direccion ?? this.direccion,
+      activo: activo ?? this.activo,
+      tutores: tutores ?? this.tutores,
+      estudiantes: estudiantes ?? this.estudiantes,
+      modalidadPago: modalidadPago ?? this.modalidadPago,
+      descuentoAcordadoPct: descuentoAcordadoPct ?? this.descuentoAcordadoPct,
+      notaAcuerdoPago: notaAcuerdoPago ?? this.notaAcuerdoPago,
+      criteriosCentroAdicionales: criteriosCentroAdicionales ?? this.criteriosCentroAdicionales,
+    );
+  }
+
   factory Family.fromJson(Map<String, dynamic> json) {
     List<Tutor> parsedTutores = [];
     if (json['tutores'] is List) {

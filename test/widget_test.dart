@@ -46,6 +46,11 @@ import 'package:edunex/features/store/screens/admin_store_screen.dart';
 import 'package:edunex/features/finances/models/payment_approval_request.dart';
 import 'package:edunex/features/finances/screens/record_payment_dialog.dart';
 import 'package:edunex/features/superadmin/widgets/edit_school_logo_dialog.dart';
+import 'package:edunex/features/families/screens/family_detail_dialog.dart';
+import 'package:edunex/features/dashboard/screens/dashboard_overview_screen.dart';
+import 'package:edunex/features/parent_portal/screens/parent_portal_screen.dart';
+import 'package:edunex/features/families/models/student_document.dart';
+import 'package:edunex/features/families/models/tutor.dart';
 import 'package:edunex/screens/login_screen.dart';
 import 'package:edunex/screens/main_shell.dart';
 
@@ -1782,6 +1787,203 @@ void main() {
 
     // 4. Verify snackbar confirmation
     expect(find.text('Abono autorizado correctamente.'), findsOneWidget);
+  });
+
+  testWidgets('Issue #18: CreateSchoolDialog enforces Director Cedula field and validates Dominican format', (WidgetTester tester) async {
+    tester.view.physicalSize = const Size(1280, 900);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+
+    final schoolRepo = SchoolRepository();
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: CreateSchoolDialog(schoolRepository: schoolRepo),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // 1. Verify Dialog Title
+    expect(find.textContaining('Nuevo Colegio Cliente'), findsOneWidget);
+
+    // 2. Locate Director Cédula field
+    final cedulaField = find.byKey(const Key('input_director_cedula'));
+    expect(cedulaField, findsOneWidget);
+    expect(find.textContaining('Cédula de Identidad del Director'), findsOneWidget);
+
+    // 3. Fill required fields with invalid cédula first
+    await tester.ensureVisible(cedulaField);
+    await tester.enterText(cedulaField, '12345');
+
+    final submitBtn = find.text('Dar de Alta Colegio y Director');
+    await tester.ensureVisible(submitBtn);
+    await tester.tap(submitBtn);
+    await tester.pumpAndSettle();
+
+    // 4. Expect validation error for invalid cédula
+    expect(find.textContaining('La cédula debe contener 11 dígitos'), findsOneWidget);
+
+    // 5. Enter valid cédula
+    await tester.enterText(cedulaField, '001-1234567-8');
+    await tester.tap(submitBtn);
+    await tester.pumpAndSettle();
+    expect(find.textContaining('La cédula debe contener 11 dígitos'), findsNothing);
+  });
+
+  testWidgets('Issue #19: CreateFamilyDialog manages multi-tutors, pickup authorizations, and student documents', (WidgetTester tester) async {
+    tester.view.physicalSize = const Size(1280, 1400);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+
+    final familyRepo = FamilyRepository(useDemoFallback: true);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: CreateFamilyDialog(repository: familyRepo),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // 1. Tab 1: Verify "+ Agregar Tutor / Autorizado" button exists (Issue #19)
+    final addTutorBtn = find.byKey(const Key('btn_add_another_tutor'));
+    expect(addTutorBtn, findsOneWidget);
+    await tester.ensureVisible(addTutorBtn);
+    await tester.tap(addTutorBtn);
+    await tester.pumpAndSettle();
+
+    // 2. Verify additional tutor card appears
+    expect(find.text('Tutor / Autorizado #1'), findsOneWidget);
+    expect(find.text('Persona autorizada formalmente para retirar alumnos del colegio'), findsOneWidget);
+
+    // 3. Switch to Tab 2: Alumnos
+    await tester.tap(find.textContaining('2. Alumnos'));
+    await tester.pumpAndSettle();
+
+    // 4. Verify interactive document dossier manager button exists (Issue #19)
+    final docUploadBtn = find.byKey(const Key('btn_cargar_expediente_demo_0'));
+    expect(docUploadBtn, findsOneWidget);
+    expect(find.textContaining('Documentos del Expediente Escolar & Carga Digital'), findsOneWidget);
+
+    // 5. Click to upload/manage document
+    await tester.ensureVisible(docUploadBtn);
+    await tester.tap(docUploadBtn);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+
+    // 6. Verify notification and attached document badge
+    expect(find.text('Documento actualizado en el expediente del estudiante.'), findsOneWidget);
+  });
+
+  testWidgets('Issue #19: FamilyDetailDialog allows adding dynamic tutors and uploading student documents', (WidgetTester tester) async {
+    tester.view.physicalSize = const Size(1280, 1200);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+
+    final familyRepo = FamilyRepository(useDemoFallback: true);
+    final family = (await familyRepo.getFamilies()).first;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: FamilyDetailDialog(family: family, repository: familyRepo),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // 1. Verify detail dialog rendered
+    expect(find.text(family.nombreFamilia), findsWidgets);
+
+    // 2. Verify "+ Agregar Tutor / Autorizado" button in detail dialog (Issue #19)
+    final addTutorBtn = find.byKey(const Key('btn_add_tutor_detail'));
+    expect(addTutorBtn, findsOneWidget);
+    await tester.ensureVisible(addTutorBtn);
+    await tester.tap(addTutorBtn);
+    await tester.pumpAndSettle();
+
+    // 3. Verify Add Tutor dialog opened
+    expect(find.text('Agregar Tutor o Autorizado'), findsOneWidget);
+    expect(find.byKey(const Key('btn_submit_add_tutor')), findsOneWidget);
+
+    // 4. Close modal
+    await tester.tap(find.text('Cancelar'));
+    await tester.pumpAndSettle();
+
+    // 5. Verify student document attachment button
+    final firstStudent = family.estudiantes.first;
+    expect(find.byKey(Key('btn_adjuntar_doc_${firstStudent.id}')), findsOneWidget);
+  });
+
+  testWidgets('Issue #16: DashboardOverviewScreen renders quick action Enrolar Familia', (WidgetTester tester) async {
+    tester.view.physicalSize = const Size(1280, 900);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+
+    final familyRepo = FamilyRepository(useDemoFallback: true);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: DashboardOverviewScreen(
+          familyRepository: familyRepo,
+          onNavigateToFamilies: () {},
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // Verify quick action button for enrolling family exists
+    expect(find.byKey(const Key('btn_quick_enrolar_familia')), findsOneWidget);
+    expect(find.text('Enrolar Familia'), findsOneWidget);
+  });
+
+  testWidgets('Issue #16: ParentPortalScreen shows isolated empty state without leaking other families', (WidgetTester tester) async {
+    tester.view.physicalSize = const Size(1280, 900);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+
+    final familyRepo = FamilyRepository(useDemoFallback: true);
+    // Non-existent or new tutor
+    final unlinkedTutor = UserProfile(
+      id: 'tutor-nonexistent',
+      colegioId: 'a0000000-0000-0000-0000-000000000001',
+      rol: UserRole.tutorFamiliar,
+      email: 'tutor.nuevo.sin.familia@gmail.com',
+      nombres: 'Tutor',
+      apellidos: 'Prueba',
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: ParentPortalScreen(
+          userProfile: unlinkedTutor,
+          familyRepository: familyRepo,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // Verify it does NOT leak other families
+    expect(find.text('Familia Pérez González'), findsNothing);
+    expect(find.byKey(const Key('card_tutor_no_family_found')), findsOneWidget);
+    expect(find.text('No se encontró cuenta familiar asociada'), findsOneWidget);
+  });
+
+  test('QA Clean Slate: clearAllData clears repository state completely', () async {
+    // 1. Verify clearAllData on SchoolRepository
+    final schoolRepo = SchoolRepository(useDemoFallback: true);
+    expect((await schoolRepo.getSchools()).isNotEmpty, isTrue);
+    SchoolRepository.clearAllData();
+    expect((await schoolRepo.getSchools()).isEmpty, isTrue);
+
+    // 2. Verify clearAllData on FamilyRepository
+    final familyRepo = FamilyRepository(useDemoFallback: true);
+    expect((await familyRepo.getFamilies()).isNotEmpty, isTrue);
+    FamilyRepository.clearAllData();
+    expect((await familyRepo.getFamilies()).isEmpty, isTrue);
   });
 }
 

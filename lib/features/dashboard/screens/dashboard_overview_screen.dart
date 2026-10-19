@@ -4,6 +4,7 @@ import '../../families/models/family.dart';
 import '../../families/repositories/family_repository.dart';
 import '../../families/screens/family_detail_dialog.dart';
 import '../../families/screens/enroll_student_dialog.dart';
+import '../../families/screens/create_family_dialog.dart';
 import '../../finances/screens/record_payment_dialog.dart';
 import '../../services/screens/daycare_attendance_dialog.dart';
 import '../../services/screens/transport_routes_dialog.dart';
@@ -214,7 +215,20 @@ class _DashboardOverviewScreenState extends State<DashboardOverviewScreen> {
               runSpacing: 12,
               children: [
                 _buildQuickAction(
+                  key: const Key('btn_quick_enrolar_familia'),
                   icon: Icons.person_add_alt_1_rounded,
+                  label: 'Enrolar Familia',
+                  color: AppColors.electricBlue,
+                  onTap: () {
+                    CreateFamilyDialog.show(
+                      context,
+                      repository: widget.familyRepository,
+                      onFamilyCreated: (_) => _loadData(),
+                    );
+                  },
+                ),
+                _buildQuickAction(
+                  icon: Icons.school_rounded,
                   label: 'Matricular Alumno',
                   color: AppColors.navyPrimary,
                   onTap: () {
@@ -487,6 +501,7 @@ class _DashboardOverviewScreenState extends State<DashboardOverviewScreen> {
   }
 
   Widget _buildQuickAction({
+    Key? key,
     required IconData icon,
     required String label,
     required Color color,
@@ -495,6 +510,7 @@ class _DashboardOverviewScreenState extends State<DashboardOverviewScreen> {
     return Material(
       color: Colors.transparent,
       child: InkWell(
+        key: key,
         onTap: onTap,
         borderRadius: BorderRadius.circular(12),
         child: Container(

@@ -913,6 +913,30 @@ html_content = """<!DOCTYPE html>
         <td>[ ] Pasa &nbsp; [ ] Falla</td>
         <td></td>
       </tr>
+      <tr>
+        <td><strong>20. Cédula Director (Issue #18)</strong></td>
+        <td>Validación de cédula dominicana de 11 dígitos requerida al enrolar nuevos colegios clientes.</td>
+        <td>[ ] Pasa &nbsp; [ ] Falla</td>
+        <td></td>
+      </tr>
+      <tr>
+        <td><strong>21. Expediente & Multi-Tutores (Issue #19)</strong></td>
+        <td>Carga interactiva de documentos del expediente escolar y registro dinámico de múltiples tutores/autorizados.</td>
+        <td>[ ] Pasa &nbsp; [ ] Falla</td>
+        <td></td>
+      </tr>
+      <tr>
+        <td><strong>22. Portal y Enrolar Familia (Issue #16)</strong></td>
+        <td>Acceso rápido "Enrolar Familia" en Dashboard y aislamiento estricto en Portal de Padres para tutores sin familia.</td>
+        <td>[ ] Pasa &nbsp; [ ] Falla</td>
+        <td></td>
+      </tr>
+      <tr>
+        <td><strong>23. Base de Datos Limpia (QA Clean Slate)</strong></td>
+        <td>Tablas de Supabase en 0 registros listas para ingreso manual de datos y pruebas UAT de QA.</td>
+        <td>[ ] Pasa &nbsp; [ ] Falla</td>
+        <td></td>
+      </tr>
     </tbody>
   </table>
 

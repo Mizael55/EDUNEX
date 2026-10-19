@@ -9,6 +9,7 @@ class UserProfile {
   final String nombres;
   final String apellidos;
   final String? telefono;
+  final String? cedula;
   final UserRole rol;
   final String? avatarUrl;
   final bool activo;
@@ -22,6 +23,7 @@ class UserProfile {
     required this.nombres,
     required this.apellidos,
     this.telefono,
+    this.cedula,
     this.rol = UserRole.tutorFamiliar,
     this.avatarUrl,
     this.activo = true,
@@ -48,6 +50,7 @@ class UserProfile {
       nombres: (map['nombres'] as String?) ?? 'Usuario',
       apellidos: (map['apellidos'] as String?) ?? 'EDUNEX',
       telefono: map['telefono'] as String?,
+      cedula: map['cedula'] as String?,
       rol: UserRole.fromString(map['rol'] as String?),
       avatarUrl: map['avatar_url'] as String?,
       activo: (map['activo'] as bool?) ?? true,
@@ -67,6 +70,7 @@ class UserProfile {
       'nombres': nombres,
       'apellidos': apellidos,
       if (telefono != null) 'telefono': telefono,
+      if (cedula != null) 'cedula': cedula,
       'rol': rol.toDbString(),
       if (avatarUrl != null) 'avatar_url': avatarUrl,
       'activo': activo,
@@ -82,6 +86,7 @@ class UserProfile {
     String? nombres,
     String? apellidos,
     String? telefono,
+    String? cedula,
     UserRole? rol,
     String? avatarUrl,
     bool? activo,
@@ -95,6 +100,7 @@ class UserProfile {
       nombres: nombres ?? this.nombres,
       apellidos: apellidos ?? this.apellidos,
       telefono: telefono ?? this.telefono,
+      cedula: cedula ?? this.cedula,
       rol: rol ?? this.rol,
       avatarUrl: avatarUrl ?? this.avatarUrl,
       activo: activo ?? this.activo,

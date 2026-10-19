@@ -95,9 +95,74 @@ class _ParentPortalScreenState extends State<ParentPortalScreen> {
 
     final family = _family;
     if (family == null) {
-      return const Scaffold(
+      return Scaffold(
         backgroundColor: AppColors.backgroundLight,
-        body: Center(child: Text('No se encontró información familiar.')),
+        body: Center(
+          child: Container(
+            key: const Key('card_tutor_no_family_found'),
+            constraints: const BoxConstraints(maxWidth: 480),
+            padding: const EdgeInsets.all(32),
+            margin: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: AppColors.surfaceWhite,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: const Color(0xFFE2E8F0)),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.04),
+                  blurRadius: 16,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: AppColors.navyPrimary.withValues(alpha: 0.08),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.family_restroom_rounded,
+                    color: AppColors.navyPrimary,
+                    size: 40,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                const Text(
+                  'No se encontró cuenta familiar asociada',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.navyPrimary,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'El usuario actual (${widget.userProfile.email}) no está registrado en una familia en este centro educativo. La secretaría del colegio debe enrolar su cuenta familiar.',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    color: AppColors.textSecondary,
+                    height: 1.4,
+                  ),
+                ),
+                const SizedBox(height: 20),
+                OutlinedButton.icon(
+                  onPressed: () {
+                    setState(() => _isLoading = true);
+                    _loadFamily();
+                  },
+                  icon: const Icon(Icons.refresh_rounded, size: 16),
+                  label: const Text('Actualizar Estado'),
+                ),
+              ],
+            ),
+          ),
+        ),
       );
     }
 

@@ -2,27 +2,285 @@ import 'package:flutter/material.dart';
 import '../../../theme/app_colors.dart';
 import '../models/family.dart';
 import '../models/student.dart';
+import '../models/student_document.dart';
 import '../models/tutor.dart';
+import '../repositories/family_repository.dart';
 
 /// Modal para visualizar en detalle el expediente de una Cuenta Familiar Única
-class FamilyDetailDialog extends StatelessWidget {
+class FamilyDetailDialog extends StatefulWidget {
   final Family family;
+  final FamilyRepository? repository;
 
   const FamilyDetailDialog({
     super.key,
     required this.family,
+    this.repository,
   });
 
-  static Future<void> show(BuildContext context, Family family) {
+  static Future<void> show(
+    BuildContext context,
+    Family family, {
+    FamilyRepository? repository,
+  }) {
     return showDialog(
       context: context,
       barrierDismissible: true,
-      builder: (context) => FamilyDetailDialog(family: family),
+      builder: (context) => FamilyDetailDialog(
+        family: family,
+        repository: repository,
+      ),
+    );
+  }
+
+  @override
+  State<FamilyDetailDialog> createState() => _FamilyDetailDialogState();
+}
+
+class _FamilyDetailDialogState extends State<FamilyDetailDialog> {
+  late Family _family;
+  late final FamilyRepository _repository;
+
+  @override
+  void initState() {
+    super.initState();
+    _family = widget.family;
+    _repository = widget.repository ?? FamilyRepository();
+  }
+
+  void _showAddTutorModal() {
+    final formKey = GlobalKey<FormState>();
+    final nombresController = TextEditingController();
+    final apellidosController = TextEditingController();
+    final cedulaController = TextEditingController();
+    final telefonoController = TextEditingController();
+    final emailController = TextEditingController();
+    String selectedParentesco = 'Madre';
+    bool autorizadoRecoger = true;
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setModalState) {
+          return AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            title: const Row(
+              children: [
+                Icon(Icons.person_add_rounded, color: AppColors.navyPrimary, size: 24),
+                SizedBox(width: 10),
+                Text('Agregar Tutor o Autorizado', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+              ],
+            ),
+            content: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 480),
+              child: Form(
+                key: formKey,
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      TextFormField(
+                        controller: nombresController,
+                        decoration: const InputDecoration(
+                          labelText: 'Nombres *',
+                          isDense: true,
+                          border: OutlineInputBorder(),
+                        ),
+                        validator: (v) => (v == null || v.trim().isEmpty) ? 'Requerido' : null,
+                      ),
+                      const SizedBox(height: 10),
+                      TextFormField(
+                        controller: apellidosController,
+                        decoration: const InputDecoration(
+                          labelText: 'Apellidos *',
+                          isDense: true,
+                          border: OutlineInputBorder(),
+                        ),
+                        validator: (v) => (v == null || v.trim().isEmpty) ? 'Requerido' : null,
+                      ),
+                      const SizedBox(height: 10),
+                      TextFormField(
+                        controller: cedulaController,
+                        decoration: const InputDecoration(
+                          labelText: 'Cédula / Documento Identidad',
+                          hintText: '001-1234567-8',
+                          isDense: true,
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      TextFormField(
+                        controller: telefonoController,
+                        decoration: const InputDecoration(
+                          labelText: 'Teléfono Móvil',
+                          isDense: true,
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      TextFormField(
+                        controller: emailController,
+                        decoration: const InputDecoration(
+                          labelText: 'Correo Electrónico (opcional)',
+                          isDense: true,
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      DropdownButtonFormField<String>(
+                        value: selectedParentesco,
+                        isExpanded: true,
+                        decoration: const InputDecoration(
+                          labelText: 'Parentesco / Vínculo',
+                          isDense: true,
+                          border: OutlineInputBorder(),
+                        ),
+                        items: const [
+                          'Madre',
+                          'Padre',
+                          'Abuelo / Abuela',
+                          'Tío / Tía',
+                          'Chofer / Transporte',
+                          'Hermano Mayor / Familiar',
+                          'Otro Autorizado',
+                        ].map((p) => DropdownMenuItem(value: p, child: Text(p))).toList(),
+                        onChanged: (v) => setModalState(() => selectedParentesco = v!),
+                      ),
+                      const SizedBox(height: 10),
+                      CheckboxListTile(
+                        value: autorizadoRecoger,
+                        contentPadding: EdgeInsets.zero,
+                        title: const Text('Autorizado para retirar estudiantes', style: TextStyle(fontSize: 12)),
+                        onChanged: (v) => setModalState(() => autorizadoRecoger = v ?? true),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(ctx).pop(),
+                child: const Text('Cancelar'),
+              ),
+              ElevatedButton(
+                key: const Key('btn_submit_add_tutor'),
+                onPressed: () async {
+                  if (formKey.currentState!.validate()) {
+                    final newTutor = Tutor(
+                      id: 'tutor-${DateTime.now().millisecondsSinceEpoch}',
+                      familiaId: _family.id,
+                      nombres: nombresController.text.trim(),
+                      apellidos: apellidosController.text.trim(),
+                      parentesco: selectedParentesco,
+                      cedulaOPasaporte: cedulaController.text.trim().isNotEmpty ? cedulaController.text.trim() : null,
+                      telefono: telefonoController.text.trim().isNotEmpty ? telefonoController.text.trim() : null,
+                      email: emailController.text.trim().isNotEmpty ? emailController.text.trim() : null,
+                      esContactoPrincipal: false,
+                      autorizadoRecoger: autorizadoRecoger,
+                    );
+
+                    await _repository.addTutorToFamily(_family.id, newTutor);
+                    setState(() {
+                      _family = _family.copyWith(tutores: [..._family.tutores, newTutor]);
+                    });
+
+                    if (mounted) {
+                      Navigator.of(ctx).pop();
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('Tutor ${newTutor.nombreCompleto} agregado a la familia.'),
+                          backgroundColor: AppColors.accentGreen,
+                        ),
+                      );
+                    }
+                  }
+                },
+                style: ElevatedButton.styleFrom(backgroundColor: AppColors.navyPrimary),
+                child: const Text('Guardar Tutor / Autorizado', style: TextStyle(color: Colors.white)),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  void _showAttachDocumentDialog(Student student) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            const Icon(Icons.upload_file_rounded, color: AppColors.navyPrimary, size: 24),
+            const SizedBox(width: 8),
+            Text('Expediente: ${student.nombreCompleto}', style: const TextStyle(fontSize: 15)),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Seleccione un tipo de documento a adjuntar al expediente escolar:',
+              style: TextStyle(fontSize: 13, color: AppColors.slateDark),
+            ),
+            const SizedBox(height: 12),
+            ...[
+              'Certificado Médico Actualizado',
+              'Comprobante de Vacunas',
+              'Carta de Conducta Escolar',
+              'Evaluación Psicométrica',
+            ].map((tipo) => ListTile(
+                  dense: true,
+                  leading: const Icon(Icons.attach_file_rounded, color: AppColors.electricBlue),
+                  title: Text(tipo, style: const TextStyle(fontSize: 13)),
+                  trailing: const Icon(Icons.add_circle_outline_rounded, color: AppColors.accentGreen, size: 20),
+                  onTap: () {
+                    final newDoc = StudentDocument(
+                      id: 'doc-${DateTime.now().millisecondsSinceEpoch}',
+                      tipo: tipo,
+                      nombreArchivo: '${tipo.toLowerCase().replaceAll(' ', '_')}.pdf',
+                      tamanoBytes: 1024 * 512,
+                      fechaSubida: DateTime.now(),
+                      verificado: true,
+                    );
+
+                    final updatedStudents = _family.estudiantes.map((s) {
+                      if (s.id == student.id) {
+                        return s.copyWith(documentosExpediente: [...s.documentosExpediente, newDoc]);
+                      }
+                      return s;
+                    }).toList();
+
+                    setState(() {
+                      _family = _family.copyWith(estudiantes: updatedStudents);
+                    });
+
+                    Navigator.of(ctx).pop();
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Documento "$tipo" adjuntado al expediente escolar de ${student.nombres}.'),
+                        backgroundColor: AppColors.accentGreen,
+                      ),
+                    );
+                  },
+                )),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Cerrar'),
+          ),
+        ],
+      ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
+    final family = _family;
     final size = MediaQuery.of(context).size;
     final isDesktop = size.width >= 768;
 
@@ -168,8 +426,11 @@ class FamilyDetailDialog extends StatelessWidget {
                     ),
                   ),
                   IconButton(
+                    icon: const Icon(
+                      Icons.close_rounded,
+                      color: AppColors.surfaceWhite,
+                    ),
                     onPressed: () => Navigator.of(context).pop(),
-                    icon: const Icon(Icons.close_rounded, color: Colors.white70),
                   ),
                 ],
               ),
@@ -182,14 +443,14 @@ class FamilyDetailDialog extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Tarjeta de Balance Consolidado de la Cuenta Familiar
+                    // Resumen Financiero
                     Container(
                       padding: const EdgeInsets.all(18),
                       decoration: BoxDecoration(
                         color: family.estaAlDia
                             ? const Color(0xFFF0FDF4)
                             : const Color(0xFFFFFBEB),
-                        borderRadius: BorderRadius.circular(16),
+                        borderRadius: BorderRadius.circular(14),
                         border: Border.all(
                           color: family.estaAlDia
                               ? const Color(0xFFBBF7D0)
@@ -307,21 +568,42 @@ class FamilyDetailDialog extends StatelessWidget {
 
                     const SizedBox(height: 28),
 
-                    // Sección: Tutores y Contactos Autorizados
-                    Row(
+                    // Sección: Tutores y Contactos Autorizados (Issue #19)
+                    Wrap(
+                      alignment: WrapAlignment.spaceBetween,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      spacing: 8,
+                      runSpacing: 8,
                       children: [
-                        const Icon(
-                          Icons.badge_rounded,
-                          color: AppColors.navyPrimary,
-                          size: 20,
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(
+                              Icons.badge_rounded,
+                              color: AppColors.navyPrimary,
+                              size: 20,
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              'Tutores y Personas Autorizadas (${family.tutores.length})',
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                color: AppColors.textPrimary,
+                              ),
+                            ),
+                          ],
                         ),
-                        const SizedBox(width: 8),
-                        Text(
-                          'Tutores y Personas Autorizadas (${family.tutores.length})',
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.textPrimary,
+                        ElevatedButton.icon(
+                          key: const Key('btn_add_tutor_detail'),
+                          onPressed: _showAddTutorModal,
+                          icon: const Icon(Icons.person_add_rounded, size: 14),
+                          label: const Text('+ Agregar Tutor / Autorizado', style: TextStyle(fontSize: 12)),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.electricBlue,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                           ),
                         ),
                       ],
@@ -520,6 +802,88 @@ class FamilyDetailDialog extends StatelessWidget {
               }).toList(),
             ),
           ],
+
+          // Expediente Escolar y Documentos Adjuntos (Issue #19)
+          const SizedBox(height: 12),
+          const Divider(height: 16),
+          Wrap(
+            alignment: WrapAlignment.spaceBetween,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 8,
+            runSpacing: 4,
+            children: [
+              const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.folder_shared_rounded, size: 16, color: AppColors.navyPrimary),
+                  SizedBox(width: 6),
+                  Text(
+                    'Expediente Escolar & Documentos (Issue #19):',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: AppColors.navyPrimary),
+                  ),
+                ],
+              ),
+              TextButton.icon(
+                key: Key('btn_adjuntar_doc_${student.id}'),
+                onPressed: () => _showAttachDocumentDialog(student),
+                icon: const Icon(Icons.upload_file_rounded, size: 14),
+                label: const Text('Adjuntar Documento', style: TextStyle(fontSize: 11)),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Wrap(
+            spacing: 8,
+            runSpacing: 6,
+            children: (student.documentosExpediente.isNotEmpty
+                    ? student.documentosExpediente
+                    : [
+                        StudentDocument(
+                          id: 'doc-foto',
+                          tipo: 'Foto 2x2',
+                          nombreArchivo: 'foto_${student.nombres.toLowerCase().replaceAll(' ', '_')}.jpg',
+                          tamanoBytes: 1024 * 320,
+                          fechaSubida: DateTime.now(),
+                          verificado: student.fotoAdjunta,
+                        ),
+                        StudentDocument(
+                          id: 'doc-acta',
+                          tipo: 'Acta de Nacimiento',
+                          nombreArchivo: 'acta_legalizada.pdf',
+                          tamanoBytes: 1024 * 1450,
+                          fechaSubida: DateTime.now(),
+                          verificado: student.actaNacimientoAdjunta,
+                        ),
+                        StudentDocument(
+                          id: 'doc-notas',
+                          tipo: 'Certificado de Notas',
+                          nombreArchivo: 'record_academico.pdf',
+                          tamanoBytes: 1024 * 890,
+                          fechaSubida: DateTime.now(),
+                          verificado: student.certificadoNotasAdjunto,
+                        ),
+                      ])
+                .map((doc) => Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF0FDF4),
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(color: const Color(0xFF86EFAC)),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.check_circle_rounded, size: 12, color: Color(0xFF16A34A)),
+                          const SizedBox(width: 4),
+                          Text(
+                            '${doc.tipo}: ${doc.nombreArchivo} (${doc.tamanoFormateado})',
+                            style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: Color(0xFF14532D)),
+                          ),
+                        ],
+                      ),
+                    ))
+                .toList(),
+          ),
         ],
       ),
     );
@@ -607,7 +971,7 @@ class FamilyDetailDialog extends StatelessWidget {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  'Cédula: ${tutor.cedulaOPasaporte ?? "N/D"} • Tel: ${tutor.telefono ?? "N/D"}',
+                  'Cédula: ${tutor.cedulaOPasaporte ?? "N/D"} • Tel: ${tutor.telefono ?? "N/D"}${tutor.email != null ? " • Email: ${tutor.email}" : ""}',
                   style: const TextStyle(
                     color: AppColors.textSecondary,
                     fontSize: 12,

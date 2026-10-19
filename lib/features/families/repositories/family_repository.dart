@@ -33,8 +33,17 @@ class FamilyRepository {
     this._useDemoFallback = false,
   }) : _supabaseClient = supabaseClient ?? _resolveClient();
 
-  /// Lista de familias de demostración (coincidentes con los datos sembrados en la base de datos)
-  static final List<Family> _demoFamilies = [
+  /// Lista de familias de demostración para fallback fuera de línea y tests
+  static final List<Family> _demoFamilies = List.from(_seedFamilies);
+
+  /// Limpia todas las familias y solicitudes en memoria para QA
+  static void clearAllData() {
+    _demoFamilies.clear();
+    _customFamilies.clear();
+    _abonoApprovalRequests.clear();
+  }
+
+  static final List<Family> _seedFamilies = [
     Family(
       id: 'e0000000-0000-0000-0000-000000000001',
       colegioId: 'a0000000-0000-0000-0000-000000000001',
@@ -266,7 +275,7 @@ class FamilyRepository {
     final list = await getFamilies();
     final cleanEmail = email?.trim().toLowerCase();
 
-    // 1. Buscar coincidencia exacta por correo del tutor o correo principal
+    // 1. Buscar coincidencia exacta por correo del tutor o correo principal (Issue #16)
     if (cleanEmail != null && cleanEmail.isNotEmpty) {
       try {
         return list.firstWhere(
@@ -276,18 +285,20 @@ class FamilyRepository {
               (colegioId == null || f.colegioId == colegioId),
         );
       } catch (_) {}
+
+      try {
+        return list.firstWhere(
+          (f) =>
+              f.emailPrincipal?.toLowerCase() == cleanEmail ||
+              f.tutores.any((t) => t.email?.toLowerCase() == cleanEmail),
+        );
+      } catch (_) {}
+
+      // Si el tutor tiene un correo específico pero no está enrolado en este centro, no mostrar familias ajenas
+      return null;
     }
 
-    // 2. Si no coincide el correo exacto, verificar en las familias creadas en la sesión
-    if (_customFamilies.isNotEmpty) {
-      if (colegioId != null) {
-        final schoolCustom = _customFamilies.where((f) => f.colegioId == colegioId).toList();
-        if (schoolCustom.isNotEmpty) return schoolCustom.first;
-      }
-      return _customFamilies.first;
-    }
-
-    // 3. Retorna la primera familia disponible en el colegio
+    // 2. Solo si no se especificó correo (modo demo o pruebas), retornar primera familia del centro
     if (list.isNotEmpty) {
       if (colegioId != null) {
         try {
@@ -435,6 +446,7 @@ class FamilyRepository {
     String? estudianteApellidos,
     String? gradoNombre,
     List<Student>? multipleStudents,
+    List<Tutor>? additionalTutors,
     String modalidadPago = 'mensual',
     double descuentoAcordadoPct = 0.0,
     String? notaAcuerdoPago,
@@ -490,6 +502,8 @@ class FamilyRepository {
       );
     }
 
+    final List<Tutor> allTutores = [newTutor, ...?additionalTutors];
+
     final newFamily = Family(
       id: familyId,
       colegioId: colegioId,
@@ -500,7 +514,7 @@ class FamilyRepository {
       emailPrincipal: tutorEmail,
       direccion: direccion,
       activo: true,
-      tutores: [newTutor],
+      tutores: allTutores,
       estudiantes: students,
       modalidadPago: modalidadPago,
       descuentoAcordadoPct: descuentoAcordadoPct,
@@ -516,7 +530,24 @@ class FamilyRepository {
       rol: UserRole.tutorFamiliar,
       colegioId: colegioId,
       telefono: tutorTelefono,
+      cedula: cedula,
     );
+
+    if (additionalTutors != null) {
+      for (final at in additionalTutors) {
+        if (at.email != null && at.email!.trim().isNotEmpty) {
+          AuthRepository().registerUser(
+            email: at.email!.trim(),
+            nombres: at.nombres,
+            apellidos: at.apellidos,
+            rol: UserRole.tutorFamiliar,
+            colegioId: colegioId,
+            telefono: at.telefono,
+            cedula: at.cedulaOPasaporte,
+          );
+        }
+      }
+    }
 
     if (_supabaseClient != null && SupabaseConfig.isConfigured && !_useDemoFallback) {
       try {
@@ -587,6 +618,92 @@ class FamilyRepository {
 
     _customFamilies.insert(0, newFamily);
     return newFamily;
+  }
+
+  /// Agrega un nuevo tutor o persona autorizada a una familia existente (Issue #19)
+  Future<void> addTutorToFamily(String familyId, Tutor tutor) async {
+    bool updated = false;
+    for (int i = 0; i < _customFamilies.length; i++) {
+      if (_customFamilies[i].id == familyId) {
+        final f = _customFamilies[i];
+        final updatedTutores = List<Tutor>.from(f.tutores)..add(tutor);
+        _customFamilies[i] = Family(
+          id: f.id,
+          colegioId: f.colegioId,
+          codigoFamilia: f.codigoFamilia,
+          nombreFamilia: f.nombreFamilia,
+          balancePendiente: f.balancePendiente,
+          telefonoPrincipal: f.telefonoPrincipal,
+          emailPrincipal: f.emailPrincipal,
+          direccion: f.direccion,
+          activo: f.activo,
+          tutores: updatedTutores,
+          estudiantes: f.estudiantes,
+          modalidadPago: f.modalidadPago,
+          descuentoAcordadoPct: f.descuentoAcordadoPct,
+          notaAcuerdoPago: f.notaAcuerdoPago,
+          criteriosCentroAdicionales: f.criteriosCentroAdicionales,
+        );
+        updated = true;
+        break;
+      }
+    }
+
+    if (!updated) {
+      for (int i = 0; i < _demoFamilies.length; i++) {
+        if (_demoFamilies[i].id == familyId) {
+          final f = _demoFamilies[i];
+          final updatedTutores = List<Tutor>.from(f.tutores)..add(tutor);
+          _demoFamilies[i] = Family(
+            id: f.id,
+            colegioId: f.colegioId,
+            codigoFamilia: f.codigoFamilia,
+            nombreFamilia: f.nombreFamilia,
+            balancePendiente: f.balancePendiente,
+            telefonoPrincipal: f.telefonoPrincipal,
+            emailPrincipal: f.emailPrincipal,
+            direccion: f.direccion,
+            activo: f.activo,
+            tutores: updatedTutores,
+            estudiantes: f.estudiantes,
+            modalidadPago: f.modalidadPago,
+            descuentoAcordadoPct: f.descuentoAcordadoPct,
+            notaAcuerdoPago: f.notaAcuerdoPago,
+            criteriosCentroAdicionales: f.criteriosCentroAdicionales,
+          );
+          break;
+        }
+      }
+    }
+
+    if (_supabaseClient != null && SupabaseConfig.isConfigured && !_useDemoFallback) {
+      try {
+        await _supabaseClient.from('tutores').insert({
+          'familia_id': familyId,
+          'nombres': tutor.nombres,
+          'apellidos': tutor.apellidos,
+          'parentesco': tutor.parentesco,
+          'cedula_o_pasaporte': tutor.cedulaOPasaporte,
+          'telefono': tutor.telefono,
+          'email': tutor.email,
+          'es_contacto_principal': tutor.esContactoPrincipal,
+          'autorizado_recoger': tutor.autorizadoRecoger,
+        });
+      } catch (e) {
+        debugPrint('Aviso: Tutor agregado localmente tras error Supabase: $e');
+      }
+    }
+
+    if (tutor.email != null && tutor.email!.trim().isNotEmpty) {
+      AuthRepository().registerUser(
+        email: tutor.email!.trim(),
+        nombres: tutor.nombres,
+        apellidos: tutor.apellidos,
+        rol: UserRole.tutorFamiliar,
+        telefono: tutor.telefono,
+        cedula: tutor.cedulaOPasaporte,
+      );
+    }
   }
 
   /// Registra un abono o pago a una familia y emite su comprobante fiscal oficial

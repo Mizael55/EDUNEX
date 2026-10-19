@@ -1,3 +1,5 @@
+import 'student_document.dart';
+
 /// Modelo de Estudiante en EDUNEX vinculado a la Cuenta Familiar
 class Student {
   final String id;
@@ -25,6 +27,8 @@ class Student {
   final Map<String, String> criteriosEvaluados;
   final bool activo;
   final List<String> serviciosActivos;
+  // Issue #19: Documentos cargados en el expediente digital del alumno
+  final List<StudentDocument> documentosExpediente;
 
   const Student({
     required this.id,
@@ -52,6 +56,7 @@ class Student {
     this.criteriosEvaluados = const {},
     this.activo = true,
     this.serviciosActivos = const [],
+    this.documentosExpediente = const [],
   });
 
   String get nombreCompleto => '$nombres $apellidos'.trim();
@@ -65,6 +70,64 @@ class Student {
       age--;
     }
     return age;
+  }
+
+  Student copyWith({
+    String? id,
+    String? colegioId,
+    String? familiaId,
+    String? matricula,
+    String? nombres,
+    String? apellidos,
+    DateTime? fechaNacimiento,
+    String? genero,
+    String? seccionId,
+    String? gradoNombre,
+    String? seccionNombre,
+    String? fotoUrl,
+    String? condicionesMedicas,
+    String? tipoSangre,
+    String? alergias,
+    String? seguroMedico,
+    String? numeroPoliza,
+    String? pediatraContacto,
+    bool? fotoAdjunta,
+    bool? actaNacimientoAdjunta,
+    bool? certificadoNotasAdjunto,
+    bool? cartaSaldoConductaAdjunta,
+    Map<String, String>? criteriosEvaluados,
+    bool? activo,
+    List<String>? serviciosActivos,
+    List<StudentDocument>? documentosExpediente,
+  }) {
+    return Student(
+      id: id ?? this.id,
+      colegioId: colegioId ?? this.colegioId,
+      familiaId: familiaId ?? this.familiaId,
+      matricula: matricula ?? this.matricula,
+      nombres: nombres ?? this.nombres,
+      apellidos: apellidos ?? this.apellidos,
+      fechaNacimiento: fechaNacimiento ?? this.fechaNacimiento,
+      genero: genero ?? this.genero,
+      seccionId: seccionId ?? this.seccionId,
+      gradoNombre: gradoNombre ?? this.gradoNombre,
+      seccionNombre: seccionNombre ?? this.seccionNombre,
+      fotoUrl: fotoUrl ?? this.fotoUrl,
+      condicionesMedicas: condicionesMedicas ?? this.condicionesMedicas,
+      tipoSangre: tipoSangre ?? this.tipoSangre,
+      alergias: alergias ?? this.alergias,
+      seguroMedico: seguroMedico ?? this.seguroMedico,
+      numeroPoliza: numeroPoliza ?? this.numeroPoliza,
+      pediatraContacto: pediatraContacto ?? this.pediatraContacto,
+      fotoAdjunta: fotoAdjunta ?? this.fotoAdjunta,
+      actaNacimientoAdjunta: actaNacimientoAdjunta ?? this.actaNacimientoAdjunta,
+      certificadoNotasAdjunto: certificadoNotasAdjunto ?? this.certificadoNotasAdjunto,
+      cartaSaldoConductaAdjunta: cartaSaldoConductaAdjunta ?? this.cartaSaldoConductaAdjunta,
+      criteriosEvaluados: criteriosEvaluados ?? this.criteriosEvaluados,
+      activo: activo ?? this.activo,
+      serviciosActivos: serviciosActivos ?? this.serviciosActivos,
+      documentosExpediente: documentosExpediente ?? this.documentosExpediente,
+    );
   }
 
   factory Student.fromJson(Map<String, dynamic> json) {
@@ -105,6 +168,13 @@ class Student {
       });
     }
 
+    List<StudentDocument> docs = [];
+    if (json['documentos_expediente'] is List) {
+      docs = (json['documentos_expediente'] as List)
+          .map((d) => StudentDocument.fromJson(d as Map<String, dynamic>))
+          .toList();
+    }
+
     return Student(
       id: json['id'] as String? ?? '',
       colegioId: json['colegio_id'] as String? ?? '',
@@ -131,6 +201,7 @@ class Student {
       criteriosEvaluados: criterios,
       activo: json['activo'] as bool? ?? true,
       serviciosActivos: servicios,
+      documentosExpediente: docs,
     );
   }
 
@@ -158,6 +229,7 @@ class Student {
       'acta_nacimiento_adjunta': actaNacimientoAdjunta,
       'certificado_notas_adjunto': certificadoNotasAdjunto,
       'carta_saldo_conducta_adjunta': cartaSaldoConductaAdjunta,
+      'documentos_expediente': documentosExpediente.map((d) => d.toJson()).toList(),
       'criterios_evaluados': criteriosEvaluados,
       'activo': activo,
       'servicios_activos': serviciosActivos,

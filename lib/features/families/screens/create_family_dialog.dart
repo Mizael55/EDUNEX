@@ -2,7 +2,28 @@ import 'package:flutter/material.dart';
 import '../../../theme/app_colors.dart';
 import '../models/family.dart';
 import '../models/student.dart';
+import '../models/student_document.dart';
+import '../models/tutor.dart';
 import '../repositories/family_repository.dart';
+
+/// Borrador de tutor adicional o persona autorizada para retiro de alumnos (Issue #19)
+class TutorDraft {
+  final TextEditingController nombresController = TextEditingController();
+  final TextEditingController apellidosController = TextEditingController();
+  final TextEditingController cedulaController = TextEditingController();
+  final TextEditingController telefonoController = TextEditingController();
+  final TextEditingController emailController = TextEditingController();
+  String parentesco = 'Madre';
+  bool esAutorizadoRetiro = true;
+
+  void dispose() {
+    nombresController.dispose();
+    apellidosController.dispose();
+    cedulaController.dispose();
+    telefonoController.dispose();
+    emailController.dispose();
+  }
+}
 
 /// Borrador de estudiante para enrolamiento multi-alumno en la misma familia
 class StudentDraft {
@@ -19,11 +40,62 @@ class StudentDraft {
   final TextEditingController numeroPolizaController = TextEditingController();
   final TextEditingController pediatraController = TextEditingController();
 
-  // Expediente escolar y documentos físicos (Caso 1)
+  // Expediente escolar y documentos físicos (Caso 1 e Issue #19)
   bool fotoAdjunta = true;
   bool actaNacimientoAdjunta = true;
   bool certificadoNotasAdjunto = true;
   bool cartaSaldoConductaAdjunta = true;
+
+  // Documentos adjuntos reales / interactivos en el expediente (Issue #19)
+  final Map<String, StudentDocument> documentosAdjuntos = {
+    'Foto 2x2': StudentDocument(
+      id: 'doc-foto-init',
+      tipo: 'Foto 2x2',
+      nombreArchivo: 'foto_estudiante.jpg',
+      tamanoBytes: 1024 * 320,
+      fechaSubida: DateTime.now(),
+      verificado: true,
+    ),
+    'Acta de Nacimiento': StudentDocument(
+      id: 'doc-acta-init',
+      tipo: 'Acta de Nacimiento',
+      nombreArchivo: 'acta_nacimiento_legalizada.pdf',
+      tamanoBytes: 1024 * 1450,
+      fechaSubida: DateTime.now(),
+      verificado: true,
+    ),
+    'Certificado de Notas': StudentDocument(
+      id: 'doc-notas-init',
+      tipo: 'Certificado de Notas',
+      nombreArchivo: 'record_notas_oficial.pdf',
+      tamanoBytes: 1024 * 890,
+      fechaSubida: DateTime.now(),
+      verificado: true,
+    ),
+    'Carta de Saldo / Conducta': StudentDocument(
+      id: 'doc-conducta-init',
+      tipo: 'Carta de Saldo / Conducta',
+      nombreArchivo: 'carta_saldo_conducta.pdf',
+      tamanoBytes: 1024 * 540,
+      fechaSubida: DateTime.now(),
+      verificado: true,
+    ),
+  };
+
+  void toggleDocument(String tipo, String defaultFilename, int defaultSize) {
+    if (documentosAdjuntos.containsKey(tipo)) {
+      documentosAdjuntos.remove(tipo);
+    } else {
+      documentosAdjuntos[tipo] = StudentDocument(
+        id: 'doc-${DateTime.now().millisecondsSinceEpoch}',
+        tipo: tipo,
+        nombreArchivo: defaultFilename,
+        tamanoBytes: defaultSize,
+        fechaSubida: DateTime.now(),
+        verificado: true,
+      );
+    }
+  }
 
   // Criterios evaluados del centro (Caso 1)
   String evaluacionAdmision = 'Aprobada';
@@ -104,6 +176,9 @@ class _CreateFamilyDialogState extends State<CreateFamilyDialog> with SingleTick
   bool _copiaCedulaAdjunta = true;
   final _tutorPasswordController = TextEditingController(text: '123456');
 
+  // Paso 1: Tutores Adicionales y Personas Autorizadas a Retirar (Issue #19)
+  final List<TutorDraft> _additionalTutors = [];
+
   // Paso 2: Multi-Estudiante (Caso 3)
   final List<StudentDraft> _students = [];
 
@@ -123,7 +198,7 @@ class _CreateFamilyDialogState extends State<CreateFamilyDialog> with SingleTick
 
   bool _isLoading = false;
 
-  final List<String> _parentescos = ['Padre', 'Madre', 'Tutor Legal', 'Abuelo / Abuela', 'Tío / Tía'];
+  final List<String> _parentescos = ['Padre', 'Madre', 'Tutor Legal', 'Abuelo / Abuela', 'Tío / Tía', 'Chofer / Transporte', 'Hermano Mayor / Familiar'];
   final List<String> _grados = [
     'Maternal (1-2 años)',
     'Párvulos (2-3 años)',
@@ -178,10 +253,28 @@ class _CreateFamilyDialogState extends State<CreateFamilyDialog> with SingleTick
     _tutorPasswordController.dispose();
     _nuevoCriterioController.dispose();
     _notaAcuerdoPagoController.dispose();
+    for (final t in _additionalTutors) {
+      t.dispose();
+    }
     for (final s in _students) {
       s.dispose();
     }
     super.dispose();
+  }
+
+  void _addAdditionalTutor() {
+    setState(() {
+      final draft = TutorDraft();
+      draft.apellidosController.text = _tutorApellidosController.text.trim();
+      _additionalTutors.add(draft);
+    });
+  }
+
+  void _removeAdditionalTutor(int index) {
+    setState(() {
+      _additionalTutors[index].dispose();
+      _additionalTutors.removeAt(index);
+    });
   }
 
   void _addStudent() {
@@ -297,6 +390,7 @@ class _CreateFamilyDialogState extends State<CreateFamilyDialog> with SingleTick
             actaNacimientoAdjunta: draft.actaNacimientoAdjunta,
             certificadoNotasAdjunto: draft.certificadoNotasAdjunto,
             cartaSaldoConductaAdjunta: draft.cartaSaldoConductaAdjunta,
+            documentosExpediente: draft.documentosAdjuntos.values.toList(),
             criteriosEvaluados: {
               'Evaluación Admisión': draft.evaluacionAdmision,
               'Entrevista Psicología': draft.entrevistaPsicologica,
@@ -304,6 +398,34 @@ class _CreateFamilyDialogState extends State<CreateFamilyDialog> with SingleTick
             activo: true,
           ),
         );
+      }
+
+      // Convertir tutores adicionales y autorizados a retirar (Issue #19)
+      final List<Tutor> additionalTutorsList = [];
+      for (int i = 0; i < _additionalTutors.length; i++) {
+        final tDraft = _additionalTutors[i];
+        if (tDraft.nombresController.text.trim().isNotEmpty) {
+          additionalTutorsList.add(
+            Tutor(
+              id: 'tutor-add-${now.millisecondsSinceEpoch}-$i',
+              familiaId: 'temp',
+              nombres: tDraft.nombresController.text.trim(),
+              apellidos: tDraft.apellidosController.text.trim(),
+              parentesco: tDraft.parentesco,
+              cedulaOPasaporte: tDraft.cedulaController.text.trim().isNotEmpty
+                  ? tDraft.cedulaController.text.trim()
+                  : null,
+              telefono: tDraft.telefonoController.text.trim().isNotEmpty
+                  ? tDraft.telefonoController.text.trim()
+                  : null,
+              email: tDraft.emailController.text.trim().isNotEmpty
+                  ? tDraft.emailController.text.trim()
+                  : null,
+              esContactoPrincipal: false,
+              autorizadoRecoger: tDraft.esAutorizadoRetiro,
+            ),
+          );
+        }
       }
 
       final family = await widget.repository.createFamily(
@@ -325,6 +447,7 @@ class _CreateFamilyDialogState extends State<CreateFamilyDialog> with SingleTick
         copiaCedulaAdjunta: _copiaCedulaAdjunta,
         balanceInicial: _subtotalMatricula, // Saldo inicial correspondiente a matrícula
         multipleStudents: studentsList,
+        additionalTutors: additionalTutorsList.isNotEmpty ? additionalTutorsList : null,
         modalidadPago: _modalidadPago,
         descuentoAcordadoPct: (_descuentoHermanos + _descuentoModalidad) > 0
             ? ((_descuentoHermanos + _descuentoModalidad) / _subtotalMensualidad) * 100.0
@@ -949,6 +1072,200 @@ class _CreateFamilyDialogState extends State<CreateFamilyDialog> with SingleTick
               ],
             ),
           ),
+
+          const SizedBox(height: 18),
+          const Divider(),
+          const SizedBox(height: 12),
+
+          // Tutores Adicionales y Personas Autorizadas a Retirar (Issue #19)
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Tutores Adicionales y Personas Autorizadas (Issue #19):',
+                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: AppColors.navyPrimary),
+                    ),
+                    Text(
+                      'Agrega a la madre, abuelos, chofer o familiares facultados para retirar al alumno.',
+                      style: TextStyle(fontSize: 11, color: AppColors.slateGray),
+                    ),
+                  ],
+                ),
+              ),
+              OutlinedButton.icon(
+                key: const Key('btn_add_another_tutor'),
+                onPressed: _addAdditionalTutor,
+                icon: const Icon(Icons.person_add_rounded, size: 16),
+                label: const Text('+ Agregar Tutor / Autorizado'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: AppColors.navyPrimary,
+                  side: const BorderSide(color: AppColors.navyPrimary),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+
+          if (_additionalTutors.isEmpty)
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF1F5F9),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: const Color(0xFFE2E8F0)),
+              ),
+              child: const Row(
+                children: [
+                  Icon(Icons.info_outline_rounded, size: 18, color: AppColors.slateGray),
+                  SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'No hay tutores adicionales agregados. El tutor principal registrado arriba será el único contacto inicial.',
+                      style: TextStyle(fontSize: 12, color: AppColors.slateDark),
+                    ),
+                  ),
+                ],
+              ),
+            )
+          else
+            ..._additionalTutors.asMap().entries.map((entry) {
+              final idx = entry.key;
+              final tDraft = entry.value;
+              return Container(
+                margin: const EdgeInsets.only(bottom: 12),
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: AppColors.electricBlue.withValues(alpha: 0.3)),
+                  boxShadow: [
+                    BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 4, offset: const Offset(0, 2)),
+                  ],
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'Tutor / Autorizado #${idx + 1}',
+                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppColors.navyPrimary),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.delete_outline_rounded, color: Colors.redAccent, size: 18),
+                          tooltip: 'Quitar Tutor',
+                          onPressed: () => _removeAdditionalTutor(idx),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextFormField(
+                            controller: tDraft.nombresController,
+                            decoration: InputDecoration(
+                              labelText: 'Nombres *',
+                              isDense: true,
+                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: TextFormField(
+                            controller: tDraft.apellidosController,
+                            decoration: InputDecoration(
+                              labelText: 'Apellidos *',
+                              isDense: true,
+                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextFormField(
+                            controller: tDraft.cedulaController,
+                            decoration: InputDecoration(
+                              labelText: 'Cédula / Documento',
+                              isDense: true,
+                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: TextFormField(
+                            controller: tDraft.telefonoController,
+                            decoration: InputDecoration(
+                              labelText: 'Teléfono Móvil',
+                              isDense: true,
+                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: DropdownButtonFormField<String>(
+                            value: tDraft.parentesco,
+                            isExpanded: true,
+                            decoration: InputDecoration(
+                              labelText: 'Parentesco / Vínculo',
+                              isDense: true,
+                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                            ),
+                            items: _parentescos.map((p) => DropdownMenuItem(value: p, child: Text(p))).toList(),
+                            onChanged: (v) => setState(() => tDraft.parentesco = v!),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: TextFormField(
+                            controller: tDraft.emailController,
+                            decoration: InputDecoration(
+                              labelText: 'Correo Electrónico (opcional)',
+                              isDense: true,
+                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Checkbox(
+                          value: tDraft.esAutorizadoRetiro,
+                          onChanged: (v) => setState(() => tDraft.esAutorizadoRetiro = v ?? true),
+                          materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        ),
+                        const Expanded(
+                          child: Text(
+                            'Persona autorizada formalmente para retirar alumnos del colegio',
+                            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF0F766E)),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              );
+            }),
         ],
       ),
     );
@@ -1168,18 +1485,142 @@ class _CreateFamilyDialogState extends State<CreateFamilyDialog> with SingleTick
                             ),
                           ],
                         ),
-                        const SizedBox(height: 10),
-                        const Text('Documentos del Expediente Escolar Entregados:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11)),
-                        const SizedBox(height: 4),
+                        const SizedBox(height: 12),
                         Wrap(
-                          spacing: 16,
+                          alignment: WrapAlignment.spaceBetween,
+                          crossAxisAlignment: WrapCrossAlignment.center,
+                          spacing: 12,
+                          runSpacing: 8,
                           children: [
-                            _buildDocCheckbox('Foto del Alumno', student.fotoAdjunta, (v) => setState(() => student.fotoAdjunta = v)),
-                            _buildDocCheckbox('Acta de Nacimiento', student.actaNacimientoAdjunta, (v) => setState(() => student.actaNacimientoAdjunta = v)),
-                            _buildDocCheckbox('Certificado de Notas', student.certificadoNotasAdjunto, (v) => setState(() => student.certificadoNotasAdjunto = v)),
-                            _buildDocCheckbox('Carta de Saldo / Conducta', student.cartaSaldoConductaAdjunta, (v) => setState(() => student.cartaSaldoConductaAdjunta = v)),
+                            const Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Documentos del Expediente Escolar & Carga Digital (Issue #19):',
+                                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: AppColors.navyPrimary),
+                                ),
+                                Text(
+                                  'Sube los documentos oficiales obligatorios para la admisión del estudiante.',
+                                  style: TextStyle(fontSize: 10, color: AppColors.slateGray),
+                                ),
+                              ],
+                            ),
+                            OutlinedButton.icon(
+                              key: Key('btn_cargar_expediente_demo_$idx'),
+                              onPressed: () {
+                                setState(() {
+                                  // Alternar o cargar documento adicional interactivo
+                                  student.toggleDocument(
+                                    'Certificado Médico Escolar',
+                                    'certificado_medico_${student.nombresController.text.toLowerCase().trim().replaceAll(' ', '_')}.pdf',
+                                    1024 * 410,
+                                  );
+                                });
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Documento actualizado en el expediente del estudiante.'),
+                                    duration: Duration(seconds: 1),
+                                  ),
+                                );
+                              },
+                              icon: const Icon(Icons.upload_file_rounded, size: 14),
+                              label: const Text('Adjuntar / Gestionar', style: TextStyle(fontSize: 11)),
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: AppColors.navyPrimary,
+                                side: const BorderSide(color: AppColors.navyPrimary),
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                              ),
+                            ),
                           ],
                         ),
+                        const SizedBox(height: 10),
+
+                        // Lista visual de documentos requeridos y adjuntos
+                        ...[
+                          ('Foto 2x2', 'Foto 2x2 del Estudiante', 'foto_${idx + 1}.jpg', 1024 * 320),
+                          ('Acta de Nacimiento', 'Acta de Nacimiento Legalizada', 'acta_nacimiento_oficial.pdf', 1024 * 1450),
+                          ('Certificado de Notas', 'Certificado / Récord de Notas', 'record_calificaciones.pdf', 1024 * 890),
+                          ('Carta de Saldo / Conducta', 'Carta de Saldo y Buena Conducta', 'carta_conducta.pdf', 1024 * 540),
+                          ('Certificado Médico Escolar', 'Certificado Médico & Vacunación', 'certificado_medico.pdf', 1024 * 410),
+                        ].map((docDef) {
+                          final tipoKey = docDef.$1;
+                          final label = docDef.$2;
+                          final defaultFilename = docDef.$3;
+                          final defaultSize = docDef.$4;
+                          final isAttached = student.documentosAdjuntos.containsKey(tipoKey);
+                          final doc = student.documentosAdjuntos[tipoKey];
+
+                          return Container(
+                            margin: const EdgeInsets.only(bottom: 6),
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                            decoration: BoxDecoration(
+                              color: isAttached ? const Color(0xFFF0FDF4) : const Color(0xFFF8FAFC),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(
+                                color: isAttached ? const Color(0xFF86EFAC) : const Color(0xFFE2E8F0),
+                              ),
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(
+                                  isAttached ? Icons.check_circle_rounded : Icons.pending_actions_rounded,
+                                  size: 18,
+                                  color: isAttached ? const Color(0xFF16A34A) : AppColors.slateGray,
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        label,
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w600,
+                                          color: isAttached ? const Color(0xFF14532D) : AppColors.slateDark,
+                                        ),
+                                      ),
+                                      if (isAttached && doc != null)
+                                        Text(
+                                          '${doc.nombreArchivo} • ${doc.tamanoFormateado} • Verificado',
+                                          style: const TextStyle(fontSize: 10, color: Color(0xFF15803D)),
+                                        )
+                                      else
+                                        const Text(
+                                          'Pendiente de carga',
+                                          style: TextStyle(fontSize: 10, color: AppColors.slateGray),
+                                        ),
+                                    ],
+                                  ),
+                                ),
+                                TextButton.icon(
+                                  onPressed: () {
+                                    setState(() {
+                                      student.toggleDocument(tipoKey, defaultFilename, defaultSize);
+                                      if (tipoKey == 'Foto 2x2') student.fotoAdjunta = student.documentosAdjuntos.containsKey(tipoKey);
+                                      if (tipoKey == 'Acta de Nacimiento') student.actaNacimientoAdjunta = student.documentosAdjuntos.containsKey(tipoKey);
+                                      if (tipoKey == 'Certificado de Notas') student.certificadoNotasAdjunto = student.documentosAdjuntos.containsKey(tipoKey);
+                                      if (tipoKey == 'Carta de Saldo / Conducta') student.cartaSaldoConductaAdjunta = student.documentosAdjuntos.containsKey(tipoKey);
+                                    });
+                                  },
+                                  icon: Icon(
+                                    isAttached ? Icons.delete_outline_rounded : Icons.file_upload_outlined,
+                                    size: 14,
+                                    color: isAttached ? Colors.redAccent : AppColors.navyPrimary,
+                                  ),
+                                  label: Text(
+                                    isAttached ? 'Quitar' : 'Cargar Archivo',
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      color: isAttached ? Colors.redAccent : AppColors.navyPrimary,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        }),
                       ],
                     ),
                   ),

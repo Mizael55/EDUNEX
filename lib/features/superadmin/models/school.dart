@@ -26,6 +26,11 @@ class School {
   final double descuentoProntoPagoSemestralPct;
   final double descuentoProntoPagoTrimestralPct;
   final double descuentoHermanosPct;
+  // Issue #18: Datos del Director / Responsable del Colegio
+  final String? directorNombre;
+  final String? directorEmail;
+  final String? directorCedula;
+  final String? directorTelefono;
 
   const School({
     required this.id,
@@ -50,6 +55,10 @@ class School {
     this.descuentoProntoPagoSemestralPct = 5.0,
     this.descuentoProntoPagoTrimestralPct = 3.0,
     this.descuentoHermanosPct = 10.0,
+    this.directorNombre,
+    this.directorEmail,
+    this.directorCedula,
+    this.directorTelefono,
   });
 
   bool get isActive => estadoSuscripcion == 'active';
@@ -134,6 +143,10 @@ class School {
       descuentoProntoPagoSemestralPct: parseDouble(json['descuento_semestral_pct'], 5.0),
       descuentoProntoPagoTrimestralPct: parseDouble(json['descuento_trimestral_pct'], 3.0),
       descuentoHermanosPct: parseDouble(json['descuento_hermanos_pct'], 10.0),
+      directorNombre: json['director_nombre']?.toString(),
+      directorEmail: json['director_email']?.toString(),
+      directorCedula: json['director_cedula']?.toString(),
+      directorTelefono: json['director_telefono']?.toString(),
     );
   }
 
@@ -158,6 +171,10 @@ class School {
       'descuento_semestral_pct': descuentoProntoPagoSemestralPct,
       'descuento_trimestral_pct': descuentoProntoPagoTrimestralPct,
       'descuento_hermanos_pct': descuentoHermanosPct,
+      'director_nombre': directorNombre,
+      'director_email': directorEmail,
+      'director_cedula': directorCedula,
+      'director_telefono': directorTelefono,
     };
   }
 }
