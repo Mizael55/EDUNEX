@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'student_document.dart';
 
 /// Modelo de Estudiante en EDUNEX vinculado a la Cuenta Familiar
@@ -201,6 +202,28 @@ class Student {
           .toList();
     }
 
+    String? condicionesMedicas = json['condiciones_medicas'] as String?;
+    String? tipoSangre = json['tipo_sangre'] as String?;
+    String? alergias = json['alergias'] as String?;
+    String? seguroMedico = json['seguro_medico'] as String?;
+    String? numeroPoliza = json['numero_poliza'] as String?;
+    String? pediatraContacto = json['pediatra_contacto'] as String?;
+
+    if (condicionesMedicas != null && condicionesMedicas.trim().startsWith('{')) {
+      try {
+        final medMap = jsonDecode(condicionesMedicas);
+        if (medMap is Map) {
+          grado ??= medMap['grado_nombre'] as String?;
+          seccion ??= medMap['seccion_nombre'] as String?;
+          tipoSangre ??= medMap['tipo_sangre'] as String?;
+          alergias ??= medMap['alergias'] as String?;
+          seguroMedico ??= medMap['seguro_medico'] as String?;
+          numeroPoliza ??= medMap['numero_poliza'] as String?;
+          pediatraContacto ??= medMap['pediatra_contacto'] as String?;
+        }
+      } catch (_) {}
+    }
+
     return Student(
       id: json['id'] as String? ?? '',
       colegioId: json['colegio_id'] as String? ?? '',
@@ -214,16 +237,16 @@ class Student {
       gradoNombre: grado,
       seccionNombre: seccion,
       fotoUrl: json['foto_url'] as String?,
-      condicionesMedicas: json['condiciones_medicas'] as String?,
-      tipoSangre: json['tipo_sangre'] as String?,
-      alergias: json['alergias'] as String?,
-      seguroMedico: json['seguro_medico'] as String?,
-      numeroPoliza: json['numero_poliza'] as String?,
-      pediatraContacto: json['pediatra_contacto'] as String?,
-      fotoAdjunta: json['foto_adjunta'] as bool? ?? false,
-      actaNacimientoAdjunta: json['acta_nacimiento_adjunta'] as bool? ?? false,
-      certificadoNotasAdjunto: json['certificado_notas_adjunto'] as bool? ?? false,
-      cartaSaldoConductaAdjunta: json['carta_saldo_conducta_adjunta'] as bool? ?? false,
+      condicionesMedicas: condicionesMedicas,
+      tipoSangre: tipoSangre,
+      alergias: alergias,
+      seguroMedico: seguroMedico,
+      numeroPoliza: numeroPoliza,
+      pediatraContacto: pediatraContacto,
+      fotoAdjunta: json['foto_adjunta'] as bool? ?? docs.any((d) => d.tipo.toLowerCase().contains('foto')),
+      actaNacimientoAdjunta: json['acta_nacimiento_adjunta'] as bool? ?? docs.any((d) => d.tipo.toLowerCase().contains('acta')),
+      certificadoNotasAdjunto: json['certificado_notas_adjunto'] as bool? ?? docs.any((d) => d.tipo.toLowerCase().contains('nota') || d.tipo.toLowerCase().contains('calificac')),
+      cartaSaldoConductaAdjunta: json['carta_saldo_conducta_adjunta'] as bool? ?? docs.any((d) => d.tipo.toLowerCase().contains('conducta') || d.tipo.toLowerCase().contains('saldo')),
       criteriosEvaluados: criterios,
       activo: json['activo'] as bool? ?? true,
       serviciosActivos: servicios,

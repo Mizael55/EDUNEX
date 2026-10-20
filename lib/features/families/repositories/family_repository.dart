@@ -616,10 +616,6 @@ class FamilyRepository {
           'email_principal': tutorEmail,
           'direccion': direccion,
           'activo': true,
-          'modalidad_pago': modalidadPago,
-          'descuento_acordado_pct': descuentoAcordadoPct,
-          'nota_acuerdo_pago': notaAcuerdoPago,
-          'criterios_centro_adicionales': criteriosCentroAdicionales,
         }).select().single();
 
         final createdFamilyId = familyData['id'] as String;
@@ -634,13 +630,6 @@ class FamilyRepository {
           'email': tutorEmail,
           'es_contacto_principal': true,
           'autorizado_recoger': true,
-          'ocupacion': ocupacion,
-          'lugar_trabajo': lugarTrabajo,
-          'telefono_trabajo': telefonoTrabajo,
-          'ingresos_aproximados': ingresosAproximados,
-          'carta_trabajo_adjunta': cartaTrabajoAdjunta,
-          'estados_financieros_adjuntos': estadosFinancierosAdjuntos,
-          'copia_cedula_adjunta': copiaCedulaAdjunta,
         });
 
         // Insertar tutores adicionales en Supabase
@@ -666,6 +655,16 @@ class FamilyRepository {
 
         for (final st in students) {
           Map<String, dynamic>? studentInsert;
+          final extraData = {
+            'grado_nombre': st.gradoNombre,
+            'seccion_nombre': st.seccionNombre,
+            'tipo_sangre': st.tipoSangre,
+            'alergias': st.alergias,
+            'seguro_medico': st.seguroMedico,
+            'numero_poliza': st.numeroPoliza,
+            'pediatra_contacto': st.pediatraContacto,
+            'criterios_evaluados': st.criteriosEvaluados,
+          };
           try {
             studentInsert = await _supabaseClient.from('estudiantes').insert({
               'colegio_id': colegioId,
@@ -675,18 +674,8 @@ class FamilyRepository {
               'apellidos': st.apellidos,
               'fecha_nacimiento': st.fechaNacimiento.toIso8601String().split('T').first,
               'genero': st.genero ?? 'No especificado',
-              'grado_nombre': st.gradoNombre,
-              'seccion_nombre': st.seccionNombre,
-              'tipo_sangre': st.tipoSangre,
-              'alergias': st.alergias,
-              'seguro_medico': st.seguroMedico,
-              'numero_poliza': st.numeroPoliza,
-              'pediatra_contacto': st.pediatraContacto,
-              'foto_adjunta': st.fotoAdjunta,
-              'acta_nacimiento_adjunta': st.actaNacimientoAdjunta,
-              'certificado_notas_adjunto': st.certificadoNotasAdjunto,
-              'carta_saldo_conducta_adjunta': st.cartaSaldoConductaAdjunta,
-              'criterios_evaluados': st.criteriosEvaluados,
+              'foto_url': st.fotoUrl,
+              'condiciones_medicas': jsonEncode(extraData),
               'activo': true,
             }).select().maybeSingle();
           } catch (e) {
@@ -870,6 +859,15 @@ class FamilyRepository {
         break;
       }
     }
+
+    if (_supabaseClient != null && SupabaseConfig.isConfigured && !_useDemoFallback) {
+      try {
+        await _supabaseClient.from('documentos_estudiante').delete().eq('id', documentId);
+      } catch (e) {
+        debugPrint('Aviso deleting documento_estudiante in Supabase: $e');
+      }
+    }
+
     await _persistCustomFamilies();
   }
 
@@ -1204,7 +1202,11 @@ class FamilyRepository {
 
     if (_supabaseClient != null && SupabaseConfig.isConfigured && !_useDemoFallback) {
       try {
-        await _supabaseClient.from('estudiantes').insert({
+        final extraData = {
+          'grado_nombre': gradoNombre,
+          'seccion_nombre': seccionNombre ?? 'Sección A',
+        };
+        final studentInsert = await _supabaseClient.from('estudiantes').insert({
           'colegio_id': colegioId,
           'familia_id': familiaId,
           'matricula': matricula,
@@ -1212,8 +1214,25 @@ class FamilyRepository {
           'apellidos': apellidos,
           'fecha_nacimiento': (fechaNacimiento ?? DateTime(now.year - 7, 1, 1)).toIso8601String().split('T').first,
           'genero': genero ?? 'No especificado',
+          'condiciones_medicas': jsonEncode(extraData),
           'activo': true,
-        });
+        }).select().maybeSingle();
+
+        final createdStudentId = studentInsert != null ? studentInsert['id'] as String? : null;
+
+        for (final doc in documentos) {
+          try {
+            await _supabaseClient.from('documentos_estudiante').insert({
+              'estudiante_id': createdStudentId ?? studentId,
+              'tipo': doc.tipo,
+              'archivo_url': doc.url ?? 'https://storage.edunex.edu.do/expedientes/${doc.nombreArchivo}',
+              'aprobado': doc.verificado,
+              'observaciones': '${doc.nombreArchivo} (${doc.tamanoFormateado})',
+            });
+          } catch (e) {
+            debugPrint('Aviso inserting documento_estudiante in Supabase: $e');
+          }
+        }
       } catch (e) {
         debugPrint('Aviso: Estudiante guardado localmente tras error Supabase: $e');
       }
