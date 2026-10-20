@@ -63,8 +63,17 @@ import 'package:edunex/features/teacher_portal/screens/teacher_portal_screen.dar
 import 'package:edunex/features/guidance/models/guidance_case.dart';
 import 'package:edunex/features/guidance/repositories/guidance_repository.dart';
 import 'package:edunex/features/guidance/screens/guidance_management_screen.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
+  setUpAll(() {
+    SharedPreferences.setMockInitialValues({});
+  });
+
+  setUp(() {
+    SharedPreferences.setMockInitialValues({});
+  });
+
   testWidgets('EdunexApp desktop smoke test', (WidgetTester tester) async {
     tester.view.physicalSize = const Size(1280, 900);
     tester.view.devicePixelRatio = 1.0;

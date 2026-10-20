@@ -347,6 +347,287 @@ class _CreateFamilyDialogState extends State<CreateFamilyDialog> with SingleTick
 
   double get _totalMensualNeto => (_subtotalMensualidad - _descuentoHermanos - _descuentoModalidad);
 
+  void _showUploadDocModal(
+    StudentDraft student,
+    int studentIdx, {
+    String? defaultTipo,
+    String? defaultLabel,
+    String? defaultFilename,
+    int? defaultSize,
+  }) {
+    final tipoController = TextEditingController(text: defaultTipo ?? 'Foto 2x2');
+    final filenameController = TextEditingController(
+      text: defaultFilename ?? '${(defaultTipo ?? "documento").toLowerCase().replaceAll(' ', '_')}.pdf',
+    );
+    bool isCustom = defaultTipo == null || defaultTipo == 'Otro Documento';
+    bool verificado = true;
+    bool isFileSelected = true;
+
+    final docTypes = [
+      'Foto 2x2',
+      'Acta de Nacimiento',
+      'Certificado de Notas',
+      'Carta de Saldo / Conducta',
+      'Certificado Médico Escolar',
+      'Tarjeta de Vacunación',
+      'Cédula / Pasaporte Tutor',
+      'Otro Documento',
+    ];
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setModalState) {
+          final studentName = student.nombresController.text.trim().isNotEmpty
+              ? student.nombresController.text.trim()
+              : 'Estudiante #${studentIdx + 1}';
+
+          return AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            title: Row(
+              children: [
+                const Icon(Icons.cloud_upload_rounded, color: AppColors.navyPrimary, size: 26),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Text('Carga de Documento Digital', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                      Text('Expediente: $studentName', style: const TextStyle(fontSize: 11, color: AppColors.slateGray)),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            content: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 480),
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('Tipo de Documento:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                    const SizedBox(height: 6),
+                    DropdownButtonFormField<String>(
+                      isExpanded: true,
+                      value: docTypes.contains(tipoController.text) ? tipoController.text : 'Otro Documento',
+                      decoration: InputDecoration(
+                        isDense: true,
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                      ),
+                      items: docTypes.map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(),
+                      onChanged: (val) {
+                        if (val != null) {
+                          setModalState(() {
+                            tipoController.text = val;
+                            isCustom = val == 'Otro Documento';
+                            if (!isCustom) {
+                              filenameController.text = '${val.toLowerCase().replaceAll(' ', '_')}.pdf';
+                            }
+                          });
+                        }
+                      },
+                    ),
+                    if (isCustom) ...[
+                      const SizedBox(height: 10),
+                      TextFormField(
+                        decoration: InputDecoration(
+                          labelText: 'Especifique Tipo de Documento *',
+                          hintText: 'Ej. Sentencia de Custodia, Informe Psicológico',
+                          isDense: true,
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                        ),
+                        onChanged: (v) => tipoController.text = v.trim(),
+                      ),
+                    ],
+                    const SizedBox(height: 12),
+                    const Text('Nombre del Archivo Digital:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                    const SizedBox(height: 6),
+                    TextFormField(
+                      controller: filenameController,
+                      decoration: InputDecoration(
+                        hintText: 'archivo_expediente.pdf',
+                        isDense: true,
+                        prefixIcon: const Icon(Icons.description_outlined, size: 20),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF1F5F9),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: const Color(0xFFCBD5E1)),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.insert_drive_file_rounded, color: AppColors.electricBlue, size: 28),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  isFileSelected ? filenameController.text : 'Ningún archivo seleccionado',
+                                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                const Text('Tamaño estimado: 520 KB • Formato: PDF/Digital', style: TextStyle(fontSize: 10, color: AppColors.slateGray)),
+                              ],
+                            ),
+                          ),
+                          TextButton.icon(
+                            onPressed: () {
+                              setModalState(() => isFileSelected = true);
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('Archivo local seleccionado correctamente.'),
+                                  duration: Duration(milliseconds: 1200),
+                                ),
+                              );
+                            },
+                            icon: const Icon(Icons.file_open_rounded, size: 14),
+                            label: const Text('Explorar', style: TextStyle(fontSize: 11)),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    CheckboxListTile(
+                      value: verificado,
+                      contentPadding: EdgeInsets.zero,
+                      controlAffinity: ListTileControlAffinity.leading,
+                      title: const Text('Marcar como documento oficial verificado', style: TextStyle(fontSize: 12)),
+                      onChanged: (v) => setModalState(() => verificado = v ?? true),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(ctx).pop(),
+                child: const Text('Cancelar'),
+              ),
+              ElevatedButton.icon(
+                key: const Key('btn_confirm_upload_doc'),
+                onPressed: () {
+                  final tipo = tipoController.text.trim().isNotEmpty ? tipoController.text.trim() : 'Documento';
+                  final filename = filenameController.text.trim().isNotEmpty ? filenameController.text.trim() : '$tipo.pdf';
+                  final size = defaultSize ?? (1024 * 512);
+
+                  setState(() {
+                    student.documentosAdjuntos[tipo] = StudentDocument(
+                      id: 'doc-${DateTime.now().millisecondsSinceEpoch}',
+                      tipo: tipo,
+                      nombreArchivo: filename,
+                      tamanoBytes: size,
+                      fechaSubida: DateTime.now(),
+                      verificado: verificado,
+                    );
+                    if (tipo.contains('Foto')) student.fotoAdjunta = true;
+                    if (tipo.contains('Acta')) student.actaNacimientoAdjunta = true;
+                    if (tipo.contains('Nota') || tipo.contains('Récord')) student.certificadoNotasAdjunto = true;
+                    if (tipo.contains('Conducta') || tipo.contains('Saldo')) student.cartaSaldoConductaAdjunta = true;
+                  });
+
+                  Navigator.of(ctx).pop();
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Documento "$tipo" cargado y vinculado al expediente.'),
+                      backgroundColor: AppColors.accentGreen,
+                      duration: const Duration(seconds: 2),
+                    ),
+                  );
+                },
+                icon: const Icon(Icons.check_circle_rounded, size: 16),
+                label: const Text('Subir y Adjuntar'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.navyPrimary,
+                  foregroundColor: Colors.white,
+                ),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  void _showPreviewDocModal(StudentDocument doc, String studentName) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            const Icon(Icons.file_present_rounded, color: AppColors.navyPrimary, size: 24),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(doc.tipo, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
+                  Text('Estudiante: $studentName', style: const TextStyle(fontSize: 11, color: AppColors.slateGray)),
+                ],
+              ),
+            ),
+          ],
+        ),
+        content: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 450),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: double.infinity,
+                height: 180,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF8FAFC),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: const Color(0xFFE2E8F0)),
+                ),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      doc.tipo.toLowerCase().contains('foto') ? Icons.image_rounded : Icons.picture_as_pdf_rounded,
+                      size: 54,
+                      color: AppColors.navyPrimary.withValues(alpha: 0.7),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      doc.nombreArchivo,
+                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppColors.navyPrimary),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      '${doc.tamanoFormateado} • Estado: ${doc.verificado ? "Verificado & Sellado Digitalmente" : "Pendiente"}',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: doc.verificado ? const Color(0xFF15803D) : AppColors.slateGray,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Cerrar Vista Previa'),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) {
       _tabController.animateTo(0);
@@ -1582,45 +1863,134 @@ class _CreateFamilyDialogState extends State<CreateFamilyDialog> with SingleTick
                                       ),
                                       if (isAttached && doc != null)
                                         Text(
-                                          '${doc.nombreArchivo} • ${doc.tamanoFormateado} • Verificado',
-                                          style: const TextStyle(fontSize: 10, color: Color(0xFF15803D)),
+                                          '${doc.nombreArchivo} • ${doc.tamanoFormateado} • ✅ Verificado',
+                                          style: const TextStyle(fontSize: 10, color: Color(0xFF15803D), fontWeight: FontWeight.w500),
                                         )
                                       else
                                         const Text(
-                                          'Pendiente de carga',
+                                          'Pendiente de digitalización • Formatos: PDF, JPG, PNG',
                                           style: TextStyle(fontSize: 10, color: AppColors.slateGray),
                                         ),
                                     ],
                                   ),
                                 ),
-                                TextButton.icon(
-                                  onPressed: () {
-                                    setState(() {
-                                      student.toggleDocument(tipoKey, defaultFilename, defaultSize);
-                                      if (tipoKey == 'Foto 2x2') student.fotoAdjunta = student.documentosAdjuntos.containsKey(tipoKey);
-                                      if (tipoKey == 'Acta de Nacimiento') student.actaNacimientoAdjunta = student.documentosAdjuntos.containsKey(tipoKey);
-                                      if (tipoKey == 'Certificado de Notas') student.certificadoNotasAdjunto = student.documentosAdjuntos.containsKey(tipoKey);
-                                      if (tipoKey == 'Carta de Saldo / Conducta') student.cartaSaldoConductaAdjunta = student.documentosAdjuntos.containsKey(tipoKey);
-                                    });
-                                  },
-                                  icon: Icon(
-                                    isAttached ? Icons.delete_outline_rounded : Icons.file_upload_outlined,
-                                    size: 14,
-                                    color: isAttached ? Colors.redAccent : AppColors.navyPrimary,
+                                if (isAttached && doc != null) ...[
+                                  TextButton.icon(
+                                    onPressed: () => _showPreviewDocModal(doc, student.nombresController.text.trim()),
+                                    icon: const Icon(Icons.visibility_outlined, size: 14, color: AppColors.navyPrimary),
+                                    label: const Text('Ver', style: TextStyle(fontSize: 11, color: AppColors.navyPrimary)),
                                   ),
-                                  label: Text(
-                                    isAttached ? 'Quitar' : 'Cargar Archivo',
-                                    style: TextStyle(
-                                      fontSize: 11,
-                                      color: isAttached ? Colors.redAccent : AppColors.navyPrimary,
-                                      fontWeight: FontWeight.bold,
+                                  const SizedBox(width: 4),
+                                  TextButton.icon(
+                                    onPressed: () {
+                                      setState(() {
+                                        student.documentosAdjuntos.remove(tipoKey);
+                                        if (tipoKey == 'Foto 2x2') student.fotoAdjunta = false;
+                                        if (tipoKey == 'Acta de Nacimiento') student.actaNacimientoAdjunta = false;
+                                        if (tipoKey == 'Certificado de Notas') student.certificadoNotasAdjunto = false;
+                                        if (tipoKey == 'Carta de Saldo / Conducta') student.cartaSaldoConductaAdjunta = false;
+                                      });
+                                    },
+                                    icon: const Icon(Icons.delete_outline_rounded, size: 14, color: Colors.redAccent),
+                                    label: const Text('Quitar', style: TextStyle(fontSize: 11, color: Colors.redAccent, fontWeight: FontWeight.bold)),
+                                  ),
+                                ] else ...[
+                                  ElevatedButton.icon(
+                                    key: Key('btn_cargar_doc_${tipoKey}_$idx'),
+                                    onPressed: () => _showUploadDocModal(
+                                      student,
+                                      idx,
+                                      defaultTipo: tipoKey,
+                                      defaultLabel: label,
+                                      defaultFilename: defaultFilename,
+                                      defaultSize: defaultSize,
+                                    ),
+                                    icon: const Icon(Icons.file_upload_outlined, size: 14),
+                                    label: const Text('Cargar Archivo', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: AppColors.navyPrimary,
+                                      foregroundColor: Colors.white,
+                                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
                                     ),
                                   ),
+                                ],
+                              ],
+                            ),
+                          );
+                        }),
+
+                        // Mostrar documentos adicionales personalizados cargados
+                        ...student.documentosAdjuntos.entries.where((e) => ![
+                          'Foto 2x2',
+                          'Acta de Nacimiento',
+                          'Certificado de Notas',
+                          'Carta de Saldo / Conducta',
+                          'Certificado Médico Escolar',
+                        ].contains(e.key)).map((entry) {
+                          final doc = entry.value;
+                          return Container(
+                            margin: const EdgeInsets.only(bottom: 6),
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFF0FDF4),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: const Color(0xFF86EFAC)),
+                            ),
+                            child: Row(
+                              children: [
+                                const Icon(Icons.check_circle_rounded, size: 18, color: Color(0xFF16A34A)),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        doc.tipo,
+                                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF14532D)),
+                                      ),
+                                      Text(
+                                        '${doc.nombreArchivo} • ${doc.tamanoFormateado} • ✅ Personalizado',
+                                        style: const TextStyle(fontSize: 10, color: Color(0xFF15803D)),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                TextButton.icon(
+                                  onPressed: () => _showPreviewDocModal(doc, student.nombresController.text.trim()),
+                                  icon: const Icon(Icons.visibility_outlined, size: 14, color: AppColors.navyPrimary),
+                                  label: const Text('Ver', style: TextStyle(fontSize: 11, color: AppColors.navyPrimary)),
+                                ),
+                                const SizedBox(width: 4),
+                                TextButton.icon(
+                                  onPressed: () {
+                                    setState(() => student.documentosAdjuntos.remove(entry.key));
+                                  },
+                                  icon: const Icon(Icons.delete_outline_rounded, size: 14, color: Colors.redAccent),
+                                  label: const Text('Quitar', style: TextStyle(fontSize: 11, color: Colors.redAccent)),
                                 ),
                               ],
                             ),
                           );
                         }),
+
+                        const SizedBox(height: 8),
+                        Row(
+                          children: [
+                            OutlinedButton.icon(
+                              key: Key('btn_add_custom_doc_$idx'),
+                              onPressed: () => _showUploadDocModal(student, idx, defaultTipo: 'Otro Documento'),
+                              icon: const Icon(Icons.add_circle_outline_rounded, size: 15),
+                              label: const Text('+ Cargar Otro Documento Personalizado', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: AppColors.navyPrimary,
+                                side: const BorderSide(color: AppColors.navyPrimary),
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                              ),
+                            ),
+                          ],
+                        ),
                       ],
                     ),
                   ),

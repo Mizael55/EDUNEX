@@ -173,7 +173,31 @@ class Student {
     List<StudentDocument> docs = [];
     if (json['documentos_expediente'] is List) {
       docs = (json['documentos_expediente'] as List)
-          .map((d) => StudentDocument.fromJson(d as Map<String, dynamic>))
+          .map<StudentDocument>((d) => StudentDocument.fromJson(d as Map<String, dynamic>))
+          .toList();
+    } else if (json['documentos_estudiante'] is List) {
+      docs = (json['documentos_estudiante'] as List)
+          .map<StudentDocument>((d) {
+            final m = d as Map<String, dynamic>;
+            final obs = m['observaciones'] as String? ?? '';
+            String filename = '${m['tipo']}.pdf';
+            if (obs.contains('(')) {
+              filename = obs.split('(').first.trim();
+            } else if (obs.isNotEmpty) {
+              filename = obs.trim();
+            }
+            return StudentDocument(
+              id: m['id'] as String? ?? 'doc-${DateTime.now().millisecondsSinceEpoch}',
+              tipo: m['tipo'] as String? ?? 'Documento',
+              nombreArchivo: filename,
+              url: m['archivo_url'] as String?,
+              tamanoBytes: 1024 * 512,
+              fechaSubida: m['created_at'] != null
+                  ? (DateTime.tryParse(m['created_at'].toString()) ?? DateTime.now())
+                  : DateTime.now(),
+              verificado: m['aprobado'] as bool? ?? true,
+            );
+          })
           .toList();
     }
 

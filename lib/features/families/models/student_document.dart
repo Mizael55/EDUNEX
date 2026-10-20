@@ -5,6 +5,7 @@ class StudentDocument {
   final String nombre; // 'Acta de Nacimiento Legalizada'
   final String nombreArchivo; // 'acta_nacimiento_mateo.pdf'
   final String? urlArchivo;
+  String? get url => urlArchivo;
   final DateTime fechaSubida;
   final int tamanoBytes;
   final bool verificado;
@@ -14,11 +15,13 @@ class StudentDocument {
     required this.tipo,
     String? nombre,
     required this.nombreArchivo,
-    this.urlArchivo,
+    String? urlArchivo,
+    String? url,
     required this.fechaSubida,
     this.tamanoBytes = 1048576, // 1 MB default simulado
     this.verificado = true,
-  }) : nombre = nombre ?? tipo;
+  })  : nombre = nombre ?? tipo,
+        urlArchivo = urlArchivo ?? url;
 
   String get tamanoFormateado {
     if (tamanoBytes < 1024) return '$tamanoBytes B';

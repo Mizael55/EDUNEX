@@ -1,4 +1,6 @@
+import 'dart:convert';
 import 'package:flutter/foundation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/config/supabase_config.dart';
 import '../models/family.dart';
@@ -15,6 +17,8 @@ import '../../finances/models/payment_approval_request.dart';
 
 /// Repositorio de Cuentas Familiares y Estudiantes en EDUNEX
 class FamilyRepository {
+  static const String _storageKeyCustomFamilies = 'edunex_custom_families_v1';
+
   static SupabaseClient? _resolveClient() {
     try {
       if (SupabaseConfig.isConfigured) {
@@ -34,14 +38,55 @@ class FamilyRepository {
     this._useDemoFallback = false,
   }) : _supabaseClient = supabaseClient ?? _resolveClient();
 
+  /// Persistencia local en SharedPreferences para garantizar cero pérdida de datos en QA
+  static bool _prefsLoaded = false;
+
+  static Future<void> _persistCustomFamilies() async {
+    try {
+      final prefs = await SharedPreferences.getInstance().timeout(const Duration(milliseconds: 500));
+      final listJson = jsonEncode(_customFamilies.map((f) => f.toJson()).toList());
+      await prefs.setString(_storageKeyCustomFamilies, listJson);
+    } catch (e) {
+      debugPrint('Aviso: No se pudo persistir familias localmente: $e');
+    }
+  }
+
+  static Future<void> _loadPersistedCustomFamilies() async {
+    if (_prefsLoaded) return;
+    try {
+      final prefs = await SharedPreferences.getInstance().timeout(const Duration(milliseconds: 500));
+      _prefsLoaded = true;
+      final listJson = prefs.getString(_storageKeyCustomFamilies);
+      if (listJson != null && listJson.isNotEmpty) {
+        final List decoded = jsonDecode(listJson) as List;
+        for (final item in decoded) {
+          if (item is Map<String, dynamic>) {
+            final f = Family.fromJson(item);
+            if (!_customFamilies.any((existing) => existing.id == f.id)) {
+              _customFamilies.add(f);
+            }
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint('Aviso: Error cargando familias de SharedPreferences: $e');
+    }
+  }
+
   /// Lista de familias de demostración para fallback fuera de línea y tests
   static final List<Family> _demoFamilies = List.from(_seedFamilies);
 
-  /// Limpia todas las familias y solicitudes en memoria para QA
+  /// Limpia todas las familias y solicitudes en memoria y almacenamiento para QA
   static void clearAllData() {
     _demoFamilies.clear();
     _customFamilies.clear();
     _abonoApprovalRequests.clear();
+    _prefsLoaded = false;
+    try {
+      SharedPreferences.getInstance()
+          .then((prefs) => prefs.remove(_storageKeyCustomFamilies))
+          .timeout(const Duration(milliseconds: 500));
+    } catch (_) {}
   }
 
   /// Restaura las familias piloto para pruebas y modo demo
@@ -49,6 +94,7 @@ class FamilyRepository {
     _demoFamilies.clear();
     _demoFamilies.addAll(_seedFamilies);
     _customFamilies.clear();
+    _prefsLoaded = false;
   }
 
   static final List<Family> _seedFamilies = [
@@ -204,6 +250,7 @@ class FamilyRepository {
     String? searchQuery,
     bool onlyWithDebt = false,
   }) async {
+    await _loadPersistedCustomFamilies();
     List<Family> families = [];
 
     if (_supabaseClient != null && SupabaseConfig.isConfigured && !_useDemoFallback) {
@@ -215,6 +262,7 @@ class FamilyRepository {
               tutores (*),
               estudiantes (
                 *,
+                documentos_estudiante (*),
                 secciones (
                   nombre,
                   grados (nombre)
@@ -595,29 +643,72 @@ class FamilyRepository {
           'copia_cedula_adjunta': copiaCedulaAdjunta,
         });
 
+        // Insertar tutores adicionales en Supabase
+        if (additionalTutors != null) {
+          for (final at in additionalTutors) {
+            try {
+              await _supabaseClient.from('tutores').insert({
+                'familia_id': createdFamilyId,
+                'nombres': at.nombres,
+                'apellidos': at.apellidos,
+                'parentesco': at.parentesco,
+                'cedula_o_pasaporte': at.cedulaOPasaporte,
+                'telefono': at.telefono,
+                'email': at.email,
+                'es_contacto_principal': false,
+                'autorizado_recoger': at.autorizadoRecoger,
+              });
+            } catch (e) {
+              debugPrint('Aviso inserting extra tutor in Supabase: $e');
+            }
+          }
+        }
+
         for (final st in students) {
-          await _supabaseClient.from('estudiantes').insert({
-            'colegio_id': colegioId,
-            'familia_id': createdFamilyId,
-            'matricula': st.matricula,
-            'nombres': st.nombres,
-            'apellidos': st.apellidos,
-            'fecha_nacimiento': st.fechaNacimiento.toIso8601String().split('T').first,
-            'genero': st.genero ?? 'No especificado',
-            'grado_nombre': st.gradoNombre,
-            'seccion_nombre': st.seccionNombre,
-            'tipo_sangre': st.tipoSangre,
-            'alergias': st.alergias,
-            'seguro_medico': st.seguroMedico,
-            'numero_poliza': st.numeroPoliza,
-            'pediatra_contacto': st.pediatraContacto,
-            'foto_adjunta': st.fotoAdjunta,
-            'acta_nacimiento_adjunta': st.actaNacimientoAdjunta,
-            'certificado_notas_adjunto': st.certificadoNotasAdjunto,
-            'carta_saldo_conducta_adjunta': st.cartaSaldoConductaAdjunta,
-            'criterios_evaluados': st.criteriosEvaluados,
-            'activo': true,
-          });
+          Map<String, dynamic>? studentInsert;
+          try {
+            studentInsert = await _supabaseClient.from('estudiantes').insert({
+              'colegio_id': colegioId,
+              'familia_id': createdFamilyId,
+              'matricula': st.matricula,
+              'nombres': st.nombres,
+              'apellidos': st.apellidos,
+              'fecha_nacimiento': st.fechaNacimiento.toIso8601String().split('T').first,
+              'genero': st.genero ?? 'No especificado',
+              'grado_nombre': st.gradoNombre,
+              'seccion_nombre': st.seccionNombre,
+              'tipo_sangre': st.tipoSangre,
+              'alergias': st.alergias,
+              'seguro_medico': st.seguroMedico,
+              'numero_poliza': st.numeroPoliza,
+              'pediatra_contacto': st.pediatraContacto,
+              'foto_adjunta': st.fotoAdjunta,
+              'acta_nacimiento_adjunta': st.actaNacimientoAdjunta,
+              'certificado_notas_adjunto': st.certificadoNotasAdjunto,
+              'carta_saldo_conducta_adjunta': st.cartaSaldoConductaAdjunta,
+              'criterios_evaluados': st.criteriosEvaluados,
+              'activo': true,
+            }).select().maybeSingle();
+          } catch (e) {
+            debugPrint('Aviso inserting student in Supabase: $e');
+          }
+
+          final createdStudentId = studentInsert != null ? studentInsert['id'] as String? : null;
+
+          // Insertar documentos en la tabla documentos_estudiante
+          for (final doc in st.documentosExpediente) {
+            try {
+              await _supabaseClient.from('documentos_estudiante').insert({
+                'estudiante_id': createdStudentId ?? st.id,
+                'tipo': doc.tipo,
+                'archivo_url': doc.url ?? 'https://storage.edunex.edu.do/expedientes/${doc.nombreArchivo}',
+                'aprobado': doc.verificado,
+                'observaciones': '${doc.nombreArchivo} (${doc.tamanoFormateado})',
+              });
+            } catch (e) {
+              debugPrint('Aviso inserting documento_estudiante in Supabase: $e');
+            }
+          }
         }
       } catch (e) {
         debugPrint('Aviso: Guardando familia localmente tras error Supabase: $e');
@@ -625,6 +716,7 @@ class FamilyRepository {
     }
 
     _customFamilies.insert(0, newFamily);
+    await _persistCustomFamilies();
     return newFamily;
   }
 
@@ -635,23 +727,7 @@ class FamilyRepository {
       if (_customFamilies[i].id == familyId) {
         final f = _customFamilies[i];
         final updatedTutores = List<Tutor>.from(f.tutores)..add(tutor);
-        _customFamilies[i] = Family(
-          id: f.id,
-          colegioId: f.colegioId,
-          codigoFamilia: f.codigoFamilia,
-          nombreFamilia: f.nombreFamilia,
-          balancePendiente: f.balancePendiente,
-          telefonoPrincipal: f.telefonoPrincipal,
-          emailPrincipal: f.emailPrincipal,
-          direccion: f.direccion,
-          activo: f.activo,
-          tutores: updatedTutores,
-          estudiantes: f.estudiantes,
-          modalidadPago: f.modalidadPago,
-          descuentoAcordadoPct: f.descuentoAcordadoPct,
-          notaAcuerdoPago: f.notaAcuerdoPago,
-          criteriosCentroAdicionales: f.criteriosCentroAdicionales,
-        );
+        _customFamilies[i] = f.copyWith(tutores: updatedTutores);
         updated = true;
         break;
       }
@@ -662,23 +738,9 @@ class FamilyRepository {
         if (_demoFamilies[i].id == familyId) {
           final f = _demoFamilies[i];
           final updatedTutores = List<Tutor>.from(f.tutores)..add(tutor);
-          _demoFamilies[i] = Family(
-            id: f.id,
-            colegioId: f.colegioId,
-            codigoFamilia: f.codigoFamilia,
-            nombreFamilia: f.nombreFamilia,
-            balancePendiente: f.balancePendiente,
-            telefonoPrincipal: f.telefonoPrincipal,
-            emailPrincipal: f.emailPrincipal,
-            direccion: f.direccion,
-            activo: f.activo,
-            tutores: updatedTutores,
-            estudiantes: f.estudiantes,
-            modalidadPago: f.modalidadPago,
-            descuentoAcordadoPct: f.descuentoAcordadoPct,
-            notaAcuerdoPago: f.notaAcuerdoPago,
-            criteriosCentroAdicionales: f.criteriosCentroAdicionales,
-          );
+          final updatedFamily = f.copyWith(tutores: updatedTutores);
+          _demoFamilies[i] = updatedFamily;
+          _customFamilies.insert(0, updatedFamily);
           break;
         }
       }
@@ -712,6 +774,8 @@ class FamilyRepository {
         cedula: tutor.cedulaOPasaporte,
       );
     }
+
+    await _persistCustomFamilies();
   }
 
   /// Issue #19: Adjunta y persiste un documento oficial en el expediente digital de un estudiante
@@ -757,11 +821,56 @@ class FamilyRepository {
           );
           final updatedStudents = List<Student>.from(f.estudiantes);
           updatedStudents[sIndex] = updatedStudent;
-          _demoFamilies[i] = f.copyWith(estudiantes: updatedStudents);
+          final updatedFamily = f.copyWith(estudiantes: updatedStudents);
+          _demoFamilies[i] = updatedFamily;
+          _customFamilies.insert(0, updatedFamily);
           break;
         }
       }
     }
+
+    if (_supabaseClient != null && SupabaseConfig.isConfigured && !_useDemoFallback) {
+      try {
+        await _supabaseClient.from('documentos_estudiante').insert({
+          'estudiante_id': studentId,
+          'tipo': document.tipo,
+          'archivo_url': document.url ?? 'https://storage.edunex.edu.do/expedientes/${document.nombreArchivo}',
+          'aprobado': document.verificado,
+          'observaciones': '${document.nombreArchivo} (${document.tamanoFormateado})',
+        });
+      } catch (e) {
+        debugPrint('Aviso inserting documento_estudiante in Supabase: $e');
+      }
+    }
+
+    await _persistCustomFamilies();
+  }
+
+  /// Elimina un documento del expediente de un estudiante y persiste los cambios
+  Future<void> removeDocumentFromStudent({
+    required String studentId,
+    required String documentId,
+  }) async {
+    for (int i = 0; i < _customFamilies.length; i++) {
+      final f = _customFamilies[i];
+      final sIndex = f.estudiantes.indexWhere((s) => s.id == studentId);
+      if (sIndex != -1) {
+        final currentStudent = f.estudiantes[sIndex];
+        final updatedDocs = currentStudent.documentosExpediente.where((d) => d.id != documentId).toList();
+        final updatedStudent = currentStudent.copyWith(
+          documentosExpediente: updatedDocs,
+          fotoAdjunta: updatedDocs.any((d) => d.tipo.toLowerCase().contains('foto')),
+          actaNacimientoAdjunta: updatedDocs.any((d) => d.tipo.toLowerCase().contains('acta')),
+          certificadoNotasAdjunto: updatedDocs.any((d) => d.tipo.toLowerCase().contains('nota') || d.tipo.toLowerCase().contains('calificac')),
+          cartaSaldoConductaAdjunta: updatedDocs.any((d) => d.tipo.toLowerCase().contains('conducta') || d.tipo.toLowerCase().contains('saldo')),
+        );
+        final updatedStudents = List<Student>.from(f.estudiantes);
+        updatedStudents[sIndex] = updatedStudent;
+        _customFamilies[i] = f.copyWith(estudiantes: updatedStudents);
+        break;
+      }
+    }
+    await _persistCustomFamilies();
   }
 
   /// Registra un abono o pago a una familia y emite su comprobante fiscal oficial
