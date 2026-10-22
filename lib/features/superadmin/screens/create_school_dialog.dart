@@ -4,6 +4,8 @@ import '../../../core/services/file_upload_service.dart';
 import '../../../theme/app_colors.dart';
 import '../../families/models/student_document.dart';
 import '../../families/widgets/document_preview_dialog.dart';
+import '../../families/repositories/family_repository.dart';
+import '../../families/screens/create_family_dialog.dart';
 import '../models/school.dart';
 import '../repositories/school_repository.dart';
 
@@ -299,6 +301,16 @@ class _CreateSchoolDialogState extends State<CreateSchoolDialog> {
 
       final newSchool = result['school'] as School;
 
+      // Issue #16: Inicializar comunidad escolar para el colegio cliente
+      try {
+        await FamilyRepository.seedInitialFamiliesForSchool(
+          schoolId: newSchool.id,
+          schoolName: newSchool.nombre,
+        );
+      } catch (e) {
+        debugPrint('Aviso inicializando familias del colegio: $e');
+      }
+
       if (mounted) {
         setState(() {
           _createdSchool = newSchool;
@@ -487,6 +499,25 @@ Contraseña: $password
                 style: OutlinedButton.styleFrom(
                   foregroundColor: AppColors.navyPrimary,
                   side: const BorderSide(color: AppColors.navyPrimary),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                ),
+              ),
+              const SizedBox(width: 12),
+              ElevatedButton.icon(
+                onPressed: () {
+                  Navigator.of(context).pop();
+                  CreateFamilyDialog.show(
+                    context,
+                    repository: FamilyRepository(),
+                    colegioId: school.id,
+                  );
+                },
+                icon: const Icon(Icons.person_add_alt_1_rounded, size: 16),
+                label: const Text('Enrolar Familia para este Colegio'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.electricBlue,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                 ),
               ),

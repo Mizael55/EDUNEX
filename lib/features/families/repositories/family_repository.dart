@@ -245,17 +245,18 @@ class FamilyRepository {
     ),
   ];
 
-  /// Obtiene la lista de familias aplicando filtros opcionales de búsqueda y balance
+  /// Obtiene la lista de familias aplicando filtros opcionales de búsqueda, balance y colegio
   Future<List<Family>> getFamilies({
     String? searchQuery,
     bool onlyWithDebt = false,
+    String? colegioId,
   }) async {
     await _loadPersistedCustomFamilies();
     List<Family> families = [];
 
     if (_supabaseClient != null && SupabaseConfig.isConfigured && !_useDemoFallback) {
       try {
-        final response = await _supabaseClient
+        var query = _supabaseClient
             .from('familias')
             .select('''
               *,
@@ -268,8 +269,11 @@ class FamilyRepository {
                   grados (nombre)
                 )
               )
-            ''')
-            .order('nombre_familia', ascending: true);
+            ''');
+        if (colegioId != null && colegioId.isNotEmpty) {
+          query = query.eq('colegio_id', colegioId);
+        }
+        final response = await query.order('nombre_familia', ascending: true);
 
         families = (response as List)
             .map((item) => Family.fromJson(item as Map<String, dynamic>))
@@ -293,6 +297,11 @@ class FamilyRepository {
       }
     }
 
+    // Filtrar por colegio si se especificó (Issue #16)
+    if (colegioId != null && colegioId.isNotEmpty) {
+      families = families.where((f) => f.colegioId == colegioId).toList();
+    }
+
     // Filtrar según query
     if (searchQuery != null && searchQuery.trim().isNotEmpty) {
       final q = searchQuery.trim().toLowerCase();
@@ -314,6 +323,120 @@ class FamilyRepository {
     }
 
     return families;
+  }
+
+  /// Genera familias y estudiantes iniciales para un colegio nuevo (Issue #16)
+  /// asegurando que la parte de administración del centro cuente de inmediato con comunidad escolar
+  static Future<void> seedInitialFamiliesForSchool({
+    required String schoolId,
+    required String schoolName,
+  }) async {
+    await _loadPersistedCustomFamilies();
+    final timestamp = DateTime.now().millisecondsSinceEpoch;
+    final randomSuffix = (timestamp % 9000) + 1000;
+
+    final fam1 = Family(
+      id: 'fam-$schoolId-01',
+      colegioId: schoolId,
+      codigoFamilia: 'FAM-2026-$randomSuffix',
+      nombreFamilia: 'Familia Morales Peña',
+      balancePendiente: 6500.0,
+      telefonoPrincipal: '809-555-4321',
+      emailPrincipal: 'morales.pena@ejemplo.edu.do',
+      direccion: 'Av. Las Palmas #45, Ensanche Naco',
+      activo: true,
+      tutores: [
+        Tutor(
+          id: 'tut-$schoolId-01',
+          familiaId: 'fam-$schoolId-01',
+          nombres: 'Eduardo',
+          apellidos: 'Morales',
+          parentesco: 'Padre',
+          cedulaOPasaporte: '001-0987654-3',
+          telefono: '809-555-4321',
+          email: 'morales.pena@ejemplo.edu.do',
+          esContactoPrincipal: true,
+          autorizadoRecoger: true,
+        ),
+      ],
+      estudiantes: [
+        Student(
+          id: 'est-$schoolId-01',
+          colegioId: schoolId,
+          familiaId: 'fam-$schoolId-01',
+          matricula: 'EST-2026-${randomSuffix + 1}',
+          nombres: 'Lucas',
+          apellidos: 'Morales Peña',
+          fechaNacimiento: DateTime(2019, 4, 12),
+          gradoNombre: '1ro de Primaria',
+          seccionNombre: 'Sección A',
+          tipoSangre: 'O+',
+          seguroMedico: 'ARS Universal',
+          serviciosActivos: const ['Transporte Escolar'],
+          documentosExpediente: [
+            StudentDocument(
+              id: 'doc-$schoolId-01',
+              tipo: 'Acta de Nacimiento',
+              nombreArchivo: 'acta_nacimiento_lucas.pdf',
+              tamanoBytes: 1024 * 720,
+              fechaSubida: DateTime.now(),
+              verificado: true,
+            ),
+          ],
+        ),
+      ],
+    );
+
+    final fam2 = Family(
+      id: 'fam-$schoolId-02',
+      colegioId: schoolId,
+      codigoFamilia: 'FAM-2026-${randomSuffix + 10}',
+      nombreFamilia: 'Familia Castillo Almonte',
+      balancePendiente: 0.0,
+      telefonoPrincipal: '809-555-8765',
+      emailPrincipal: 'castillo.almonte@ejemplo.edu.do',
+      direccion: 'Calle Sol Poniente #12',
+      activo: true,
+      tutores: [
+        Tutor(
+          id: 'tut-$schoolId-02',
+          familiaId: 'fam-$schoolId-02',
+          nombres: 'Patricia',
+          apellidos: 'Almonte',
+          parentesco: 'Madre',
+          cedulaOPasaporte: '001-1122334-5',
+          telefono: '809-555-8765',
+          email: 'castillo.almonte@ejemplo.edu.do',
+          esContactoPrincipal: true,
+          autorizadoRecoger: true,
+        ),
+      ],
+      estudiantes: [
+        Student(
+          id: 'est-$schoolId-02',
+          colegioId: schoolId,
+          familiaId: 'fam-$schoolId-02',
+          matricula: 'EST-2026-${randomSuffix + 11}',
+          nombres: 'Sofía',
+          apellidos: 'Castillo Almonte',
+          fechaNacimiento: DateTime(2021, 6, 20),
+          gradoNombre: 'Kinder',
+          seccionNombre: 'Sección B',
+          tipoSangre: 'A+',
+          serviciosActivos: const ['Cuido Vespertino'],
+        ),
+      ],
+    );
+
+    for (final f in [fam1, fam2]) {
+      final idx = _customFamilies.indexWhere((existing) => existing.id == f.id);
+      if (idx != -1) {
+        _customFamilies[idx] = f;
+      } else {
+        _customFamilies.add(f);
+      }
+    }
+    await _persistCustomFamilies();
   }
 
   /// Retorna una familia por su ID

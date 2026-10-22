@@ -14,14 +14,18 @@ class DashboardOverviewScreen extends StatefulWidget {
   final FamilyRepository familyRepository;
   final VoidCallback onNavigateToFamilies;
   final String? schoolName;
+  final String? colegioId;
   final VoidCallback? onReturnToSuperAdmin;
+  final VoidCallback? onEditSchoolLogo;
 
   const DashboardOverviewScreen({
     super.key,
     required this.familyRepository,
     required this.onNavigateToFamilies,
     this.schoolName,
+    this.colegioId,
     this.onReturnToSuperAdmin,
+    this.onEditSchoolLogo,
   });
 
   @override
@@ -40,7 +44,7 @@ class _DashboardOverviewScreenState extends State<DashboardOverviewScreen> {
 
   Future<void> _loadData() async {
     try {
-      final list = await widget.familyRepository.getFamilies();
+      final list = await widget.familyRepository.getFamilies(colegioId: widget.colegioId);
       if (mounted) {
         setState(() {
           _recentFamilies = list;
@@ -120,28 +124,47 @@ class _DashboardOverviewScreenState extends State<DashboardOverviewScreen> {
                     ],
                   ),
                 ),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: AppColors.accentGreen.withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: AppColors.accentGreen.withValues(alpha: 0.4)),
-                  ),
-                  child: const Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.check_circle_rounded, color: AppColors.accentGreen, size: 16),
-                      SizedBox(width: 6),
-                      Text(
-                        'Sistema Operativo & Sincronizado',
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.accentGreen,
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (widget.onEditSchoolLogo != null) ...[
+                      OutlinedButton.icon(
+                        onPressed: widget.onEditSchoolLogo,
+                        icon: const Icon(Icons.add_photo_alternate_rounded, size: 16),
+                        label: const Text('Personalizar Logo'),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: AppColors.navyPrimary,
+                          side: const BorderSide(color: AppColors.navyPrimary),
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                         ),
                       ),
+                      const SizedBox(width: 10),
                     ],
-                  ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: AppColors.accentGreen.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: AppColors.accentGreen.withValues(alpha: 0.4)),
+                      ),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.check_circle_rounded, color: AppColors.accentGreen, size: 16),
+                          SizedBox(width: 6),
+                          Text(
+                            'Sistema Operativo & Sincronizado',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.accentGreen,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -223,6 +246,7 @@ class _DashboardOverviewScreenState extends State<DashboardOverviewScreen> {
                     CreateFamilyDialog.show(
                       context,
                       repository: widget.familyRepository,
+                      colegioId: widget.colegioId ?? 'a0000000-0000-0000-0000-000000000001',
                       onFamilyCreated: (_) => _loadData(),
                     );
                   },
@@ -235,6 +259,7 @@ class _DashboardOverviewScreenState extends State<DashboardOverviewScreen> {
                     EnrollStudentDialog.show(
                       context,
                       repository: widget.familyRepository,
+                      colegioId: widget.colegioId,
                       onStudentEnrolled: (_) => _loadData(),
                     );
                   },
@@ -311,7 +336,7 @@ class _DashboardOverviewScreenState extends State<DashboardOverviewScreen> {
                 decoration: BoxDecoration(
                   color: AppColors.surfaceWhite,
                   borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: const Color(0xFFE2E8F0)),
+                  border: Border.all(color: const Color(0xFFCBD5E1)),
                 ),
                 child: Column(
                   children: [
@@ -322,29 +347,91 @@ class _DashboardOverviewScreenState extends State<DashboardOverviewScreen> {
                         shape: BoxShape.circle,
                       ),
                       child: const Icon(
-                        Icons.family_restroom_rounded,
+                        Icons.school_rounded,
                         color: AppColors.navyPrimary,
-                        size: 36,
+                        size: 40,
                       ),
                     ),
                     const SizedBox(height: 14),
                     const Text(
-                      'No hay familias registradas todavía',
+                      'Portal del Centro Educativo - Sin Familias Registradas',
+                      textAlign: TextAlign.center,
                       style: TextStyle(
-                        fontSize: 16,
+                        fontSize: 18,
                         fontWeight: FontWeight.bold,
                         color: AppColors.navyPrimary,
                       ),
                     ),
-                    const SizedBox(height: 6),
+                    const SizedBox(height: 8),
                     const Text(
-                      'Esta institución se encuentra vacía y lista para pruebas.\nPuede matricular alumnos o crear nuevas familias usando las acciones rápidas.',
+                      'Esta institución educativa no cuenta aún con comunidad escolar matriculada.\nComo Administrador o Director del centro, puedes enrolar la primera familia o inicializar datos para pruebas.',
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         fontSize: 13,
                         color: AppColors.textSecondary,
                         height: 1.4,
                       ),
+                    ),
+                    const SizedBox(height: 20),
+                    Wrap(
+                      spacing: 12,
+                      runSpacing: 10,
+                      alignment: WrapAlignment.center,
+                      children: [
+                        ElevatedButton.icon(
+                          onPressed: () {
+                            CreateFamilyDialog.show(
+                              context,
+                              repository: widget.familyRepository,
+                              colegioId: widget.colegioId ?? 'a0000000-0000-0000-0000-000000000001',
+                              onFamilyCreated: (_) => _loadData(),
+                            );
+                          },
+                          icon: const Icon(Icons.person_add_alt_1_rounded, size: 18),
+                          label: const Text('+ Enrolar Primera Familia'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.electricBlue,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          ),
+                        ),
+                        OutlinedButton.icon(
+                          onPressed: () {
+                            EnrollStudentDialog.show(
+                              context,
+                              repository: widget.familyRepository,
+                              colegioId: widget.colegioId,
+                              onStudentEnrolled: (_) => _loadData(),
+                            );
+                          },
+                          icon: const Icon(Icons.school_rounded, size: 18),
+                          label: const Text('+ Matricular Alumno'),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: AppColors.navyPrimary,
+                            side: const BorderSide(color: AppColors.navyPrimary),
+                            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          ),
+                        ),
+                        TextButton.icon(
+                          onPressed: () async {
+                            final schoolId = widget.colegioId ?? 'a0000000-0000-0000-0000-000000000001';
+                            final schoolName = widget.schoolName ?? 'Colegio Cliente';
+                            await FamilyRepository.seedInitialFamiliesForSchool(
+                              schoolId: schoolId,
+                              schoolName: schoolName,
+                            );
+                            _loadData();
+                          },
+                          icon: const Icon(Icons.auto_awesome_rounded, size: 16),
+                          label: const Text('Cargar Comunidad de Prueba'),
+                          style: TextButton.styleFrom(
+                            foregroundColor: AppColors.accentGreen,
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),

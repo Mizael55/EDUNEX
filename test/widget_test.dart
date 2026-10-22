@@ -256,7 +256,7 @@ void main() {
     expect(familyWithTwo!.estudiantes.length, 2);
   });
 
-  testWidgets('LoginScreen displays 4 role profiles including Estudiante and School Branding', (WidgetTester tester) async {
+  testWidgets('LoginScreen displays 5 role profiles and keeps school logo customization inside director profile (Issue #10)', (WidgetTester tester) async {
     tester.view.physicalSize = const Size(1280, 900);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.resetPhysicalSize);
@@ -264,11 +264,13 @@ void main() {
     await tester.pumpWidget(const MaterialApp(home: LoginScreen()));
     await tester.pumpAndSettle();
 
+    expect(find.text('Dueño SaaS'), findsOneWidget);
     expect(find.text('Administrador'), findsWidgets);
     expect(find.text('Docente'), findsOneWidget);
     expect(find.text('Tutor o Familia'), findsOneWidget);
     expect(find.text('Estudiante'), findsOneWidget);
-    expect(find.text('Personalizar Logo / Centro Educativo'), findsOneWidget);
+    // Issue #10: Logo customization must NOT be on public login, it belongs to school director profile
+    expect(find.text('Personalizar Logo / Centro Educativo'), findsNothing);
   });
 
   testWidgets('MainShell renders student portal for estudiante role', (WidgetTester tester) async {

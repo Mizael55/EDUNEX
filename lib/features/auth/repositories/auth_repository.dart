@@ -123,22 +123,26 @@ class AuthRepository {
         debugPrint('Aviso de Supabase Auth: ${e.message}. Verificando perfiles locales.');
         // Si Supabase falla pero el usuario coincide con un rol preferido en pruebas, permitimos el acceso local
         final role = preferredRole ??
-            (cleanEmail.contains('admin')
-                ? UserRole.adminColegio
-                : cleanEmail.contains('docente')
-                    ? UserRole.docente
-                    : cleanEmail.contains('estudiante')
-                        ? UserRole.estudiante
-                        : UserRole.tutorFamiliar);
+            (cleanEmail.contains('superadmin')
+                ? UserRole.superadmin
+                : cleanEmail.contains('admin')
+                    ? UserRole.adminColegio
+                    : cleanEmail.contains('docente')
+                        ? UserRole.docente
+                        : cleanEmail.contains('estudiante')
+                            ? UserRole.estudiante
+                            : UserRole.tutorFamiliar);
 
         final localProfile = UserProfile(
           id: 'local-${cleanEmail.hashCode}',
-          colegioId: 'a0000000-0000-0000-0000-000000000001',
+          colegioId: role == UserRole.superadmin ? null : 'a0000000-0000-0000-0000-000000000001',
           email: cleanEmail,
-          nombres: role == UserRole.tutorFamiliar ? 'Tutor' : 'Usuario',
-          apellidos: 'EDUNEX',
+          nombres: role == UserRole.superadmin
+              ? 'Administrador'
+              : (role == UserRole.tutorFamiliar ? 'Tutor' : 'Usuario'),
+          apellidos: role == UserRole.superadmin ? 'SaaS EDUNEX' : 'EDUNEX',
           rol: role,
-          colegioNombre: 'Colegio Cliente EDUNEX',
+          colegioNombre: role == UserRole.superadmin ? 'EDUNEX Global Platform' : 'Colegio Cliente EDUNEX',
         );
         _currentProfile = localProfile;
         return localProfile;
@@ -151,35 +155,41 @@ class AuthRepository {
       await Future.delayed(const Duration(milliseconds: 300));
 
       final role = preferredRole ??
-          (cleanEmail.contains('admin')
-              ? UserRole.adminColegio
-              : cleanEmail.contains('docente')
-                  ? UserRole.docente
-                  : cleanEmail.contains('estudiante')
-                      ? UserRole.estudiante
-                      : UserRole.tutorFamiliar);
+          (cleanEmail.contains('superadmin')
+              ? UserRole.superadmin
+              : cleanEmail.contains('admin')
+                  ? UserRole.adminColegio
+                  : cleanEmail.contains('docente')
+                      ? UserRole.docente
+                      : cleanEmail.contains('estudiante')
+                          ? UserRole.estudiante
+                          : UserRole.tutorFamiliar);
 
       final demoProfile = UserProfile(
         id: 'demo-user-id-001',
-        colegioId: 'a0000000-0000-0000-0000-000000000001',
-        sucursalId: 'b0000000-0000-0000-0000-000000000001',
+        colegioId: role == UserRole.superadmin ? null : 'a0000000-0000-0000-0000-000000000001',
+        sucursalId: role == UserRole.superadmin ? null : 'b0000000-0000-0000-0000-000000000001',
         email: cleanEmail,
-        nombres: role == UserRole.adminColegio
-            ? 'Lic. Carlos'
-            : role == UserRole.docente
-                ? 'Prof. María'
-                : role == UserRole.estudiante
-                    ? 'Mateo'
-                    : 'Tutor',
-        apellidos: role == UserRole.adminColegio
-            ? 'Rodríguez'
-            : role == UserRole.docente
-                ? 'González'
-                : role == UserRole.estudiante
-                    ? 'Pérez González'
-                    : 'Familiar',
+        nombres: role == UserRole.superadmin
+            ? 'Administrador'
+            : (role == UserRole.adminColegio
+                ? 'Lic. Carlos'
+                : role == UserRole.docente
+                    ? 'Prof. María'
+                    : role == UserRole.estudiante
+                        ? 'Mateo'
+                        : 'Tutor'),
+        apellidos: role == UserRole.superadmin
+            ? 'SaaS EDUNEX'
+            : (role == UserRole.adminColegio
+                ? 'Rodríguez'
+                : role == UserRole.docente
+                    ? 'González'
+                    : role == UserRole.estudiante
+                        ? 'Pérez González'
+                        : 'Familiar'),
         rol: role,
-        colegioNombre: 'Colegio Cliente EDUNEX',
+        colegioNombre: role == UserRole.superadmin ? 'EDUNEX Global Platform' : 'Colegio Cliente EDUNEX',
         telefono: '809-555-0123',
       );
 

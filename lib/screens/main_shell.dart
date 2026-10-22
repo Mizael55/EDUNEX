@@ -166,6 +166,23 @@ class _MainShellState extends State<MainShell> {
     }
 
     if (_isSuperAdmin) {
+      if (_inspectedSchool != null) {
+        return [
+          const NavigationItem(
+            title: 'Panel del Colegio Auditado',
+            icon: Icons.dashboard_rounded,
+          ),
+          const NavigationItem(
+            title: 'Cuentas Familiares',
+            icon: Icons.people_alt_rounded,
+          ),
+          const NavigationItem(
+            title: 'Finanzas del Colegio',
+            icon: Icons.account_balance_wallet_rounded,
+          ),
+        ];
+      }
+
       return [
         const NavigationItem(
           title: 'Panel Maestro SaaS',
@@ -176,15 +193,7 @@ class _MainShellState extends State<MainShell> {
           icon: Icons.domain_rounded,
         ),
         const NavigationItem(
-          title: 'Panel Escolar Piloto',
-          icon: Icons.dashboard_rounded,
-        ),
-        const NavigationItem(
-          title: 'Cuentas Familiares',
-          icon: Icons.people_alt_rounded,
-        ),
-        const NavigationItem(
-          title: 'Finanzas & Cobranzas',
+          title: 'Finanzas & Facturación SaaS',
           icon: Icons.account_balance_wallet_rounded,
         ),
       ];
@@ -315,6 +324,35 @@ class _MainShellState extends State<MainShell> {
     }
 
     if (_isSuperAdmin) {
+      if (_inspectedSchool != null) {
+        switch (_selectedIndex) {
+          case 0:
+            return DashboardOverviewScreen(
+              familyRepository: _familyRepository,
+              schoolName: _inspectedSchool?.nombre,
+              colegioId: _inspectedSchool?.id,
+              onReturnToSuperAdmin: () => setState(() {
+                _inspectedSchool = null;
+                _selectedIndex = 0;
+              }),
+              onNavigateToFamilies: () => setState(() => _selectedIndex = 1),
+            );
+          case 1:
+            return FamilyDirectoryScreen(
+              repository: _familyRepository,
+              colegioId: _inspectedSchool?.id,
+            );
+          case 2:
+            return FinanceOverviewScreen(
+              isSuperAdmin: false,
+              familyRepository: _familyRepository,
+              schoolRepository: _schoolRepository,
+            );
+          default:
+            return _buildPlaceholderScreen(_navItems[_selectedIndex].title);
+        }
+      }
+
       switch (_selectedIndex) {
         case 0:
         case 1:
@@ -323,28 +361,11 @@ class _MainShellState extends State<MainShell> {
             onSelectSchoolToInspect: (school) {
               setState(() {
                 _inspectedSchool = school;
-                _selectedIndex = 2;
+                _selectedIndex = 0;
               });
             },
           );
         case 2:
-          return DashboardOverviewScreen(
-            familyRepository: _familyRepository,
-            schoolName: _inspectedSchool?.nombre,
-            onReturnToSuperAdmin: _inspectedSchool != null
-                ? () => setState(() {
-                      _inspectedSchool = null;
-                      _selectedIndex = 0;
-                    })
-                : null,
-            onNavigateToFamilies: () => setState(() => _selectedIndex = 3),
-          );
-        case 3:
-          return FamilyDirectoryScreen(
-            repository: _familyRepository,
-            colegioId: _inspectedSchool?.id,
-          );
-        case 4:
           return FinanceOverviewScreen(
             isSuperAdmin: true,
             familyRepository: _familyRepository,
@@ -440,6 +461,8 @@ class _MainShellState extends State<MainShell> {
         return DashboardOverviewScreen(
           familyRepository: _familyRepository,
           schoolName: _schoolName,
+          colegioId: widget.userProfile.colegioId,
+          onEditSchoolLogo: _openEditSchoolLogoDialog,
           onNavigateToFamilies: () => setState(() => _selectedIndex = 1),
         );
       case 1:

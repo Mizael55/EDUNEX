@@ -47,6 +47,7 @@ class _FamilyDirectoryScreenState extends State<FamilyDirectoryScreen> {
       final list = await widget.repository.getFamilies(
         searchQuery: _searchController.text,
         onlyWithDebt: _onlyWithDebt,
+        colegioId: widget.colegioId,
       );
       if (mounted) {
         setState(() {

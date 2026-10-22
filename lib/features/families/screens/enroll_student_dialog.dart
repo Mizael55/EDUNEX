@@ -14,12 +14,14 @@ import 'family_detail_dialog.dart';
 class EnrollStudentDialog extends StatefulWidget {
   final FamilyRepository repository;
   final Family? initialFamily;
+  final String? colegioId;
   final ValueChanged<Student>? onStudentEnrolled;
 
   const EnrollStudentDialog({
     super.key,
     required this.repository,
     this.initialFamily,
+    this.colegioId,
     this.onStudentEnrolled,
   });
 
@@ -27,6 +29,7 @@ class EnrollStudentDialog extends StatefulWidget {
     BuildContext context, {
     required FamilyRepository repository,
     Family? initialFamily,
+    String? colegioId,
     ValueChanged<Student>? onStudentEnrolled,
   }) {
     return showDialog<Student>(
@@ -35,6 +38,7 @@ class EnrollStudentDialog extends StatefulWidget {
       builder: (_) => EnrollStudentDialog(
         repository: repository,
         initialFamily: initialFamily,
+        colegioId: colegioId,
         onStudentEnrolled: onStudentEnrolled,
       ),
     );
@@ -319,7 +323,7 @@ class _EnrollStudentDialogState extends State<EnrollStudentDialog> {
 
   Future<void> _loadFamilies() async {
     try {
-      final list = await widget.repository.getFamilies();
+      final list = await widget.repository.getFamilies(colegioId: widget.colegioId);
       if (mounted) {
         setState(() {
           _families = list;
