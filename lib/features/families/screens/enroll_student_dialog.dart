@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../../../core/services/file_upload_service.dart';
 import '../../../theme/app_colors.dart';
 import '../models/family.dart';
 import '../models/student.dart';
 import '../models/student_document.dart';
 import '../models/tutor.dart';
 import '../repositories/family_repository.dart';
+import '../widgets/document_preview_dialog.dart';
 import 'family_detail_dialog.dart';
 
 /// Modal para matricular un nuevo alumno bajo una cuenta familiar existente
@@ -109,6 +111,41 @@ class _EnrollStudentDialogState extends State<EnrollStudentDialog> {
         );
       }
     });
+  }
+
+  Future<void> _pickRealDocumentForSlot(String tipo) async {
+    final picked = await FileUploadService.pickRealFile();
+    if (picked != null) {
+      setState(() {
+        _documentosAdjuntos[tipo] = StudentDocument(
+          id: 'doc-${DateTime.now().millisecondsSinceEpoch}',
+          tipo: tipo,
+          nombreArchivo: picked.name,
+          tamanoBytes: picked.size,
+          fechaSubida: DateTime.now(),
+          verificado: true,
+          urlArchivo: picked.dataUrl,
+        );
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Documento real "$tipo" cargado (${(picked.size / 1024).toStringAsFixed(1)} KB)'),
+            backgroundColor: AppColors.navyPrimary,
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+    }
+  }
+
+  void _previewDocument(StudentDocument doc) {
+    final studentName = '${_nombresController.text} ${_apellidosController.text}'.trim();
+    DocumentPreviewDialog.show(
+      context,
+      document: doc,
+      studentName: studentName.isEmpty ? 'Estudiante en Proceso de Matrícula' : studentName,
+    );
   }
 
   // Tutores adicionales o personas autorizadas a retirar (Issue #19)
@@ -855,6 +892,18 @@ Documentos en expediente: ${s.documentosExpediente.length}
                                             ),
                                         ],
                                       ),
+                                    ),
+                                    if (isAttached && doc != null) ...[
+                                      IconButton(
+                                        icon: const Icon(Icons.visibility_outlined, size: 18, color: AppColors.navyPrimary),
+                                        onPressed: () => _previewDocument(doc),
+                                        tooltip: 'Ver documento',
+                                      ),
+                                    ],
+                                    IconButton(
+                                      icon: const Icon(Icons.file_open_rounded, size: 18, color: AppColors.electricBlue),
+                                      onPressed: () => _pickRealDocumentForSlot(tipoKey),
+                                      tooltip: 'Cargar archivo real desde el dispositivo',
                                     ),
                                     IconButton(
                                       icon: Icon(

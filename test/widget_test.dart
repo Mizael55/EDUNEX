@@ -53,6 +53,7 @@ import 'package:edunex/features/dashboard/screens/dashboard_overview_screen.dart
 import 'package:edunex/features/parent_portal/screens/parent_portal_screen.dart';
 import 'package:edunex/features/families/models/student_document.dart';
 import 'package:edunex/features/families/models/tutor.dart';
+import 'package:edunex/features/families/widgets/document_preview_dialog.dart';
 import 'package:edunex/screens/login_screen.dart';
 import 'package:edunex/screens/main_shell.dart';
 import 'package:edunex/features/teacher_portal/models/teacher_class.dart';
@@ -2509,6 +2510,78 @@ void main() {
       final refreshedFamily = await familyRepo.getFamilyById(family.id);
       final refreshedStudent = refreshedFamily!.estudiantes.firstWhere((s) => s.id == student.id);
       expect(refreshedStudent.documentos.any((d) => d.id == 'doc-test-1'), isTrue);
+    });
+
+    test('UserRole provides unique colors, tag labels, and layout gradients for each role', () {
+      for (final role in UserRole.values) {
+        expect(role.color, isNotNull);
+        expect(role.tagLabel, isNotEmpty);
+        expect(role.layoutGradient.colors.length, greaterThanOrEqualTo(2));
+      }
+      expect(UserRole.superadmin.color, isNot(equals(UserRole.tutorFamiliar.color)));
+      expect(UserRole.adminColegio.color, isNot(equals(UserRole.estudiante.color)));
+      expect(UserRole.docente.color, isNot(equals(UserRole.cajaFinanzas.color)));
+    });
+
+    testWidgets('DocumentPreviewDialog renders document details, name, and size', (WidgetTester tester) async {
+      final doc = StudentDocument(
+        id: 'doc-preview-test',
+        tipo: 'Acta de Nacimiento',
+        nombreArchivo: 'acta_oficial_prueba.pdf',
+        tamanoBytes: 1024 * 512,
+        fechaSubida: DateTime.now(),
+        verificado: true,
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Builder(
+            builder: (context) => ElevatedButton(
+              onPressed: () => DocumentPreviewDialog.show(
+                context,
+                document: doc,
+                studentName: 'Ana Sofía Rodríguez',
+              ),
+              child: const Text('Abrir Preview'),
+            ),
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('Abrir Preview'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Acta de Nacimiento'), findsOneWidget);
+      expect(find.text('Expediente Escolar: Ana Sofía Rodríguez'), findsOneWidget);
+      expect(find.text('acta_oficial_prueba.pdf'), findsWidgets);
+      expect(find.textContaining('Verificado en Sistema'), findsWidgets);
+
+      await tester.tap(find.text('Cerrar'));
+      await tester.pumpAndSettle();
+      expect(find.text('Acta de Nacimiento'), findsNothing);
+    });
+
+    testWidgets('CreateSchoolDialog renders Section 4: Documentos de Registro Institucional (Issue #18)', (WidgetTester tester) async {
+      tester.view.physicalSize = const Size(1280, 1000);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+
+      final schoolRepo = SchoolRepository(useDemoFallback: true);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: CreateSchoolDialog(schoolRepository: schoolRepo),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('4. Documentos de Registro del Colegio (Issue #18)'), findsOneWidget);
+      expect(find.text('Cédula del Director'), findsOneWidget);
+      expect(find.text('Acreditación MINERD'), findsOneWidget);
+      expect(find.text('Registro Mercantil / RNC'), findsOneWidget);
+      expect(find.text('Cargar Archivo Real'), findsWidgets);
     });
   });
 }

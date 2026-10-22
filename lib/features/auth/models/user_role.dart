@@ -127,26 +127,159 @@ enum UserRole {
     }
   }
 
-  /// Color institucional asociado al rol
+  /// Color institucional único y diferenciador asociado al rol
   Color get color {
     switch (this) {
       case UserRole.superadmin:
+        return const Color(0xFF6366F1); // SaaS Violet
       case UserRole.adminColegio:
-        return AppColors.navyPrimary;
+        return const Color(0xFF1E3A8A); // Deep Executive Navy
       case UserRole.cajaFinanzas:
-        return AppColors.accentOrange;
+        return const Color(0xFF0D9488); // Finance Teal / Esmeralda
       case UserRole.admisiones:
+        return const Color(0xFF7C3AED); // Admissions Purple
       case UserRole.coordinadorAcademico:
+        return const Color(0xFF0284C7); // Academic Sky Blue
       case UserRole.docente:
-        return AppColors.electricBlue;
+        return const Color(0xFF2563EB); // Royal Blue Docente
       case UserRole.responsableCuido:
+        return const Color(0xFFDB2777); // Care Rose / Rosa
       case UserRole.responsableTransporte:
+        return const Color(0xFFD97706); // Transport Amber
       case UserRole.tiendaInventario:
-        return AppColors.cyanLight;
+        return const Color(0xFF78350F); // Warm Terracotta Store
       case UserRole.tutorFamiliar:
-        return AppColors.accentOrange;
+        return const Color(0xFFEA580C); // Family Warm Sunset Orange
       case UserRole.estudiante:
-        return AppColors.accentGreen;
+        return const Color(0xFF16A34A); // Student Emerald Mint Green
+    }
+  }
+
+  /// Gradiente institucional de navegación y layout específico del rol
+  LinearGradient get layoutGradient {
+    switch (this) {
+      case UserRole.superadmin:
+        return const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFF0B0F19), Color(0xFF1E1B4B)],
+        );
+      case UserRole.adminColegio:
+        return const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFF0A192F), Color(0xFF1E3A8A)],
+        );
+      case UserRole.docente:
+        return const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFF0B2545), Color(0xFF1E40AF)],
+        );
+      case UserRole.tutorFamiliar:
+        return const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFF2C1307), Color(0xFF7C2D12)],
+        );
+      case UserRole.estudiante:
+        return const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFF022C22), Color(0xFF065F46)],
+        );
+      case UserRole.cajaFinanzas:
+        return const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFF042F2E), Color(0xFF115E59)],
+        );
+      case UserRole.admisiones:
+        return const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFF2E1065), Color(0xFF5B21B6)],
+        );
+      case UserRole.coordinadorAcademico:
+        return const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFF082F49), Color(0xFF0369A1)],
+        );
+      case UserRole.responsableCuido:
+        return const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFF4C0519), Color(0xFF9F1239)],
+        );
+      case UserRole.responsableTransporte:
+        return const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFF451A03), Color(0xFF92400E)],
+        );
+      case UserRole.tiendaInventario:
+        return const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFF1E293B), Color(0xFF334155)],
+        );
+    }
+  }
+
+  /// Color de realce activo para menú y pestañas
+  Color get activeItemColor {
+    switch (this) {
+      case UserRole.superadmin:
+        return const Color(0xFF818CF8);
+      case UserRole.adminColegio:
+        return const Color(0xFF3B82F6);
+      case UserRole.docente:
+        return const Color(0xFF60A5FA);
+      case UserRole.tutorFamiliar:
+        return const Color(0xFFFB923C);
+      case UserRole.estudiante:
+        return const Color(0xFF4ADE80);
+      case UserRole.cajaFinanzas:
+        return const Color(0xFF2DD4BF);
+      case UserRole.admisiones:
+        return const Color(0xFFA78BFA);
+      case UserRole.coordinadorAcademico:
+        return const Color(0xFF38BDF8);
+      case UserRole.responsableCuido:
+        return const Color(0xFFF472B6);
+      case UserRole.responsableTransporte:
+        return const Color(0xFFFBBF24);
+      case UserRole.tiendaInventario:
+        return const Color(0xFFF59E0B);
+    }
+  }
+
+  /// Etiqueta visible del rol para badges de cabecera
+  String get tagLabel {
+    switch (this) {
+      case UserRole.superadmin:
+        return 'SUPERADMINISTRADOR SAAS';
+      case UserRole.adminColegio:
+        return 'DIRECCIÓN & ADMINISTRACIÓN';
+      case UserRole.docente:
+        return 'PORTAL DOCENTE / AULA';
+      case UserRole.tutorFamiliar:
+        return 'PORTAL FAMILIAR / TUTOR';
+      case UserRole.estudiante:
+        return 'PORTAL ESTUDIANTIL';
+      case UserRole.cajaFinanzas:
+        return 'CAJA & FINANZAS';
+      case UserRole.admisiones:
+        return 'ADMISIONES & REGISTRO';
+      case UserRole.coordinadorAcademico:
+        return 'COORDINACIÓN ACADÉMICA';
+      case UserRole.responsableCuido:
+        return 'CUIDO & GUARDERÍA';
+      case UserRole.responsableTransporte:
+        return 'TRANSPORTE ESCOLAR';
+      case UserRole.tiendaInventario:
+        return 'TIENDA & UNIFORMES';
     }
   }
 

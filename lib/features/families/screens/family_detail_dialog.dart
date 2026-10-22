@@ -1,3 +1,4 @@
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import '../../../theme/app_colors.dart';
 import '../models/family.dart';
@@ -5,6 +6,8 @@ import '../models/student.dart';
 import '../models/student_document.dart';
 import '../models/tutor.dart';
 import '../repositories/family_repository.dart';
+import '../../../core/services/file_upload_service.dart';
+import '../widgets/document_preview_dialog.dart';
 
 /// Modal para visualizar en detalle el expediente de una Cuenta Familiar Única
 class FamilyDetailDialog extends StatefulWidget {
@@ -218,11 +221,15 @@ class _FamilyDetailDialogState extends State<FamilyDetailDialog> {
       'Otro Documento Personalizado',
     ];
 
+    Uint8List? pickedBytes;
+    String? pickedDataUrl;
+    int pickedSize = 1024 * 512;
     String selectedTipo = docTypes[0];
     final customTipoCtrl = TextEditingController();
     final filenameCtrl = TextEditingController(text: 'foto_${student.nombres.toLowerCase().replaceAll(' ', '_')}.jpg');
     bool verificado = true;
     bool isFileSelected = true;
+    bool isUploading = false;
 
     showDialog(
       context: context,
@@ -269,10 +276,12 @@ class _FamilyDetailDialogState extends State<FamilyDetailDialog> {
                         if (val != null) {
                           setModalState(() {
                             selectedTipo = val;
-                            if (val == 'Foto 2x2') {
-                              filenameCtrl.text = 'foto_${student.nombres.toLowerCase().replaceAll(' ', '_')}.jpg';
-                            } else if (val != 'Otro Documento Personalizado') {
-                              filenameCtrl.text = '${val.toLowerCase().replaceAll(' ', '_').replaceAll('/', '_')}.pdf';
+                            if (pickedBytes == null) {
+                              if (val == 'Foto 2x2') {
+                                filenameCtrl.text = 'foto_${student.nombres.toLowerCase().replaceAll(' ', '_')}.jpg';
+                              } else if (val != 'Otro Documento Personalizado') {
+                                filenameCtrl.text = '${val.toLowerCase().replaceAll(' ', '_').replaceAll('/', '_')}.pdf';
+                              }
                             }
                           });
                         }
@@ -312,7 +321,11 @@ class _FamilyDetailDialogState extends State<FamilyDetailDialog> {
                       ),
                       child: Row(
                         children: [
-                          const Icon(Icons.cloud_done_rounded, color: AppColors.electricBlue, size: 26),
+                          Icon(
+                            pickedBytes != null ? Icons.check_circle_rounded : Icons.cloud_done_rounded,
+                            color: pickedBytes != null ? AppColors.accentGreen : AppColors.electricBlue,
+                            size: 26,
+                          ),
                           const SizedBox(width: 10),
                           Expanded(
                             child: Column(
@@ -323,22 +336,37 @@ class _FamilyDetailDialogState extends State<FamilyDetailDialog> {
                                   style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
                                   overflow: TextOverflow.ellipsis,
                                 ),
-                                const Text('Tamaño: 520 KB • Formato: PDF/Digital', style: TextStyle(fontSize: 10, color: AppColors.slateGray)),
+                                Text(
+                                  'Tamaño: ${(pickedSize / 1024).toStringAsFixed(1)} KB • ${pickedBytes != null ? "Archivo real cargado" : "Formato: PDF/Digital"}',
+                                  style: const TextStyle(fontSize: 10, color: AppColors.slateGray),
+                                ),
                               ],
                             ),
                           ),
                           TextButton.icon(
-                            onPressed: () {
-                              setModalState(() => isFileSelected = true);
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text('Archivo digital explorado y seleccionado.'),
-                                  duration: Duration(milliseconds: 1200),
-                                ),
-                              );
+                            onPressed: () async {
+                              final picked = await FileUploadService.pickRealFile();
+                              if (picked != null) {
+                                setModalState(() {
+                                  pickedBytes = picked.bytes;
+                                  pickedDataUrl = picked.dataUrl;
+                                  pickedSize = picked.size;
+                                  filenameCtrl.text = picked.name;
+                                  isFileSelected = true;
+                                });
+                                if (context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text('Archivo real seleccionado: ${picked.name} (${(picked.size / 1024).toStringAsFixed(1)} KB)'),
+                                      duration: const Duration(milliseconds: 1500),
+                                      backgroundColor: AppColors.navyPrimary,
+                                    ),
+                                  );
+                                }
+                              }
                             },
                             icon: const Icon(Icons.file_open_rounded, size: 14),
-                            label: const Text('Explorar', style: TextStyle(fontSize: 11)),
+                            label: const Text('Explorar Archivo', style: TextStyle(fontSize: 11)),
                           ),
                         ],
                       ),
@@ -351,18 +379,28 @@ class _FamilyDetailDialogState extends State<FamilyDetailDialog> {
                       title: const Text('Marcar como documento oficial verificado', style: TextStyle(fontSize: 12)),
                       onChanged: (v) => setModalState(() => verificado = v ?? true),
                     ),
+                    if (isUploading) ...[
+                      const SizedBox(height: 12),
+                      const LinearProgressIndicator(),
+                      const SizedBox(height: 6),
+                      const Center(
+                        child: Text('Subiendo archivo al almacenamiento seguro...', style: TextStyle(fontSize: 11, color: AppColors.slateGray)),
+                      ),
+                    ],
                   ],
                 ),
               ),
             ),
             actions: [
               TextButton(
-                onPressed: () => Navigator.of(ctx).pop(),
+                onPressed: isUploading ? null : () => Navigator.of(ctx).pop(),
                 child: const Text('Cancelar'),
               ),
               ElevatedButton.icon(
                 key: const Key('btn_confirm_attach_doc_detail'),
-                onPressed: () async {
+                onPressed: isUploading ? null : () async {
+                  setModalState(() => isUploading = true);
+
                   final finalTipo = isCustom && customTipoCtrl.text.trim().isNotEmpty
                       ? customTipoCtrl.text.trim()
                       : selectedTipo;
@@ -370,13 +408,24 @@ class _FamilyDetailDialogState extends State<FamilyDetailDialog> {
                       ? filenameCtrl.text.trim()
                       : '${finalTipo.toLowerCase().replaceAll(' ', '_')}.pdf';
 
+                  String? fileUrl = pickedDataUrl;
+                  if (pickedBytes != null) {
+                    final uploadRes = await FileUploadService.uploadBytes(
+                      bytes: pickedBytes!,
+                      fileName: finalFilename,
+                      folder: 'students/${student.id}',
+                    );
+                    fileUrl = uploadRes.publicUrl;
+                  }
+
                   final newDoc = StudentDocument(
                     id: 'doc-${DateTime.now().millisecondsSinceEpoch}',
                     tipo: finalTipo,
                     nombreArchivo: finalFilename,
-                    tamanoBytes: 1024 * 512,
+                    tamanoBytes: pickedSize,
                     fechaSubida: DateTime.now(),
                     verificado: verificado,
+                    urlArchivo: fileUrl,
                   );
 
                   await _repository.addDocumentToStudent(
@@ -420,75 +469,7 @@ class _FamilyDetailDialogState extends State<FamilyDetailDialog> {
   }
 
   void _showPreviewDocModal(StudentDocument doc, String studentName) {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Row(
-          children: [
-            const Icon(Icons.file_present_rounded, color: AppColors.navyPrimary, size: 24),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(doc.tipo, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
-                  Text('Estudiante: $studentName', style: const TextStyle(fontSize: 11, color: AppColors.slateGray)),
-                ],
-              ),
-            ),
-          ],
-        ),
-        content: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 450),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: double.infinity,
-                height: 180,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF8FAFC),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: const Color(0xFFE2E8F0)),
-                ),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      doc.tipo.toLowerCase().contains('foto') ? Icons.image_rounded : Icons.picture_as_pdf_rounded,
-                      size: 54,
-                      color: AppColors.navyPrimary.withValues(alpha: 0.7),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      doc.nombreArchivo,
-                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppColors.navyPrimary),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      '${doc.tamanoFormateado} • Estado: ${doc.verificado ? "Verificado & Aprobado" : "Pendiente"}',
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: doc.verificado ? const Color(0xFF15803D) : AppColors.slateGray,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('Cerrar'),
-          ),
-        ],
-      ),
-    );
+    DocumentPreviewDialog.show(context, document: doc, studentName: studentName);
   }
 
   @override

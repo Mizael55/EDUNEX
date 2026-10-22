@@ -587,16 +587,30 @@ class _MainShellState extends State<MainShell> {
     final isDesktop = size.width >= 900;
 
     if (!isDesktop) {
+      final role = widget.userProfile.rol;
       return Scaffold(
         appBar: AppBar(
-          backgroundColor: AppColors.navyPrimary,
+          backgroundColor: role.color,
           foregroundColor: AppColors.surfaceWhite,
-          elevation: 0,
+          elevation: 2,
           title: Row(
             children: [
-              Image.asset('assets/logo.jpg', height: 28, errorBuilder: (context, error, stackTrace) => const SizedBox.shrink()),
+              Image.asset('assets/logo.jpg', height: 26, errorBuilder: (context, error, stackTrace) => const SizedBox.shrink()),
               const SizedBox(width: 8),
-              const Text('EDUNEX', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+              const Text('EDUNEX', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.25),
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(color: Colors.white38),
+                ),
+                child: Text(
+                  role.tagLabel.split('•').first.trim(),
+                  style: const TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Colors.white),
+                ),
+              ),
             ],
           ),
           actions: [
@@ -611,17 +625,17 @@ class _MainShellState extends State<MainShell> {
           child: Column(
             children: [
               UserAccountsDrawerHeader(
-                decoration: const BoxDecoration(color: AppColors.navyPrimary),
+                decoration: BoxDecoration(gradient: role.layoutGradient),
                 accountName: Text(
                   widget.userProfile.nombreCompleto,
                   style: const TextStyle(fontWeight: FontWeight.bold),
                 ),
-                accountEmail: Text(widget.userProfile.email),
+                accountEmail: Text('${widget.userProfile.email} • ${role.displayName}'),
                 currentAccountPicture: CircleAvatar(
-                  backgroundColor: AppColors.surfaceWhite,
+                  backgroundColor: role.activeItemColor,
                   child: Text(
                     widget.userProfile.nombres.isNotEmpty ? widget.userProfile.nombres[0] : 'U',
-                    style: const TextStyle(color: AppColors.navyPrimary, fontWeight: FontWeight.bold, fontSize: 22),
+                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 22),
                   ),
                 ),
               ),
@@ -633,12 +647,12 @@ class _MainShellState extends State<MainShell> {
                     return ListTile(
                       leading: Icon(
                         item.icon,
-                        color: _selectedIndex == index ? AppColors.navyPrimary : AppColors.textSecondary,
+                        color: _selectedIndex == index ? role.color : AppColors.textSecondary,
                       ),
                       title: Text(
                         item.title,
                         style: TextStyle(
-                          color: _selectedIndex == index ? AppColors.navyPrimary : AppColors.textPrimary,
+                          color: _selectedIndex == index ? role.color : AppColors.textPrimary,
                           fontWeight: _selectedIndex == index ? FontWeight.bold : FontWeight.normal,
                         ),
                       ),
@@ -660,11 +674,16 @@ class _MainShellState extends State<MainShell> {
             ],
           ),
         ),
-        body: _buildBody(),
+        body: Column(
+          children: [
+            Container(height: 3, color: role.activeItemColor),
+            Expanded(child: _buildBody()),
+          ],
+        ),
         bottomNavigationBar: BottomNavigationBar(
           currentIndex: _selectedIndex < 4 ? _selectedIndex : 0,
           onTap: (index) => setState(() => _selectedIndex = index),
-          selectedItemColor: AppColors.navyPrimary,
+          selectedItemColor: role.color,
           unselectedItemColor: AppColors.textSecondary,
           type: BottomNavigationBarType.fixed,
           items: _navItems.take(4).map((item) {
@@ -677,19 +696,21 @@ class _MainShellState extends State<MainShell> {
       );
     }
 
-    // Layout de Escritorio con Sidebar elegante
+    final role = widget.userProfile.rol;
+
+    // Layout de Escritorio con Sidebar elegante adaptado al Rol
     return Scaffold(
       backgroundColor: AppColors.backgroundLight,
       body: Row(
         children: [
-          // Sidebar Fija
+          // Sidebar Fija con Color y Gradiente Específico del Rol
           Container(
             width: 270,
-            decoration: const BoxDecoration(
-              color: AppColors.navyPrimary,
-              boxShadow: [
+            decoration: BoxDecoration(
+              gradient: role.layoutGradient,
+              boxShadow: const [
                 BoxShadow(
-                  color: Colors.black12,
+                  color: Colors.black26,
                   blurRadius: 10,
                   offset: Offset(2, 0),
                 ),
@@ -699,7 +720,7 @@ class _MainShellState extends State<MainShell> {
               children: [
                 // Cabecera del Sidebar con Logo
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
                   child: Row(
                     children: [
                       Container(
@@ -746,6 +767,53 @@ class _MainShellState extends State<MainShell> {
                     ],
                   ),
                 ),
+
+                // Badge Destacado de Identidad de Rol (Permite distinguir al instante el rol activo)
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.14),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: role.activeItemColor.withValues(alpha: 0.7), width: 1.2),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(role.icon, color: role.activeItemColor, size: 18),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'ROL ACTIVO',
+                                style: TextStyle(
+                                  color: role.activeItemColor,
+                                  fontSize: 8.5,
+                                  fontWeight: FontWeight.w900,
+                                  letterSpacing: 1.1,
+                                ),
+                              ),
+                              Text(
+                                role.displayName,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 11.5,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: 10),
 
                 // Badge de Institución con Logo de Perfil (Issue #15)
                 Padding(
@@ -816,9 +884,9 @@ class _MainShellState extends State<MainShell> {
                   ),
                 ),
 
-                const SizedBox(height: 16),
+                const SizedBox(height: 14),
                 const Divider(color: Colors.white12, height: 1),
-                const SizedBox(height: 12),
+                const SizedBox(height: 10),
 
                 // Items de Navegación
                 Expanded(
@@ -831,7 +899,7 @@ class _MainShellState extends State<MainShell> {
                       return Padding(
                         padding: const EdgeInsets.only(bottom: 6),
                         child: Material(
-                          color: isSelected ? AppColors.electricBlue : Colors.transparent,
+                          color: isSelected ? role.color : Colors.transparent,
                           borderRadius: BorderRadius.circular(12),
                           child: InkWell(
                             borderRadius: BorderRadius.circular(12),
@@ -879,7 +947,7 @@ class _MainShellState extends State<MainShell> {
                     children: [
                       CircleAvatar(
                         radius: 18,
-                        backgroundColor: widget.userProfile.rol.color,
+                        backgroundColor: role.activeItemColor,
                         child: Text(
                           widget.userProfile.nombres.isNotEmpty ? widget.userProfile.nombres[0] : 'U',
                           style: const TextStyle(
@@ -904,10 +972,10 @@ class _MainShellState extends State<MainShell> {
                               ),
                             ),
                             Text(
-                              widget.userProfile.rol.displayName,
+                              role.displayName,
                               overflow: TextOverflow.ellipsis,
                               style: TextStyle(
-                                color: widget.userProfile.rol.color,
+                                color: role.activeItemColor,
                                 fontSize: 11,
                                 fontWeight: FontWeight.bold,
                               ),
@@ -927,9 +995,21 @@ class _MainShellState extends State<MainShell> {
             ),
           ),
 
-          // Área de Contenido Principal
+          // Área de Contenido Principal con Barra Superior de Rol
           Expanded(
-            child: _buildBody(),
+            child: Column(
+              children: [
+                Container(
+                  height: 4,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [role.color, role.activeItemColor],
+                    ),
+                  ),
+                ),
+                Expanded(child: _buildBody()),
+              ],
+            ),
           ),
         ],
       ),

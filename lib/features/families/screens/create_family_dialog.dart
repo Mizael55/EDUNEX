@@ -5,6 +5,8 @@ import '../models/student.dart';
 import '../models/student_document.dart';
 import '../models/tutor.dart';
 import '../repositories/family_repository.dart';
+import '../../../core/services/file_upload_service.dart';
+import '../widgets/document_preview_dialog.dart';
 
 /// Borrador de tutor adicional o persona autorizada para retiro de alumnos (Issue #19)
 class TutorDraft {
@@ -362,6 +364,8 @@ class _CreateFamilyDialogState extends State<CreateFamilyDialog> with SingleTick
     bool isCustom = defaultTipo == null || defaultTipo == 'Otro Documento';
     bool verificado = true;
     bool isFileSelected = true;
+    RealPickedFile? pickedRealFile;
+    int currentSize = defaultSize ?? (1024 * 512);
 
     final docTypes = [
       'Foto 2x2',
@@ -422,7 +426,7 @@ class _CreateFamilyDialogState extends State<CreateFamilyDialog> with SingleTick
                           setModalState(() {
                             tipoController.text = val;
                             isCustom = val == 'Otro Documento';
-                            if (!isCustom) {
+                            if (!isCustom && pickedRealFile == null) {
                               filenameController.text = '${val.toLowerCase().replaceAll(' ', '_')}.pdf';
                             }
                           });
@@ -457,13 +461,17 @@ class _CreateFamilyDialogState extends State<CreateFamilyDialog> with SingleTick
                     Container(
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: const Color(0xFFF1F5F9),
+                        color: pickedRealFile != null ? const Color(0xFFF0FDF4) : const Color(0xFFF1F5F9),
                         borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: const Color(0xFFCBD5E1)),
+                        border: Border.all(color: pickedRealFile != null ? const Color(0xFF86EFAC) : const Color(0xFFCBD5E1)),
                       ),
                       child: Row(
                         children: [
-                          const Icon(Icons.insert_drive_file_rounded, color: AppColors.electricBlue, size: 28),
+                          Icon(
+                            pickedRealFile != null ? Icons.check_circle_rounded : Icons.insert_drive_file_rounded,
+                            color: pickedRealFile != null ? const Color(0xFF16A34A) : AppColors.electricBlue,
+                            size: 28,
+                          ),
                           const SizedBox(width: 10),
                           Expanded(
                             child: Column(
@@ -474,19 +482,41 @@ class _CreateFamilyDialogState extends State<CreateFamilyDialog> with SingleTick
                                   style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
                                   overflow: TextOverflow.ellipsis,
                                 ),
-                                const Text('Tamaño estimado: 520 KB • Formato: PDF/Digital', style: TextStyle(fontSize: 10, color: AppColors.slateGray)),
+                                Text(
+                                  pickedRealFile != null
+                                      ? 'Archivo Real: ${pickedRealFile!.sizeFormatted} • Formato ${pickedRealFile!.extension.toUpperCase()} cargado'
+                                      : 'Tamaño: ${(currentSize / 1024).toStringAsFixed(0)} KB • Formato: PDF/Digital',
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    color: pickedRealFile != null ? const Color(0xFF15803D) : AppColors.slateGray,
+                                    fontWeight: pickedRealFile != null ? FontWeight.bold : FontWeight.normal,
+                                  ),
+                                ),
                               ],
                             ),
                           ),
                           TextButton.icon(
-                            onPressed: () {
-                              setModalState(() => isFileSelected = true);
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text('Archivo local seleccionado correctamente.'),
-                                  duration: Duration(milliseconds: 1200),
-                                ),
-                              );
+                            onPressed: () async {
+                              final real = await FileUploadService.pickRealFile();
+                              if (real != null) {
+                                setModalState(() {
+                                  pickedRealFile = real;
+                                  isFileSelected = true;
+                                  filenameController.text = real.name;
+                                  currentSize = real.size;
+                                });
+                                if (context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text('Archivo real seleccionado: ${real.name} (${real.sizeFormatted})'),
+                                      backgroundColor: AppColors.accentGreen,
+                                      duration: const Duration(seconds: 2),
+                                    ),
+                                  );
+                                }
+                              } else {
+                                setModalState(() => isFileSelected = true);
+                              }
                             },
                             icon: const Icon(Icons.file_open_rounded, size: 14),
                             label: const Text('Explorar', style: TextStyle(fontSize: 11)),
@@ -513,16 +543,22 @@ class _CreateFamilyDialogState extends State<CreateFamilyDialog> with SingleTick
               ),
               ElevatedButton.icon(
                 key: const Key('btn_confirm_upload_doc'),
-                onPressed: () {
+                onPressed: () async {
                   final tipo = tipoController.text.trim().isNotEmpty ? tipoController.text.trim() : 'Documento';
                   final filename = filenameController.text.trim().isNotEmpty ? filenameController.text.trim() : '$tipo.pdf';
-                  final size = defaultSize ?? (1024 * 512);
+                  final size = pickedRealFile?.size ?? currentSize;
+
+                  String? url;
+                  if (pickedRealFile != null) {
+                    url = await FileUploadService.uploadToStorage(file: pickedRealFile!, folder: 'estudiantes');
+                  }
 
                   setState(() {
                     student.documentosAdjuntos[tipo] = StudentDocument(
                       id: 'doc-${DateTime.now().millisecondsSinceEpoch}',
                       tipo: tipo,
                       nombreArchivo: filename,
+                      urlArchivo: url,
                       tamanoBytes: size,
                       fechaSubida: DateTime.now(),
                       verificado: verificado,
@@ -533,14 +569,16 @@ class _CreateFamilyDialogState extends State<CreateFamilyDialog> with SingleTick
                     if (tipo.contains('Conducta') || tipo.contains('Saldo')) student.cartaSaldoConductaAdjunta = true;
                   });
 
-                  Navigator.of(ctx).pop();
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('Documento "$tipo" cargado y vinculado al expediente.'),
-                      backgroundColor: AppColors.accentGreen,
-                      duration: const Duration(seconds: 2),
-                    ),
-                  );
+                  if (ctx.mounted) Navigator.of(ctx).pop();
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Documento "$tipo" cargado y vinculado al expediente.'),
+                        backgroundColor: AppColors.accentGreen,
+                        duration: const Duration(seconds: 2),
+                      ),
+                    );
+                  }
                 },
                 icon: const Icon(Icons.check_circle_rounded, size: 16),
                 label: const Text('Subir y Adjuntar'),
@@ -557,74 +595,10 @@ class _CreateFamilyDialogState extends State<CreateFamilyDialog> with SingleTick
   }
 
   void _showPreviewDocModal(StudentDocument doc, String studentName) {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Row(
-          children: [
-            const Icon(Icons.file_present_rounded, color: AppColors.navyPrimary, size: 24),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(doc.tipo, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
-                  Text('Estudiante: $studentName', style: const TextStyle(fontSize: 11, color: AppColors.slateGray)),
-                ],
-              ),
-            ),
-          ],
-        ),
-        content: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 450),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: double.infinity,
-                height: 180,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF8FAFC),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: const Color(0xFFE2E8F0)),
-                ),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      doc.tipo.toLowerCase().contains('foto') ? Icons.image_rounded : Icons.picture_as_pdf_rounded,
-                      size: 54,
-                      color: AppColors.navyPrimary.withValues(alpha: 0.7),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      doc.nombreArchivo,
-                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppColors.navyPrimary),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      '${doc.tamanoFormateado} • Estado: ${doc.verificado ? "Verificado & Sellado Digitalmente" : "Pendiente"}',
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: doc.verificado ? const Color(0xFF15803D) : AppColors.slateGray,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('Cerrar Vista Previa'),
-          ),
-        ],
-      ),
+    DocumentPreviewDialog.show(
+      context,
+      document: doc,
+      studentName: studentName,
     );
   }
 

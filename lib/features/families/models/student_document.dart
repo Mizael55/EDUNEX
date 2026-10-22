@@ -1,3 +1,6 @@
+import 'dart:convert';
+import 'dart:typed_data';
+
 /// Modelo que representa un documento digital adjunto en el expediente escolar del alumno
 class StudentDocument {
   final String id;
@@ -29,6 +32,31 @@ class StudentDocument {
       return '${(tamanoBytes / 1024).toStringAsFixed(1)} KB';
     }
     return '${(tamanoBytes / (1024 * 1024)).toStringAsFixed(1)} MB';
+  }
+
+  bool get isImage =>
+      nombreArchivo.toLowerCase().endsWith('.png') ||
+      nombreArchivo.toLowerCase().endsWith('.jpg') ||
+      nombreArchivo.toLowerCase().endsWith('.jpeg') ||
+      nombreArchivo.toLowerCase().endsWith('.webp') ||
+      tipo.toLowerCase().contains('foto') ||
+      (urlArchivo != null && urlArchivo!.startsWith('data:image'));
+
+  bool get isPdf =>
+      nombreArchivo.toLowerCase().endsWith('.pdf') ||
+      (urlArchivo != null && urlArchivo!.startsWith('data:application/pdf'));
+
+  Uint8List? get memoryBytes {
+    if (urlArchivo != null && urlArchivo!.startsWith('data:')) {
+      try {
+        final commaIdx = urlArchivo!.indexOf(',');
+        if (commaIdx != -1) {
+          final b64 = urlArchivo!.substring(commaIdx + 1);
+          return base64Decode(b64);
+        }
+      } catch (_) {}
+    }
+    return null;
   }
 
   factory StudentDocument.fromJson(Map<String, dynamic> json) {

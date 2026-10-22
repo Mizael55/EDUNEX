@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../../../core/services/file_upload_service.dart';
 import '../../../theme/app_colors.dart';
+import '../../families/models/student_document.dart';
+import '../../families/widgets/document_preview_dialog.dart';
 import '../models/school.dart';
 import '../repositories/school_repository.dart';
 
@@ -86,6 +89,34 @@ class _CreateSchoolDialogState extends State<CreateSchoolDialog> {
   final _directorPasswordController = TextEditingController(text: '123456');
   bool _obscurePassword = false;
 
+  // Issue #18: Documentos de registro del colegio y cédula del director
+  final Map<String, StudentDocument> _schoolDocuments = {
+    'Cédula del Director': StudentDocument(
+      id: 'doc-cedula-dir',
+      tipo: 'Copia Cédula del Director',
+      nombreArchivo: 'cedula_director_oficial.pdf',
+      tamanoBytes: 1024 * 420,
+      fechaSubida: DateTime.now(),
+      verificado: true,
+    ),
+    'Acreditación MINERD': StudentDocument(
+      id: 'doc-minerd-acred',
+      tipo: 'Acreditación MINERD / Registro',
+      nombreArchivo: 'acreditacion_minerd_resolucion.pdf',
+      tamanoBytes: 1024 * 1280,
+      fechaSubida: DateTime.now(),
+      verificado: true,
+    ),
+    'Registro Mercantil / RNC': StudentDocument(
+      id: 'doc-onapi-rm',
+      tipo: 'Registro Mercantil / RNC',
+      nombreArchivo: 'registro_mercantil_dgii.pdf',
+      tamanoBytes: 1024 * 850,
+      fechaSubida: DateTime.now(),
+      verificado: true,
+    ),
+  };
+
   bool _isLoading = false;
   School? _createdSchool;
   String? _createdDirectorEmail;
@@ -167,6 +198,40 @@ class _CreateSchoolDialogState extends State<CreateSchoolDialog> {
           ],
         ),
       ),
+    );
+  }
+
+  Future<void> _pickRealSchoolDoc(String keyName, String defaultTipo) async {
+    final picked = await FileUploadService.pickRealFile();
+    if (picked != null) {
+      setState(() {
+        _schoolDocuments[keyName] = StudentDocument(
+          id: 'sdoc-${DateTime.now().millisecondsSinceEpoch}',
+          tipo: defaultTipo,
+          nombreArchivo: picked.name,
+          tamanoBytes: picked.size,
+          fechaSubida: DateTime.now(),
+          verificado: true,
+          urlArchivo: picked.dataUrl,
+        );
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Documento "$defaultTipo" cargado exitosamente (${(picked.size / 1024).toStringAsFixed(1)} KB)'),
+            backgroundColor: AppColors.navyPrimary,
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+    }
+  }
+
+  void _previewSchoolDoc(StudentDocument doc) {
+    DocumentPreviewDialog.show(
+      context,
+      document: doc,
+      studentName: _nombreController.text.trim().isEmpty ? 'Institución Escolar' : _nombreController.text.trim(),
     );
   }
 
@@ -1347,6 +1412,107 @@ Contraseña: $password
                           }
                           return null;
                         },
+                      ),
+
+                      const SizedBox(height: 28),
+                      const Divider(),
+                      const SizedBox(height: 16),
+
+                      // SECCIÓN 4: DOCUMENTOS DE REGISTRO INSTITUCIONAL (Issue #18)
+                      _buildSectionHeader(
+                        icon: Icons.folder_special_rounded,
+                        title: '4. Documentos de Registro del Colegio (Issue #18)',
+                        subtitle: 'Carga los documentos oficiales de acreditación, registro comercial y copia de cédula del director',
+                      ),
+                      const SizedBox(height: 16),
+
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF8FAFC),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: const Color(0xFFE2E8F0)),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Expediente Digital de Registro del Centro Educativo:',
+                              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppColors.navyPrimary),
+                            ),
+                            const SizedBox(height: 4),
+                            const Text(
+                              'Sube archivos reales en formato PDF o imágenes (JPG, PNG) para validar la institución.',
+                              style: TextStyle(fontSize: 11, color: AppColors.slateGray),
+                            ),
+                            const SizedBox(height: 12),
+                            ..._schoolDocuments.entries.map((entry) {
+                              final keyName = entry.key;
+                              final doc = entry.value;
+
+                              return Container(
+                                margin: const EdgeInsets.only(bottom: 8),
+                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(10),
+                                  border: Border.all(color: const Color(0xFFCBD5E1)),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.all(8),
+                                      decoration: BoxDecoration(
+                                        color: AppColors.navyPrimary.withValues(alpha: 0.08),
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      child: Icon(
+                                        doc.tipo.toLowerCase().contains('cédula') || doc.tipo.toLowerCase().contains('cedula')
+                                            ? Icons.badge_rounded
+                                            : Icons.description_rounded,
+                                        size: 20,
+                                        color: AppColors.navyPrimary,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            keyName,
+                                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: AppColors.navyPrimary),
+                                          ),
+                                          Text(
+                                            '${doc.nombreArchivo} • ${doc.tamanoFormateado} • Digital',
+                                            style: const TextStyle(fontSize: 10, color: AppColors.slateGray),
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    IconButton(
+                                      icon: const Icon(Icons.visibility_outlined, size: 18, color: AppColors.navyPrimary),
+                                      onPressed: () => _previewSchoolDoc(doc),
+                                      tooltip: 'Ver documento',
+                                    ),
+                                    ElevatedButton.icon(
+                                      onPressed: () => _pickRealSchoolDoc(keyName, doc.tipo),
+                                      icon: const Icon(Icons.file_open_rounded, size: 13),
+                                      label: const Text('Cargar Archivo Real', style: TextStyle(fontSize: 11)),
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: AppColors.electricBlue,
+                                        foregroundColor: Colors.white,
+                                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            }),
+                          ],
+                        ),
                       ),
                     ],
                   ),
