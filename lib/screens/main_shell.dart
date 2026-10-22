@@ -500,6 +500,7 @@ class _MainShellState extends State<MainShell> {
       case 8:
         return AdminGradesScreen(
           academicRepository: _academicRepository,
+          colegioId: widget.userProfile.colegioId ?? 'col-1',
         );
       case 9:
         return AdminInquiriesScreen(
