@@ -2585,6 +2585,75 @@ void main() {
       expect(find.text('Registro Mercantil / RNC'), findsOneWidget);
       expect(find.text('Cargar Archivo Real'), findsWidgets);
     });
+
+    testWidgets('Issue #19: Tutor Documents and Cedula upload and persistence in FamilyRepository & CreateFamilyDialog', (WidgetTester tester) async {
+      tester.view.physicalSize = const Size(1280, 1000);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+
+      final repo = FamilyRepository(useDemoFallback: true);
+
+      // Verify UI in CreateFamilyDialog Tab 1
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: CreateFamilyDialog(
+              repository: repo,
+              colegioId: 'col-1',
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Check tutor documents in tab 1
+      expect(find.textContaining('Cédula del Padre'), findsWidgets);
+      expect(find.textContaining('Carta de Trabajo / Certificación Laboral'), findsOneWidget);
+      expect(find.textContaining('Estados Financieros / Comprobante de Ingresos'), findsOneWidget);
+      expect(find.textContaining('Copia Física de Cédula de Identidad'), findsOneWidget);
+      expect(find.text('+ Cargar Otro Documento'), findsOneWidget);
+
+      // Verify FamilyRepository tutor document persistence
+      final families = await repo.getFamilies();
+      final family = families.first;
+      final tutor = family.tutorPrincipal!;
+      final doc = StudentDocument(
+        id: 'doc-tutor-test-1',
+        tipo: 'Copia Física de Cédula de Identidad',
+        nombreArchivo: 'cedula_padre_qa.pdf',
+        tamanoBytes: 512000,
+        fechaSubida: DateTime.now(),
+        verificado: true,
+      );
+
+      await repo.addDocumentToTutor(
+        familyId: family.id,
+        tutorId: tutor.id,
+        document: doc,
+      );
+
+      final updatedFamilies = await repo.getFamilies();
+      final updatedFamily = updatedFamilies.firstWhere((f) => f.id == family.id);
+      final updatedTutor = updatedFamily.tutorPrincipal!;
+      expect(updatedTutor.copiaCedulaAdjunta, isTrue);
+      expect(updatedTutor.documentosExpediente.any((d) => d.id == 'doc-tutor-test-1'), isTrue);
+
+      // Verify FamilyDetailDialog renders the tutor document
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: FamilyDetailDialog(
+              family: updatedFamily,
+              repository: repo,
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('cedula_padre_qa.pdf'), findsOneWidget);
+      expect(find.textContaining('Adjuntar Documento / Cédula'), findsWidgets);
+    });
   });
 }
 

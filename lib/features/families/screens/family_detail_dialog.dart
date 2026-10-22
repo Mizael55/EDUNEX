@@ -472,6 +472,274 @@ class _FamilyDetailDialogState extends State<FamilyDetailDialog> {
     DocumentPreviewDialog.show(context, document: doc, studentName: studentName);
   }
 
+  void _showAttachTutorDocumentDialog(Tutor tutor) {
+    final docTypes = [
+      'Copia Física de Cédula de Identidad',
+      'Carta de Trabajo / Certificación Laboral',
+      'Estados Financieros / Comprobante de Ingresos',
+      'Poder Notarial de Custodia',
+      'Acta de Matrimonio / Unión Libre',
+      'Copia de Pasaporte',
+      'Otro Documento Personalizado',
+    ];
+
+    Uint8List? pickedBytes;
+    String? pickedDataUrl;
+    int pickedSize = 1024 * 450;
+    String selectedTipo = docTypes[0];
+    final customTipoCtrl = TextEditingController();
+    final filenameCtrl = TextEditingController(text: 'cedula_${tutor.nombres.toLowerCase().replaceAll(' ', '_')}.pdf');
+    bool verificado = true;
+    bool isFileSelected = true;
+    bool isUploading = false;
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setModalState) {
+          final isCustom = selectedTipo == 'Otro Documento Personalizado';
+
+          return AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            title: Row(
+              children: [
+                const Icon(Icons.upload_file_rounded, color: AppColors.navyPrimary, size: 24),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Text('Adjuntar Documento del Tutor', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
+                      Text('Tutor: ${tutor.nombreCompleto}', style: const TextStyle(fontSize: 11, color: AppColors.slateGray)),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            content: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 480),
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('Tipo de Documento:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                    const SizedBox(height: 6),
+                    DropdownButtonFormField<String>(
+                      isExpanded: true,
+                      value: selectedTipo,
+                      decoration: InputDecoration(
+                        isDense: true,
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                      ),
+                      items: docTypes.map((t) => DropdownMenuItem(value: t, child: Text(t, style: const TextStyle(fontSize: 13)))).toList(),
+                      onChanged: (val) {
+                        if (val != null) {
+                          setModalState(() {
+                            selectedTipo = val;
+                            if (pickedBytes == null) {
+                              if (val == 'Copia Física de Cédula de Identidad') {
+                                filenameCtrl.text = 'cedula_${tutor.nombres.toLowerCase().replaceAll(' ', '_')}.pdf';
+                              } else if (val == 'Carta de Trabajo / Certificación Laboral') {
+                                filenameCtrl.text = 'carta_trabajo_${tutor.nombres.toLowerCase().replaceAll(' ', '_')}.pdf';
+                              } else if (val == 'Estados Financieros / Comprobante de Ingresos') {
+                                filenameCtrl.text = 'comprobante_ingresos_${tutor.nombres.toLowerCase().replaceAll(' ', '_')}.pdf';
+                              } else if (val != 'Otro Documento Personalizado') {
+                                filenameCtrl.text = '${val.toLowerCase().replaceAll(' ', '_').replaceAll('/', '_')}.pdf';
+                              }
+                            }
+                          });
+                        }
+                      },
+                    ),
+                    if (isCustom) ...[
+                      const SizedBox(height: 10),
+                      TextFormField(
+                        controller: customTipoCtrl,
+                        decoration: InputDecoration(
+                          labelText: 'Especifique Tipo de Documento *',
+                          hintText: 'Ej. Poder Notarial, Certificación Bancaria',
+                          isDense: true,
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                        ),
+                      ),
+                    ],
+                    const SizedBox(height: 12),
+                    const Text('Nombre del Archivo:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                    const SizedBox(height: 6),
+                    TextFormField(
+                      controller: filenameCtrl,
+                      decoration: InputDecoration(
+                        hintText: 'nombre_del_documento.pdf',
+                        isDense: true,
+                        prefixIcon: const Icon(Icons.description_outlined, size: 20),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF1F5F9),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: const Color(0xFFCBD5E1)),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            pickedBytes != null ? Icons.check_circle_rounded : Icons.cloud_done_rounded,
+                            color: pickedBytes != null ? AppColors.accentGreen : AppColors.electricBlue,
+                            size: 26,
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  isFileSelected ? filenameCtrl.text : 'Ningún archivo seleccionado',
+                                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                Text(
+                                  'Tamaño: ${(pickedSize / 1024).toStringAsFixed(1)} KB • ${pickedBytes != null ? "Archivo real cargado" : "Formato: PDF/Digital"}',
+                                  style: const TextStyle(fontSize: 10, color: AppColors.slateGray),
+                                ),
+                              ],
+                            ),
+                          ),
+                          TextButton.icon(
+                            onPressed: () async {
+                              final picked = await FileUploadService.pickRealFile();
+                              if (picked != null) {
+                                setModalState(() {
+                                  pickedBytes = picked.bytes;
+                                  pickedDataUrl = picked.dataUrl;
+                                  pickedSize = picked.size;
+                                  filenameCtrl.text = picked.name;
+                                  isFileSelected = true;
+                                });
+                                if (context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text('Archivo real seleccionado: ${picked.name} (${(picked.size / 1024).toStringAsFixed(1)} KB)'),
+                                      duration: const Duration(milliseconds: 1500),
+                                      backgroundColor: AppColors.navyPrimary,
+                                    ),
+                                  );
+                                }
+                              }
+                            },
+                            icon: const Icon(Icons.file_open_rounded, size: 14),
+                            label: const Text('Explorar Archivo', style: TextStyle(fontSize: 11)),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    CheckboxListTile(
+                      value: verificado,
+                      contentPadding: EdgeInsets.zero,
+                      controlAffinity: ListTileControlAffinity.leading,
+                      title: const Text('Marcar como documento oficial verificado', style: TextStyle(fontSize: 12)),
+                      onChanged: (v) => setModalState(() => verificado = v ?? true),
+                    ),
+                    if (isUploading) ...[
+                      const SizedBox(height: 12),
+                      const LinearProgressIndicator(),
+                      const SizedBox(height: 6),
+                      const Center(
+                        child: Text('Subiendo archivo al almacenamiento seguro...', style: TextStyle(fontSize: 11, color: AppColors.slateGray)),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: isUploading ? null : () => Navigator.of(ctx).pop(),
+                child: const Text('Cancelar'),
+              ),
+              ElevatedButton.icon(
+                key: const Key('btn_confirm_attach_tutor_doc'),
+                onPressed: isUploading ? null : () async {
+                  setModalState(() => isUploading = true);
+
+                  final finalTipo = isCustom && customTipoCtrl.text.trim().isNotEmpty
+                      ? customTipoCtrl.text.trim()
+                      : selectedTipo;
+                  final finalFilename = filenameCtrl.text.trim().isNotEmpty
+                      ? filenameCtrl.text.trim()
+                      : '${finalTipo.toLowerCase().replaceAll(' ', '_')}.pdf';
+
+                  String? fileUrl = pickedDataUrl;
+                  if (pickedBytes != null) {
+                    final uploadRes = await FileUploadService.uploadBytes(
+                      bytes: pickedBytes!,
+                      fileName: finalFilename,
+                      folder: 'tutores/${tutor.id}',
+                    );
+                    fileUrl = uploadRes.publicUrl;
+                  }
+
+                  final newDoc = StudentDocument(
+                    id: 'doc-${DateTime.now().millisecondsSinceEpoch}',
+                    tipo: finalTipo,
+                    nombreArchivo: finalFilename,
+                    tamanoBytes: pickedSize,
+                    urlArchivo: fileUrl,
+                    fechaSubida: DateTime.now(),
+                    verificado: verificado,
+                  );
+
+                  await _repository.addDocumentToTutor(
+                    familyId: _family.id,
+                    tutorId: tutor.id,
+                    document: newDoc,
+                  );
+
+                  final updatedTutores = _family.tutores.map((t) {
+                    if (t.id == tutor.id) {
+                      return t.copyWith(
+                        documentosExpediente: [...t.documentosExpediente, newDoc],
+                        copiaCedulaAdjunta: t.copiaCedulaAdjunta || finalTipo.toLowerCase().contains('cedula') || finalTipo.toLowerCase().contains('cédula'),
+                        cartaTrabajoAdjunta: t.cartaTrabajoAdjunta || finalTipo.toLowerCase().contains('trabajo') || finalTipo.toLowerCase().contains('laboral'),
+                        estadosFinancierosAdjuntos: t.estadosFinancierosAdjuntos || finalTipo.toLowerCase().contains('financiero') || finalTipo.toLowerCase().contains('ingreso'),
+                      );
+                    }
+                    return t;
+                  }).toList();
+
+                  setState(() {
+                    _family = _family.copyWith(tutores: updatedTutores);
+                  });
+
+                  if (mounted) {
+                    Navigator.of(ctx).pop();
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Documento "$finalTipo" vinculado al expediente de ${tutor.nombreCompleto}.'),
+                        backgroundColor: AppColors.accentGreen,
+                      ),
+                    );
+                  }
+                },
+                icon: const Icon(Icons.check_circle_rounded, size: 16),
+                label: const Text('Guardar y Vincular'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.navyPrimary,
+                  foregroundColor: Colors.white,
+                ),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final family = _family;
@@ -1162,117 +1430,212 @@ class _FamilyDetailDialogState extends State<FamilyDetailDialog> {
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: const Color(0xFFE2E8F0)),
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          CircleAvatar(
-            radius: 18,
-            backgroundColor: tutor.esContactoPrincipal
-                ? AppColors.navyPrimary
-                : const Color(0xFFCBD5E1),
-            child: Icon(
-              Icons.person_rounded,
-              size: 18,
-              color: tutor.esContactoPrincipal
-                  ? AppColors.surfaceWhite
-                  : const Color(0xFF475569),
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
+          Row(
+            children: [
+              CircleAvatar(
+                radius: 18,
+                backgroundColor: tutor.esContactoPrincipal
+                    ? AppColors.navyPrimary
+                    : const Color(0xFFCBD5E1),
+                child: Icon(
+                  Icons.person_rounded,
+                  size: 18,
+                  color: tutor.esContactoPrincipal
+                      ? AppColors.surfaceWhite
+                      : const Color(0xFF475569),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      tutor.nombreCompleto,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14,
-                        color: AppColors.textPrimary,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 2,
-                      ),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFE2E8F0),
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: Text(
-                        tutor.parentesco,
-                        style: const TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                          color: Color(0xFF334155),
-                        ),
-                      ),
-                    ),
-                    if (tutor.esContactoPrincipal) ...[
-                      const SizedBox(width: 6),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 2,
-                        ),
-                        decoration: BoxDecoration(
-                          color: AppColors.accentGreen.withValues(alpha: 0.2),
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: const Text(
-                          'PRINCIPAL',
-                          style: TextStyle(
-                            fontSize: 10,
+                    Row(
+                      children: [
+                        Text(
+                          tutor.nombreCompleto,
+                          style: const TextStyle(
                             fontWeight: FontWeight.bold,
-                            color: AppColors.accentGreen,
+                            fontSize: 14,
+                            color: AppColors.textPrimary,
                           ),
+                        ),
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 2,
+                          ),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFE2E8F0),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(
+                            tutor.parentesco,
+                            style: const TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                              color: Color(0xFF334155),
+                            ),
+                          ),
+                        ),
+                        if (tutor.esContactoPrincipal) ...[
+                          const SizedBox(width: 6),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 2,
+                            ),
+                            decoration: BoxDecoration(
+                              color: AppColors.accentGreen.withValues(alpha: 0.2),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: const Text(
+                              'PRINCIPAL',
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                                color: AppColors.accentGreen,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'Cédula: ${tutor.cedulaOPasaporte ?? "N/D"} • Tel: ${tutor.telefono ?? "N/D"}${tutor.email != null ? " • Email: ${tutor.email}" : ""}',
+                      style: const TextStyle(
+                        color: AppColors.textSecondary,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              if (tutor.autorizadoRecoger)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFECFDF5),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: const Color(0xFFA7F3D0)),
+                  ),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.security_rounded,
+                        size: 14,
+                        color: Color(0xFF059669),
+                      ),
+                      SizedBox(width: 4),
+                      Text(
+                        'Autorizado a retirar',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF059669),
                         ),
                       ),
                     ],
-                  ],
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  'Cédula: ${tutor.cedulaOPasaporte ?? "N/D"} • Tel: ${tutor.telefono ?? "N/D"}${tutor.email != null ? " • Email: ${tutor.email}" : ""}',
-                  style: const TextStyle(
-                    color: AppColors.textSecondary,
-                    fontSize: 12,
                   ),
                 ),
-              ],
-            ),
+            ],
           ),
-          if (tutor.autorizadoRecoger)
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              decoration: BoxDecoration(
-                color: const Color(0xFFECFDF5),
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: const Color(0xFFA7F3D0)),
+
+          // Documentos de Identidad / Tutor (Issue #19)
+          const SizedBox(height: 10),
+          const Divider(height: 1),
+          const SizedBox(height: 8),
+          Wrap(
+            alignment: WrapAlignment.spaceBetween,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 8,
+            runSpacing: 6,
+            children: [
+              Text(
+                'Documentos / Cédula (${tutor.documentos.length}):',
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.navyPrimary,
+                ),
               ),
-              child: const Row(
-                mainAxisSize: MainAxisSize.min,
+              OutlinedButton.icon(
+                key: Key('btn_upload_tutor_doc_${tutor.id}'),
+                onPressed: () => _showAttachTutorDocumentDialog(tutor),
+                icon: const Icon(Icons.upload_file_rounded, size: 14),
+                label: const Text('Adjuntar Documento / Cédula', style: TextStyle(fontSize: 11)),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: AppColors.navyPrimary,
+                  side: const BorderSide(color: AppColors.navyPrimary),
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                ),
+              ),
+            ],
+          ),
+          if (tutor.documentos.isNotEmpty) ...[
+            const SizedBox(height: 6),
+            ...tutor.documentos.map((doc) => Container(
+              margin: const EdgeInsets.only(bottom: 4),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF0FDF4),
+                borderRadius: BorderRadius.circular(6),
+                border: Border.all(color: const Color(0xFF86EFAC)),
+              ),
+              child: Row(
                 children: [
-                  Icon(
-                    Icons.security_rounded,
-                    size: 14,
-                    color: Color(0xFF059669),
-                  ),
-                  SizedBox(width: 4),
-                  Text(
-                    'Autorizado a retirar',
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF059669),
+                  const Icon(Icons.description_rounded, size: 16, color: Color(0xFF16A34A)),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      '${doc.tipo}: ${doc.nombreArchivo} (${doc.tamanoFormateado})',
+                      style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Color(0xFF14532D)),
                     ),
+                  ),
+                  TextButton.icon(
+                    key: Key('btn_ver_tutor_doc_${doc.id}'),
+                    onPressed: () => _showPreviewDocModal(doc, tutor.nombreCompleto),
+                    icon: const Icon(Icons.visibility_outlined, size: 12, color: AppColors.navyPrimary),
+                    label: const Text('Ver', style: TextStyle(fontSize: 10, color: AppColors.navyPrimary)),
+                  ),
+                  IconButton(
+                    key: Key('btn_del_tutor_doc_${doc.id}'),
+                    icon: const Icon(Icons.delete_outline_rounded, size: 14, color: Colors.redAccent),
+                    onPressed: () async {
+                      await _repository.removeDocumentFromTutor(
+                        familyId: _family.id,
+                        tutorId: tutor.id,
+                        documentId: doc.id,
+                      );
+                      final updatedTutores = _family.tutores.map((t) {
+                        if (t.id == tutor.id) {
+                          return t.copyWith(
+                            documentosExpediente: t.documentosExpediente.where((d) => d.id != doc.id).toList(),
+                          );
+                        }
+                        return t;
+                      }).toList();
+                      setState(() {
+                        _family = _family.copyWith(tutores: updatedTutores);
+                      });
+                    },
                   ),
                 ],
               ),
+            )),
+          ] else ...[
+            const SizedBox(height: 4),
+            const Text(
+              'No hay documentos de identidad o laborales cargados para este tutor aún.',
+              style: TextStyle(fontSize: 11, color: AppColors.slateGray),
             ),
+          ],
         ],
       ),
     );

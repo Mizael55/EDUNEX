@@ -1,3 +1,5 @@
+import 'student_document.dart';
+
 /// Modelo de Tutor / Contacto Legal de la Familia en EDUNEX
 class Tutor {
   final String id;
@@ -20,6 +22,8 @@ class Tutor {
   final bool estadosFinancierosAdjuntos;
   final bool copiaCedulaAdjunta;
   final List<String> otrosDocumentos;
+  // Issue #19: Documentos digitales adjuntos del tutor / padre
+  final List<StudentDocument> documentosExpediente;
 
   const Tutor({
     required this.id,
@@ -41,15 +45,82 @@ class Tutor {
     this.estadosFinancierosAdjuntos = false,
     this.copiaCedulaAdjunta = false,
     this.otrosDocumentos = const [],
+    this.documentosExpediente = const [],
   });
 
+  List<StudentDocument> get documentos => documentosExpediente;
+
   String get nombreCompleto => '$nombres $apellidos'.trim();
+
+  Tutor copyWith({
+    String? id,
+    String? familiaId,
+    String? usuarioId,
+    String? nombres,
+    String? apellidos,
+    String? parentesco,
+    String? cedulaOPasaporte,
+    String? telefono,
+    String? email,
+    bool? esContactoPrincipal,
+    bool? autorizadoRecoger,
+    String? ocupacion,
+    String? lugarTrabajo,
+    String? telefonoTrabajo,
+    String? ingresosAproximados,
+    bool? cartaTrabajoAdjunta,
+    bool? estadosFinancierosAdjuntos,
+    bool? copiaCedulaAdjunta,
+    List<String>? otrosDocumentos,
+    List<StudentDocument>? documentosExpediente,
+  }) {
+    return Tutor(
+      id: id ?? this.id,
+      familiaId: familiaId ?? this.familiaId,
+      usuarioId: usuarioId ?? this.usuarioId,
+      nombres: nombres ?? this.nombres,
+      apellidos: apellidos ?? this.apellidos,
+      parentesco: parentesco ?? this.parentesco,
+      cedulaOPasaporte: cedulaOPasaporte ?? this.cedulaOPasaporte,
+      telefono: telefono ?? this.telefono,
+      email: email ?? this.email,
+      esContactoPrincipal: esContactoPrincipal ?? this.esContactoPrincipal,
+      autorizadoRecoger: autorizadoRecoger ?? this.autorizadoRecoger,
+      ocupacion: ocupacion ?? this.ocupacion,
+      lugarTrabajo: lugarTrabajo ?? this.lugarTrabajo,
+      telefonoTrabajo: telefonoTrabajo ?? this.telefonoTrabajo,
+      ingresosAproximados: ingresosAproximados ?? this.ingresosAproximados,
+      cartaTrabajoAdjunta: cartaTrabajoAdjunta ?? this.cartaTrabajoAdjunta,
+      estadosFinancierosAdjuntos: estadosFinancierosAdjuntos ?? this.estadosFinancierosAdjuntos,
+      copiaCedulaAdjunta: copiaCedulaAdjunta ?? this.copiaCedulaAdjunta,
+      otrosDocumentos: otrosDocumentos ?? this.otrosDocumentos,
+      documentosExpediente: documentosExpediente ?? this.documentosExpediente,
+    );
+  }
 
   factory Tutor.fromJson(Map<String, dynamic> json) {
     List<String> docs = [];
     if (json['otros_documentos'] is List) {
       docs = (json['otros_documentos'] as List).map((e) => e.toString()).toList();
     }
+
+    List<StudentDocument> docList = [];
+    if (json['documentos_expediente'] is List) {
+      docList = (json['documentos_expediente'] as List)
+          .map<StudentDocument>((d) => StudentDocument.fromJson(d as Map<String, dynamic>))
+          .toList();
+    } else if (json['documentos'] is List) {
+      docList = (json['documentos'] as List)
+          .map<StudentDocument>((d) => StudentDocument.fromJson(d as Map<String, dynamic>))
+          .toList();
+    }
+
+    final bool copiaCedula = json['copia_cedula_adjunta'] as bool? ??
+        docList.any((d) => d.tipo.toLowerCase().contains('cedula') || d.tipo.toLowerCase().contains('cédula'));
+    final bool cartaTrabajo = json['carta_trabajo_adjunta'] as bool? ??
+        docList.any((d) => d.tipo.toLowerCase().contains('trabajo') || d.tipo.toLowerCase().contains('laboral'));
+    final bool estadosFinancieros = json['estados_financieros_adjuntos'] as bool? ??
+        docList.any((d) => d.tipo.toLowerCase().contains('financiero') || d.tipo.toLowerCase().contains('ingreso'));
 
     return Tutor(
       id: json['id'] as String? ?? '',
@@ -67,10 +138,11 @@ class Tutor {
       lugarTrabajo: json['lugar_trabajo'] as String?,
       telefonoTrabajo: json['telefono_trabajo'] as String?,
       ingresosAproximados: json['ingresos_aproximados'] as String?,
-      cartaTrabajoAdjunta: json['carta_trabajo_adjunta'] as bool? ?? false,
-      estadosFinancierosAdjuntos: json['estados_financieros_adjuntos'] as bool? ?? false,
-      copiaCedulaAdjunta: json['copia_cedula_adjunta'] as bool? ?? false,
+      cartaTrabajoAdjunta: cartaTrabajo,
+      estadosFinancierosAdjuntos: estadosFinancieros,
+      copiaCedulaAdjunta: copiaCedula,
       otrosDocumentos: docs,
+      documentosExpediente: docList,
     );
   }
 
@@ -95,6 +167,7 @@ class Tutor {
       'estados_financieros_adjuntos': estadosFinancierosAdjuntos,
       'copia_cedula_adjunta': copiaCedulaAdjunta,
       'otros_documentos': otrosDocumentos,
+      'documentos_expediente': documentosExpediente.map((d) => d.toJson()).toList(),
     };
   }
 }

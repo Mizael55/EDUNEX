@@ -17,6 +17,8 @@ class TutorDraft {
   final TextEditingController emailController = TextEditingController();
   String parentesco = 'Madre';
   bool esAutorizadoRetiro = true;
+  // Documentos adjuntos del tutor adicional (Issue #19)
+  final Map<String, StudentDocument> documentosAdjuntos = {};
 
   void dispose() {
     nombresController.dispose();
@@ -177,6 +179,37 @@ class _CreateFamilyDialogState extends State<CreateFamilyDialog> with SingleTick
   bool _estadosFinancierosAdjuntos = true;
   bool _copiaCedulaAdjunta = true;
   final _tutorPasswordController = TextEditingController(text: '123456');
+
+  // Issue #19: Documentos digitales interactivos del tutor / padre
+  final Map<String, StudentDocument> _tutorDocuments = {
+    'Copia Física de Cédula de Identidad': StudentDocument(
+      id: 'doc-tutor-cedula',
+      tipo: 'Copia Física de Cédula de Identidad',
+      nombre: 'Copia Física de Cédula de Identidad',
+      nombreArchivo: 'cedula_padre_tutor.pdf',
+      tamanoBytes: 1024 * 450,
+      fechaSubida: DateTime.now(),
+      verificado: true,
+    ),
+    'Carta de Trabajo / Certificación Laboral': StudentDocument(
+      id: 'doc-tutor-laboral',
+      tipo: 'Carta de Trabajo / Certificación Laboral',
+      nombre: 'Carta de Trabajo / Certificación Laboral',
+      nombreArchivo: 'certificacion_laboral.pdf',
+      tamanoBytes: 1024 * 380,
+      fechaSubida: DateTime.now(),
+      verificado: true,
+    ),
+    'Estados Financieros / Comprobante de Ingresos': StudentDocument(
+      id: 'doc-tutor-ingresos',
+      tipo: 'Estados Financieros / Comprobante de Ingresos',
+      nombre: 'Estados Financieros / Comprobante de Ingresos',
+      nombreArchivo: 'comprobante_ingresos.pdf',
+      tamanoBytes: 1024 * 512,
+      fechaSubida: DateTime.now(),
+      verificado: true,
+    ),
+  };
 
   // Paso 1: Tutores Adicionales y Personas Autorizadas a Retirar (Issue #19)
   final List<TutorDraft> _additionalTutors = [];
@@ -602,6 +635,351 @@ class _CreateFamilyDialogState extends State<CreateFamilyDialog> with SingleTick
     );
   }
 
+  void _showUploadTutorDocModal({
+    required String defaultTipo,
+    required String defaultLabel,
+    required String defaultFilename,
+    int defaultSize = 1024 * 450,
+    TutorDraft? additionalTutor,
+  }) {
+    final tipoController = TextEditingController(text: defaultTipo);
+    final filenameController = TextEditingController(text: defaultFilename);
+    bool verificado = true;
+    bool isFileSelected = true;
+    int currentSize = defaultSize;
+    RealPickedFile? pickedRealFile;
+
+    final docTypes = [
+      'Copia Física de Cédula de Identidad',
+      'Carta de Trabajo / Certificación Laboral',
+      'Estados Financieros / Comprobante de Ingresos',
+      'Poder Notarial de Custodia',
+      'Acta de Matrimonio / Unión Libre',
+      'Otro Documento Personalizado',
+    ];
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setModalState) {
+          final isCustom = tipoController.text == 'Otro Documento Personalizado' ||
+              (!docTypes.contains(tipoController.text) && tipoController.text.isNotEmpty);
+
+          return AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            title: Row(
+              children: [
+                const Icon(Icons.upload_file_rounded, color: AppColors.navyPrimary, size: 24),
+                const SizedBox(width: 8),
+                const Expanded(
+                  child: Text(
+                    'Cargar Documento de Identidad / Tutor',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                  ),
+                ),
+              ],
+            ),
+            content: SizedBox(
+              width: 480,
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Tutor: ${additionalTutor != null ? additionalTutor.nombresController.text.trim() : (_tutorNombresController.text.isNotEmpty ? "${_tutorNombresController.text} ${_tutorApellidosController.text}" : "Tutor Principal")}',
+                      style: const TextStyle(fontSize: 12, color: AppColors.slateGray),
+                    ),
+                    const SizedBox(height: 12),
+                    DropdownButtonFormField<String>(
+                      isExpanded: true,
+                      value: docTypes.contains(tipoController.text) ? tipoController.text : 'Otro Documento Personalizado',
+                      decoration: InputDecoration(
+                        labelText: 'Tipo de Documento',
+                        isDense: true,
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                      ),
+                      items: docTypes.map((t) => DropdownMenuItem(value: t, child: Text(t, style: const TextStyle(fontSize: 13)))).toList(),
+                      onChanged: (val) {
+                        if (val != null) {
+                          setModalState(() {
+                            tipoController.text = val;
+                            if (val == 'Copia Física de Cédula de Identidad') {
+                              filenameController.text = 'cedula_${_tutorNombresController.text.isNotEmpty ? _tutorNombresController.text.toLowerCase().replaceAll(' ', '_') : "padre"}.pdf';
+                            } else if (val == 'Carta de Trabajo / Certificación Laboral') {
+                              filenameController.text = 'carta_trabajo_${_tutorNombresController.text.isNotEmpty ? _tutorNombresController.text.toLowerCase().replaceAll(' ', '_') : "tutor"}.pdf';
+                            } else if (val == 'Estados Financieros / Comprobante de Ingresos') {
+                              filenameController.text = 'comprobante_ingresos_${_tutorNombresController.text.isNotEmpty ? _tutorNombresController.text.toLowerCase().replaceAll(' ', '_') : "tutor"}.pdf';
+                            }
+                          });
+                        }
+                      },
+                    ),
+                    if (isCustom) ...[
+                      const SizedBox(height: 10),
+                      TextFormField(
+                        decoration: InputDecoration(
+                          labelText: 'Especifique Tipo de Documento *',
+                          hintText: 'Ej. Poder Notarial, Certificación Bancaria',
+                          isDense: true,
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                        ),
+                        onChanged: (v) => tipoController.text = v.trim(),
+                      ),
+                    ],
+                    const SizedBox(height: 12),
+                    const Text('Nombre del Archivo Digital:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                    const SizedBox(height: 6),
+                    TextFormField(
+                      controller: filenameController,
+                      decoration: InputDecoration(
+                        hintText: 'archivo_expediente.pdf',
+                        isDense: true,
+                        prefixIcon: const Icon(Icons.description_outlined, size: 20),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: pickedRealFile != null ? const Color(0xFFF0FDF4) : const Color(0xFFF1F5F9),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: pickedRealFile != null ? const Color(0xFF86EFAC) : const Color(0xFFCBD5E1)),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            pickedRealFile != null ? Icons.check_circle_rounded : Icons.insert_drive_file_rounded,
+                            color: pickedRealFile != null ? const Color(0xFF16A34A) : AppColors.electricBlue,
+                            size: 28,
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  isFileSelected ? filenameController.text : 'Ningún archivo seleccionado',
+                                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                Text(
+                                  pickedRealFile != null
+                                      ? 'Archivo Real: ${pickedRealFile!.sizeFormatted} • Formato ${pickedRealFile!.extension.toUpperCase()} cargado'
+                                      : 'Tamaño: ${(currentSize / 1024).toStringAsFixed(0)} KB • Formato: PDF/Digital',
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    color: pickedRealFile != null ? const Color(0xFF15803D) : AppColors.slateGray,
+                                    fontWeight: pickedRealFile != null ? FontWeight.bold : FontWeight.normal,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          TextButton.icon(
+                            onPressed: () async {
+                              final real = await FileUploadService.pickRealFile();
+                              if (real != null) {
+                                setModalState(() {
+                                  pickedRealFile = real;
+                                  isFileSelected = true;
+                                  filenameController.text = real.name;
+                                  currentSize = real.size;
+                                });
+                                if (context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text('Archivo real seleccionado: ${real.name} (${real.sizeFormatted})'),
+                                      backgroundColor: AppColors.accentGreen,
+                                      duration: const Duration(seconds: 2),
+                                    ),
+                                  );
+                                }
+                              } else {
+                                setModalState(() => isFileSelected = true);
+                              }
+                            },
+                            icon: const Icon(Icons.file_open_rounded, size: 14),
+                            label: const Text('Explorar', style: TextStyle(fontSize: 11)),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    CheckboxListTile(
+                      value: verificado,
+                      contentPadding: EdgeInsets.zero,
+                      controlAffinity: ListTileControlAffinity.leading,
+                      title: const Text('Marcar como documento oficial verificado', style: TextStyle(fontSize: 12)),
+                      onChanged: (v) => setModalState(() => verificado = v ?? true),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(ctx).pop(),
+                child: const Text('Cancelar'),
+              ),
+              ElevatedButton.icon(
+                key: const Key('btn_confirm_upload_tutor_doc'),
+                onPressed: () async {
+                  final tipo = tipoController.text.trim().isNotEmpty ? tipoController.text.trim() : 'Documento';
+                  final filename = filenameController.text.trim().isNotEmpty ? filenameController.text.trim() : '$tipo.pdf';
+                  final size = pickedRealFile?.size ?? currentSize;
+
+                  String? url;
+                  if (pickedRealFile != null) {
+                    url = await FileUploadService.uploadToStorage(file: pickedRealFile!, folder: 'tutores');
+                  }
+
+                  final newDoc = StudentDocument(
+                    id: 'doc-tut-${DateTime.now().millisecondsSinceEpoch}',
+                    tipo: tipo,
+                    nombreArchivo: filename,
+                    urlArchivo: url,
+                    tamanoBytes: size,
+                    fechaSubida: DateTime.now(),
+                    verificado: verificado,
+                  );
+
+                  setState(() {
+                    if (additionalTutor != null) {
+                      additionalTutor.documentosAdjuntos[tipo] = newDoc;
+                    } else {
+                      _tutorDocuments[tipo] = newDoc;
+                      if (tipo.contains('Cédula') || tipo.contains('Cedula')) _copiaCedulaAdjunta = true;
+                      if (tipo.contains('Trabajo') || tipo.contains('Laboral')) _cartaTrabajoAdjunta = true;
+                      if (tipo.contains('Financiero') || tipo.contains('Ingreso')) _estadosFinancierosAdjuntos = true;
+                    }
+                  });
+
+                  if (context.mounted) {
+                    Navigator.of(ctx).pop();
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Documento "$filename" cargado con éxito.'),
+                        backgroundColor: AppColors.accentGreen,
+                        duration: const Duration(seconds: 2),
+                      ),
+                    );
+                  }
+                },
+                icon: const Icon(Icons.check_rounded, size: 16),
+                label: const Text('Confirmar y Adjuntar'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.navyPrimary,
+                  foregroundColor: Colors.white,
+                ),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildTutorDocRow({
+    required String tipoKey,
+    required String label,
+    required bool isAttached,
+    required StudentDocument? doc,
+    required String defaultFilename,
+    required VoidCallback onUpload,
+    required VoidCallback onRemove,
+  }) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: isAttached ? const Color(0xFFF0FDF4) : const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: isAttached ? const Color(0xFF86EFAC) : const Color(0xFFCBD5E1),
+        ),
+      ),
+      child: Row(
+        children: [
+          Checkbox(
+            value: isAttached,
+            onChanged: (v) {
+              if (v == true) {
+                onUpload();
+              } else {
+                onRemove();
+              }
+            },
+            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          ),
+          const SizedBox(width: 4),
+          Icon(
+            isAttached ? Icons.check_circle_rounded : Icons.insert_drive_file_outlined,
+            size: 18,
+            color: isAttached ? const Color(0xFF16A34A) : AppColors.slateGray,
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: isAttached ? const Color(0xFF14532D) : AppColors.textPrimary,
+                  ),
+                ),
+                Text(
+                  isAttached && doc != null
+                      ? '${doc.nombreArchivo} • ${doc.tamanoFormateado} • ✅ Verificado'
+                      : 'Pendiente de adjuntar archivo digital',
+                  style: TextStyle(
+                    fontSize: 10,
+                    color: isAttached ? const Color(0xFF15803D) : AppColors.slateGray,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          if (isAttached && doc != null) ...[
+            TextButton.icon(
+              key: Key('btn_ver_doc_tutor_${tipoKey.toLowerCase().replaceAll(' ', '_').replaceAll('/', '_')}'),
+              onPressed: () => _showPreviewDocModal(
+                doc,
+                _tutorNombresController.text.isNotEmpty ? _tutorNombresController.text.trim() : 'Tutor Principal',
+              ),
+              icon: const Icon(Icons.visibility_outlined, size: 14, color: AppColors.navyPrimary),
+              label: const Text('Ver', style: TextStyle(fontSize: 11, color: AppColors.navyPrimary)),
+            ),
+            const SizedBox(width: 4),
+            TextButton.icon(
+              key: Key('btn_quitar_doc_tutor_${tipoKey.toLowerCase().replaceAll(' ', '_').replaceAll('/', '_')}'),
+              onPressed: onRemove,
+              icon: const Icon(Icons.delete_outline_rounded, size: 14, color: Colors.redAccent),
+              label: const Text('Quitar', style: TextStyle(fontSize: 11, color: Colors.redAccent, fontWeight: FontWeight.bold)),
+            ),
+          ] else ...[
+            ElevatedButton.icon(
+              key: Key('btn_cargar_doc_tutor_${tipoKey.toLowerCase().replaceAll(' ', '_').replaceAll('/', '_')}'),
+              onPressed: onUpload,
+              icon: const Icon(Icons.file_upload_outlined, size: 14),
+              label: const Text('Cargar Archivo', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.navyPrimary,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) {
       _tabController.animateTo(0);
@@ -678,6 +1056,7 @@ class _CreateFamilyDialogState extends State<CreateFamilyDialog> with SingleTick
                   : null,
               esContactoPrincipal: false,
               autorizadoRecoger: tDraft.esAutorizadoRetiro,
+              documentosExpediente: tDraft.documentosAdjuntos.values.toList(),
             ),
           );
         }
@@ -700,6 +1079,7 @@ class _CreateFamilyDialogState extends State<CreateFamilyDialog> with SingleTick
         cartaTrabajoAdjunta: _cartaTrabajoAdjunta,
         estadosFinancierosAdjuntos: _estadosFinancierosAdjuntos,
         copiaCedulaAdjunta: _copiaCedulaAdjunta,
+        tutorDocumentos: _tutorDocuments.values.toList(),
         balanceInicial: _subtotalMatricula, // Saldo inicial correspondiente a matrícula
         multipleStudents: studentsList,
         additionalTutors: additionalTutorsList.isNotEmpty ? additionalTutorsList : null,
@@ -1316,14 +1696,125 @@ class _CreateFamilyDialogState extends State<CreateFamilyDialog> with SingleTick
                   items: _rangosIngresos.map((r) => DropdownMenuItem(value: r, child: Text(r))).toList(),
                   onChanged: (v) => setState(() => _selectedIngresos = v!),
                 ),
-                const SizedBox(height: 12),
-                const Text('Documentos Físicos del Tutor Entregados:', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
-                const SizedBox(height: 6),
-                _buildDocCheckbox('Carta de Trabajo / Certificación Laboral', _cartaTrabajoAdjunta, (v) => setState(() => _cartaTrabajoAdjunta = v)),
-                const SizedBox(height: 4),
-                _buildDocCheckbox('Estados Financieros / Comprobante de Ingresos', _estadosFinancierosAdjuntos, (v) => setState(() => _estadosFinancierosAdjuntos = v)),
-                const SizedBox(height: 4),
-                _buildDocCheckbox('Copia Física de Cédula de Identidad', _copiaCedulaAdjunta, (v) => setState(() => _copiaCedulaAdjunta = v)),
+                const SizedBox(height: 14),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Documentos Físicos del Tutor / Cédula del Padre (Issue #19):',
+                            style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.navyPrimary),
+                          ),
+                          Text(
+                            'Carga los documentos oficiales de identidad e ingresos del tutor.',
+                            style: TextStyle(fontSize: 11, color: AppColors.slateGray),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    OutlinedButton.icon(
+                      key: const Key('btn_add_custom_tutor_doc'),
+                      onPressed: () => _showUploadTutorDocModal(
+                        defaultTipo: 'Otro Documento Personalizado',
+                        defaultLabel: 'Documento Adicional',
+                        defaultFilename: 'documento_adicional_tutor.pdf',
+                      ),
+                      icon: const Icon(Icons.add_circle_outline_rounded, size: 14),
+                      label: const Text('+ Cargar Otro Documento', style: TextStyle(fontSize: 11)),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: AppColors.navyPrimary,
+                        side: const BorderSide(color: AppColors.navyPrimary),
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+
+                // 1. Copia Física de Cédula de Identidad
+                _buildTutorDocRow(
+                  tipoKey: 'Copia Física de Cédula de Identidad',
+                  label: 'Copia Física de Cédula de Identidad (Padre / Tutor)',
+                  isAttached: _copiaCedulaAdjunta && _tutorDocuments.containsKey('Copia Física de Cédula de Identidad'),
+                  doc: _tutorDocuments['Copia Física de Cédula de Identidad'],
+                  defaultFilename: 'cedula_${_tutorNombresController.text.isNotEmpty ? _tutorNombresController.text.toLowerCase().replaceAll(' ', '_') : 'padre'}.pdf',
+                  onUpload: () => _showUploadTutorDocModal(
+                    defaultTipo: 'Copia Física de Cédula de Identidad',
+                    defaultLabel: 'Cédula de Identidad',
+                    defaultFilename: 'cedula_${_tutorNombresController.text.isNotEmpty ? _tutorNombresController.text.toLowerCase().replaceAll(' ', '_') : 'padre'}.pdf',
+                  ),
+                  onRemove: () {
+                    setState(() {
+                      _tutorDocuments.remove('Copia Física de Cédula de Identidad');
+                      _copiaCedulaAdjunta = false;
+                    });
+                  },
+                ),
+
+                // 2. Carta de Trabajo / Certificación Laboral
+                _buildTutorDocRow(
+                  tipoKey: 'Carta de Trabajo / Certificación Laboral',
+                  label: 'Carta de Trabajo / Certificación Laboral',
+                  isAttached: _cartaTrabajoAdjunta && _tutorDocuments.containsKey('Carta de Trabajo / Certificación Laboral'),
+                  doc: _tutorDocuments['Carta de Trabajo / Certificación Laboral'],
+                  defaultFilename: 'carta_trabajo_${_tutorNombresController.text.isNotEmpty ? _tutorNombresController.text.toLowerCase().replaceAll(' ', '_') : 'tutor'}.pdf',
+                  onUpload: () => _showUploadTutorDocModal(
+                    defaultTipo: 'Carta de Trabajo / Certificación Laboral',
+                    defaultLabel: 'Carta de Trabajo',
+                    defaultFilename: 'carta_trabajo_${_tutorNombresController.text.isNotEmpty ? _tutorNombresController.text.toLowerCase().replaceAll(' ', '_') : 'tutor'}.pdf',
+                  ),
+                  onRemove: () {
+                    setState(() {
+                      _tutorDocuments.remove('Carta de Trabajo / Certificación Laboral');
+                      _cartaTrabajoAdjunta = false;
+                    });
+                  },
+                ),
+
+                // 3. Estados Financieros / Comprobante de Ingresos
+                _buildTutorDocRow(
+                  tipoKey: 'Estados Financieros / Comprobante de Ingresos',
+                  label: 'Estados Financieros / Comprobante de Ingresos',
+                  isAttached: _estadosFinancierosAdjuntos && _tutorDocuments.containsKey('Estados Financieros / Comprobante de Ingresos'),
+                  doc: _tutorDocuments['Estados Financieros / Comprobante de Ingresos'],
+                  defaultFilename: 'comprobante_ingresos_${_tutorNombresController.text.isNotEmpty ? _tutorNombresController.text.toLowerCase().replaceAll(' ', '_') : 'tutor'}.pdf',
+                  onUpload: () => _showUploadTutorDocModal(
+                    defaultTipo: 'Estados Financieros / Comprobante de Ingresos',
+                    defaultLabel: 'Estados Financieros',
+                    defaultFilename: 'comprobante_ingresos_${_tutorNombresController.text.isNotEmpty ? _tutorNombresController.text.toLowerCase().replaceAll(' ', '_') : 'tutor'}.pdf',
+                  ),
+                  onRemove: () {
+                    setState(() {
+                      _tutorDocuments.remove('Estados Financieros / Comprobante de Ingresos');
+                      _estadosFinancierosAdjuntos = false;
+                    });
+                  },
+                ),
+
+                // Documentos adicionales personalizados del tutor
+                ..._tutorDocuments.entries.where((e) => ![
+                  'Copia Física de Cédula de Identidad',
+                  'Carta de Trabajo / Certificación Laboral',
+                  'Estados Financieros / Comprobante de Ingresos',
+                ].contains(e.key)).map((entry) {
+                  final doc = entry.value;
+                  return _buildTutorDocRow(
+                    tipoKey: entry.key,
+                    label: doc.tipo,
+                    isAttached: true,
+                    doc: doc,
+                    defaultFilename: doc.nombreArchivo,
+                    onUpload: () {},
+                    onRemove: () {
+                      setState(() => _tutorDocuments.remove(entry.key));
+                    },
+                  );
+                }),
               ],
             ),
           ),
@@ -1517,6 +2008,74 @@ class _CreateFamilyDialogState extends State<CreateFamilyDialog> with SingleTick
                         ),
                       ],
                     ),
+
+                    // Documentos del Tutor Adicional (Issue #19)
+                    const SizedBox(height: 10),
+                    const Divider(height: 1),
+                    const SizedBox(height: 8),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Expanded(
+                          child: Text(
+                            'Documentos / Cédula del Tutor Adicional:',
+                            style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.navyPrimary),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        OutlinedButton.icon(
+                          key: Key('btn_cargar_doc_tutor_extra_$idx'),
+                          onPressed: () => _showUploadTutorDocModal(
+                            defaultTipo: 'Copia Física de Cédula de Identidad',
+                            defaultLabel: 'Cédula de Identidad',
+                            defaultFilename: 'cedula_${tDraft.nombresController.text.isNotEmpty ? tDraft.nombresController.text.toLowerCase().replaceAll(' ', '_') : "tutor_$idx"}.pdf',
+                            additionalTutor: tDraft,
+                          ),
+                          icon: const Icon(Icons.upload_file_rounded, size: 14),
+                          label: const Text('Cargar Cédula / Doc', style: TextStyle(fontSize: 11)),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: AppColors.navyPrimary,
+                            side: const BorderSide(color: AppColors.navyPrimary),
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          ),
+                        ),
+                      ],
+                    ),
+                    if (tDraft.documentosAdjuntos.isNotEmpty)
+                      ...tDraft.documentosAdjuntos.entries.map((dEntry) {
+                        final d = dEntry.value;
+                        return Container(
+                          margin: const EdgeInsets.only(top: 6),
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF0FDF4),
+                            borderRadius: BorderRadius.circular(6),
+                            border: Border.all(color: const Color(0xFF86EFAC)),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.check_circle_rounded, size: 16, color: Color(0xFF16A34A)),
+                              const SizedBox(width: 6),
+                              Expanded(
+                                child: Text(
+                                  '${d.tipo}: ${d.nombreArchivo} (${d.tamanoFormateado})',
+                                  style: const TextStyle(fontSize: 11, color: Color(0xFF14532D)),
+                                ),
+                              ),
+                              TextButton.icon(
+                                onPressed: () => _showPreviewDocModal(d, tDraft.nombresController.text.trim()),
+                                icon: const Icon(Icons.visibility_outlined, size: 12, color: AppColors.navyPrimary),
+                                label: const Text('Ver', style: TextStyle(fontSize: 10, color: AppColors.navyPrimary)),
+                              ),
+                              TextButton.icon(
+                                onPressed: () => setState(() => tDraft.documentosAdjuntos.remove(dEntry.key)),
+                                icon: const Icon(Icons.delete_outline_rounded, size: 12, color: Colors.redAccent),
+                                label: const Text('Quitar', style: TextStyle(fontSize: 10, color: Colors.redAccent)),
+                              ),
+                            ],
+                          ),
+                        );
+                      }),
                   ],
                 ),
               );

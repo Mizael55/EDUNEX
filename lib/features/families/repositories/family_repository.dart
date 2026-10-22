@@ -620,6 +620,7 @@ class FamilyRepository {
     bool estadosFinancierosAdjuntos = false,
     bool copiaCedulaAdjunta = false,
     List<String> otrosDocumentos = const [],
+    List<StudentDocument>? tutorDocumentos,
     double balanceInicial = 0.0,
     String? estudianteNombres,
     String? estudianteApellidos,
@@ -656,6 +657,7 @@ class FamilyRepository {
       estadosFinancierosAdjuntos: estadosFinancierosAdjuntos,
       copiaCedulaAdjunta: copiaCedulaAdjunta,
       otrosDocumentos: otrosDocumentos,
+      documentosExpediente: tutorDocumentos ?? [],
     );
 
     List<Student> students = [];
@@ -988,6 +990,89 @@ class FamilyRepository {
         await _supabaseClient.from('documentos_estudiante').delete().eq('id', documentId);
       } catch (e) {
         debugPrint('Aviso deleting documento_estudiante in Supabase: $e');
+      }
+    }
+
+    await _persistCustomFamilies();
+  }
+
+  /// Agrega un nuevo documento digital al expediente de un tutor/padre (Issue #19)
+  Future<void> addDocumentToTutor({
+    required String familyId,
+    required String tutorId,
+    required StudentDocument document,
+  }) async {
+    for (int i = 0; i < _customFamilies.length; i++) {
+      final f = _customFamilies[i];
+      if (f.id == familyId) {
+        final tIndex = f.tutores.indexWhere((t) => t.id == tutorId);
+        if (tIndex != -1) {
+          final currentTutor = f.tutores[tIndex];
+          final updatedDocs = List<StudentDocument>.from(currentTutor.documentosExpediente)..add(document);
+          final updatedTutor = currentTutor.copyWith(
+            documentosExpediente: updatedDocs,
+            copiaCedulaAdjunta: currentTutor.copiaCedulaAdjunta || document.tipo.toLowerCase().contains('cedula') || document.tipo.toLowerCase().contains('cédula'),
+            cartaTrabajoAdjunta: currentTutor.cartaTrabajoAdjunta || document.tipo.toLowerCase().contains('trabajo') || document.tipo.toLowerCase().contains('laboral'),
+            estadosFinancierosAdjuntos: currentTutor.estadosFinancierosAdjuntos || document.tipo.toLowerCase().contains('financiero') || document.tipo.toLowerCase().contains('ingreso'),
+          );
+          final updatedTutores = List<Tutor>.from(f.tutores);
+          updatedTutores[tIndex] = updatedTutor;
+          _customFamilies[i] = f.copyWith(tutores: updatedTutores);
+          break;
+        }
+      }
+    }
+
+    for (int i = 0; i < _demoFamilies.length; i++) {
+      final f = _demoFamilies[i];
+      if (f.id == familyId) {
+        final tIndex = f.tutores.indexWhere((t) => t.id == tutorId);
+        if (tIndex != -1) {
+          final currentTutor = f.tutores[tIndex];
+          final updatedDocs = List<StudentDocument>.from(currentTutor.documentosExpediente)..add(document);
+          final updatedTutor = currentTutor.copyWith(
+            documentosExpediente: updatedDocs,
+            copiaCedulaAdjunta: currentTutor.copiaCedulaAdjunta || document.tipo.toLowerCase().contains('cedula') || document.tipo.toLowerCase().contains('cédula'),
+            cartaTrabajoAdjunta: currentTutor.cartaTrabajoAdjunta || document.tipo.toLowerCase().contains('trabajo') || document.tipo.toLowerCase().contains('laboral'),
+            estadosFinancierosAdjuntos: currentTutor.estadosFinancierosAdjuntos || document.tipo.toLowerCase().contains('financiero') || document.tipo.toLowerCase().contains('ingreso'),
+          );
+          final updatedTutores = List<Tutor>.from(f.tutores);
+          updatedTutores[tIndex] = updatedTutor;
+          final updatedFamily = f.copyWith(tutores: updatedTutores);
+          _demoFamilies[i] = updatedFamily;
+          _customFamilies.insert(0, updatedFamily);
+          break;
+        }
+      }
+    }
+
+    await _persistCustomFamilies();
+  }
+
+  /// Elimina un documento digital del expediente de un tutor/padre (Issue #19)
+  Future<void> removeDocumentFromTutor({
+    required String familyId,
+    required String tutorId,
+    required String documentId,
+  }) async {
+    for (int i = 0; i < _customFamilies.length; i++) {
+      final f = _customFamilies[i];
+      if (f.id == familyId) {
+        final tIndex = f.tutores.indexWhere((t) => t.id == tutorId);
+        if (tIndex != -1) {
+          final currentTutor = f.tutores[tIndex];
+          final updatedDocs = currentTutor.documentosExpediente.where((d) => d.id != documentId).toList();
+          final updatedTutor = currentTutor.copyWith(
+            documentosExpediente: updatedDocs,
+            copiaCedulaAdjunta: updatedDocs.any((d) => d.tipo.toLowerCase().contains('cedula') || d.tipo.toLowerCase().contains('cédula')),
+            cartaTrabajoAdjunta: updatedDocs.any((d) => d.tipo.toLowerCase().contains('trabajo') || d.tipo.toLowerCase().contains('laboral')),
+            estadosFinancierosAdjuntos: updatedDocs.any((d) => d.tipo.toLowerCase().contains('financiero') || d.tipo.toLowerCase().contains('ingreso')),
+          );
+          final updatedTutores = List<Tutor>.from(f.tutores);
+          updatedTutores[tIndex] = updatedTutor;
+          _customFamilies[i] = f.copyWith(tutores: updatedTutores);
+          break;
+        }
       }
     }
 
