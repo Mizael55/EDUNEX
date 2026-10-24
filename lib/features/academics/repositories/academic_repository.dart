@@ -20,6 +20,7 @@ class AcademicRepository {
   static const String _prefKeyTeachers = 'edunex_academic_teachers_v1';
   static const String _prefKeyAssignments = 'edunex_academic_assignments_v1';
   static const String _prefKeyEnrollments = 'edunex_academic_enrollments_v1';
+  static const String _prefKeyClassroomEvents = 'edunex_academic_events_v1';
 
   // Listados en memoria
   final List<AcademicCourse> _courses = [];
@@ -28,6 +29,7 @@ class AcademicRepository {
   final List<AcademicTeacher> _teachers = [];
   final List<TeacherAcademicAssignment> _teacherAssignments = [];
   final List<StudentEnrollment> _enrollments = [];
+  final List<ClassroomEvent> _classroomEvents = [];
 
   // Reportes de calificaciones (MINERD)
   static final List<StudentGradeReport> _reports = [
@@ -420,7 +422,7 @@ class AcademicRepository {
 
     // 4. Profesores
     _teachers.addAll([
-      const AcademicTeacher(
+      AcademicTeacher(
         id: 'tch-001',
         colegioId: defaultColegio,
         nombreCompleto: 'Lic. Rosaura Peña',
@@ -430,6 +432,25 @@ class AcademicRepository {
         especialidad: 'Matemáticas & Ciencias',
         estado: 'Activo',
         materiasQuePuedeImpartir: ['Matemáticas', 'Ciencias de la Naturaleza', 'Formación Humana & Ética'],
+        estudios: 'Licenciatura en Educación mención Matemáticas (UASD)',
+        maestria: 'Maestría en Didáctica de las Ciencias Exactas (INTEC)',
+        experiencia: '9 años de docencia en nivel básico y secundaria',
+        referencias: 'Colegio San Judas Tadeo - Lic. Marcos Díaz (809-555-1234)',
+        tieneCartaBuenaConducta: true,
+        materiasQueImparte: ['Matemáticas', 'Formación Humana & Ética'],
+        calificacionDesempeno: 4.9,
+        usuarioAcceso: 'prof.rosaura.pena',
+        claveTemporal: 'Docente2026!',
+        evaluacionesDirector: [
+          TeacherEvaluationRecord(
+            id: 'eval-001',
+            fecha: DateTime(2025, 11, 20),
+            directorNombre: 'Ernesto De Jesus',
+            puntaje: 5.0,
+            criterio: 'Pedagogía y Gestión de Aula',
+            comentario: 'Excelente dominio de aula, dinamismo pedagógico y puntualidad intachable.',
+          ),
+        ],
       ),
       const AcademicTeacher(
         id: 'tch-002',
@@ -441,6 +462,15 @@ class AcademicRepository {
         especialidad: 'Lengua y Literatura',
         estado: 'Activo',
         materiasQuePuedeImpartir: ['Lengua Española', 'Lectura Crítica'],
+        estudios: 'Licenciatura en Letras Hispánicas (PUCMM)',
+        maestria: 'Especialidad en Promoción y Animación a la Lectura',
+        experiencia: '7 años de experiencia docente',
+        referencias: 'Instituto Calasanz - Dra. Miriam Soto (809-555-3344)',
+        tieneCartaBuenaConducta: true,
+        materiasQueImparte: ['Lengua Española'],
+        calificacionDesempeno: 4.7,
+        usuarioAcceso: 'prof.marcos.almonte',
+        claveTemporal: 'Docente2026!',
       ),
       const AcademicTeacher(
         id: 'tch-003',
@@ -452,6 +482,14 @@ class AcademicRepository {
         especialidad: 'Ciencias Naturales & Química',
         estado: 'Activo',
         materiasQuePuedeImpartir: ['Ciencias de la Naturaleza', 'Química', 'Biología'],
+        estudios: 'Doctorado en Educación y Bioquímica (UNPHU)',
+        experiencia: '12 años de trayectoria docente y de laboratorio',
+        referencias: 'Colegio Loyola - Lic. Carlos Peña (809-555-8822)',
+        tieneCartaBuenaConducta: true,
+        materiasQueImparte: ['Ciencias de la Naturaleza'],
+        calificacionDesempeno: 5.0,
+        usuarioAcceso: 'prof.elena.vasquez',
+        claveTemporal: 'Docente2026!',
       ),
       const AcademicTeacher(
         id: 'tch-004',
@@ -463,6 +501,14 @@ class AcademicRepository {
         especialidad: 'Ciencias Sociales e Historia',
         estado: 'Activo',
         materiasQuePuedeImpartir: ['Ciencias Sociales', 'Cívica', 'Geografía'],
+        estudios: 'Licenciatura en Ciencias Sociales (UASD)',
+        experiencia: '6 años de experiencia en básica',
+        referencias: 'Colegio Claret - P. Juan Morales (809-555-4411)',
+        tieneCartaBuenaConducta: true,
+        materiasQueImparte: ['Ciencias Sociales'],
+        calificacionDesempeno: 4.6,
+        usuarioAcceso: 'prof.fernando.ruiz',
+        claveTemporal: 'Docente2026!',
       ),
       const AcademicTeacher(
         id: 'tch-005',
@@ -474,6 +520,14 @@ class AcademicRepository {
         especialidad: 'Lenguas Extranjeras (Inglés)',
         estado: 'Activo',
         materiasQuePuedeImpartir: ['Inglés Técnico', 'Conversación en Inglés'],
+        estudios: 'BA in Modern Languages & TESOL Certification',
+        experiencia: '5 años de enseñanza bilingüe',
+        referencias: 'Dominico Americano - Prof. Mark Davis (809-555-6677)',
+        tieneCartaBuenaConducta: true,
+        materiasQueImparte: ['Inglés Técnico'],
+        calificacionDesempeno: 4.8,
+        usuarioAcceso: 'prof.sarah.jenkins',
+        claveTemporal: 'Docente2026!',
       ),
       const AcademicTeacher(
         id: 'tch-006',
@@ -485,6 +539,14 @@ class AcademicRepository {
         especialidad: 'Artes & Expresión',
         estado: 'Activo',
         materiasQuePuedeImpartir: ['Educación Artística', 'Música', 'Teatro'],
+        estudios: 'Licenciatura en Artes Plásticas y Pedagogía (Bellas Artes)',
+        experiencia: '8 años de docencia artística',
+        referencias: 'Escuela Nacional de Artes Visuales - Lic. Pedro Soto',
+        tieneCartaBuenaConducta: true,
+        materiasQueImparte: ['Educación Artística'],
+        calificacionDesempeno: 4.7,
+        usuarioAcceso: 'prof.david.batista',
+        claveTemporal: 'Docente2026!',
       ),
       const AcademicTeacher(
         id: 'tch-007',
@@ -496,6 +558,15 @@ class AcademicRepository {
         especialidad: 'Educación Inicial & Parvularia',
         estado: 'Activo',
         materiasQuePuedeImpartir: ['Desarrollo Integral Temprano', 'Psicomotricidad'],
+        estudios: 'Licenciatura en Educación Temprana y Estimulación Oportuna (UNIBE)',
+        maestria: 'Máster en Neurodesarrollo y Aprendizaje Infantil',
+        experiencia: '10 años en educación preescolar',
+        referencias: 'Centro Infantil Mis Primeros Pasos - Lic. Altagracia Núñez',
+        tieneCartaBuenaConducta: true,
+        materiasQueImparte: ['Desarrollo Integral Temprano'],
+        calificacionDesempeno: 5.0,
+        usuarioAcceso: 'prof.carolina.gomez',
+        claveTemporal: 'Docente2026!',
       ),
     ]);
 
@@ -513,7 +584,10 @@ class AcademicRepository {
         seccionId: 'sec-002',
         seccionNombre: 'Sección A',
         anioEscolar: '2025-2026',
-        horarioSemanal: 'Lunes a Jueves 8:00 - 9:00 AM',
+        horarioSemanal: 'Lunes y Miércoles 08:00 - 09:30',
+        diaSemana: 'Lunes y Miércoles',
+        bloqueHorario: '08:00 - 09:30',
+        aula: 'Edificio Central - Aula 101',
       ),
       const TeacherAcademicAssignment(
         id: 'asg-002',
@@ -527,7 +601,10 @@ class AcademicRepository {
         seccionId: 'sec-002',
         seccionNombre: 'Sección A',
         anioEscolar: '2025-2026',
-        horarioSemanal: 'Lunes a Jueves 9:00 - 10:00 AM',
+        horarioSemanal: 'Lunes y Miércoles 09:30 - 11:00',
+        diaSemana: 'Lunes y Miércoles',
+        bloqueHorario: '09:30 - 11:00',
+        aula: 'Edificio Central - Aula 101',
       ),
       const TeacherAcademicAssignment(
         id: 'asg-003',
@@ -541,7 +618,10 @@ class AcademicRepository {
         seccionId: 'sec-002',
         seccionNombre: 'Sección A',
         anioEscolar: '2025-2026',
-        horarioSemanal: 'Martes y Viernes 10:30 - 11:30 AM',
+        horarioSemanal: 'Martes y Jueves 08:00 - 09:30',
+        diaSemana: 'Martes y Jueves',
+        bloqueHorario: '08:00 - 09:30',
+        aula: 'Edificio Central - Aula 101',
       ),
       const TeacherAcademicAssignment(
         id: 'asg-004',
@@ -555,7 +635,10 @@ class AcademicRepository {
         seccionId: 'sec-002',
         seccionNombre: 'Sección A',
         anioEscolar: '2025-2026',
-        horarioSemanal: 'Lunes y Miércoles 11:30 - 12:30 PM',
+        horarioSemanal: 'Martes y Jueves 09:30 - 11:00',
+        diaSemana: 'Martes y Jueves',
+        bloqueHorario: '09:30 - 11:00',
+        aula: 'Edificio Central - Aula 101',
       ),
       const TeacherAcademicAssignment(
         id: 'asg-005',
@@ -569,7 +652,10 @@ class AcademicRepository {
         seccionId: 'sec-002',
         seccionNombre: 'Sección A',
         anioEscolar: '2025-2026',
-        horarioSemanal: 'Martes y Jueves 1:00 - 2:00 PM',
+        horarioSemanal: 'Viernes 08:00 - 09:30',
+        diaSemana: 'Viernes',
+        bloqueHorario: '08:00 - 09:30',
+        aula: 'Edificio Central - Aula 101',
       ),
       const TeacherAcademicAssignment(
         id: 'asg-006',
@@ -583,7 +669,10 @@ class AcademicRepository {
         seccionId: 'sec-001',
         seccionNombre: 'Sección A',
         anioEscolar: '2025-2026',
-        horarioSemanal: 'Lunes a Viernes 8:00 AM - 12:00 PM',
+        horarioSemanal: 'Lunes a Viernes 08:00 - 12:00',
+        diaSemana: 'Lunes a Viernes',
+        bloqueHorario: '08:00 - 12:00',
+        aula: 'Pabellón Inicial - Aula 01',
       ),
     ]);
 
@@ -601,6 +690,9 @@ class AcademicRepository {
         seccionNombre: 'Sección A',
         anioEscolar: '2025-2026',
         fechaAsignacion: DateTime(2025, 8, 15),
+        aula: 'Edificio Central - Aula 101',
+        usuarioAcceso: 'est.est202601',
+        claveTemporal: 'Estudiante2026!',
       ),
       StudentEnrollment(
         id: 'enr-002',
@@ -614,6 +706,9 @@ class AcademicRepository {
         seccionNombre: 'Sección A',
         anioEscolar: '2025-2026',
         fechaAsignacion: DateTime(2025, 8, 15),
+        aula: 'Pabellón Inicial - Aula 01',
+        usuarioAcceso: 'est.est202602',
+        claveTemporal: 'Estudiante2026!',
       ),
       StudentEnrollment(
         id: 'enr-003',
@@ -627,6 +722,49 @@ class AcademicRepository {
         seccionNombre: 'Sección A',
         anioEscolar: '2025-2026',
         fechaAsignacion: DateTime(2025, 8, 18),
+        aula: 'Edificio Central - Aula 101',
+        usuarioAcceso: 'est.est202603',
+        claveTemporal: 'Estudiante2026!',
+      ),
+    ]);
+
+    // 7. Eventos Académicos Programados en Aulas (Issue #21 - Caso 4)
+    _classroomEvents.addAll([
+      ClassroomEvent(
+        id: 'evt-001',
+        colegioId: defaultColegio,
+        cursoId: 'cur-002',
+        seccionId: 'sec-002',
+        titulo: 'Examen Parcial de Matemáticas',
+        tipo: 'Examen',
+        fecha: DateTime.now().add(const Duration(days: 3)),
+        profesorNombre: 'Lic. Rosaura Peña',
+        materiaNombre: 'Matemáticas',
+        descripcion: 'Evaluación escrita sobre números naturales, sumas y restas con reagrupación.',
+      ),
+      ClassroomEvent(
+        id: 'evt-002',
+        colegioId: defaultColegio,
+        cursoId: 'cur-002',
+        seccionId: 'sec-002',
+        titulo: 'Feria de Ciencias: El Ciclo del Agua',
+        tipo: 'Proyecto',
+        fecha: DateTime.now().add(const Duration(days: 7)),
+        profesorNombre: 'Dra. Elena Vásquez',
+        materiaNombre: 'Ciencias de la Naturaleza',
+        descripcion: 'Presentación interactiva de maquetas y experimentos en equipos de 4 alumnos.',
+      ),
+      ClassroomEvent(
+        id: 'evt-003',
+        colegioId: defaultColegio,
+        cursoId: 'cur-002',
+        seccionId: 'sec-002',
+        titulo: 'Lectura Dirigida & Dramatización',
+        tipo: 'Actividad',
+        fecha: DateTime.now().add(const Duration(days: 10)),
+        profesorNombre: 'Lic. Marcos Almonte',
+        materiaNombre: 'Lengua Española',
+        descripcion: 'Taller de expresión oral y comprensión lectora basado en cuentos caribeños.',
       ),
     ]);
   }
@@ -703,6 +841,17 @@ class AcademicRepository {
           _enrollments.addAll(list);
         }
       }
+
+      final eventsRaw = prefs.getString(_prefKeyClassroomEvents);
+      if (eventsRaw != null) {
+        final list = (jsonDecode(eventsRaw) as List<dynamic>)
+            .map((e) => ClassroomEvent.fromJson(e as Map<String, dynamic>))
+            .toList();
+        if (list.isNotEmpty) {
+          _classroomEvents.clear();
+          _classroomEvents.addAll(list);
+        }
+      }
     } catch (_) {}
   }
 
@@ -717,6 +866,8 @@ class AcademicRepository {
           _prefKeyAssignments, jsonEncode(_teacherAssignments.map((e) => e.toJson()).toList()));
       await prefs.setString(
           _prefKeyEnrollments, jsonEncode(_enrollments.map((e) => e.toJson()).toList()));
+      await prefs.setString(
+          _prefKeyClassroomEvents, jsonEncode(_classroomEvents.map((e) => e.toJson()).toList()));
     } catch (_) {}
   }
 
@@ -893,7 +1044,28 @@ class AcademicRepository {
     String estado = 'Activo',
     List<String> materiasQuePuedeImpartir = const [],
     String? fotoUrl,
+    String estudios = 'Licenciatura en Educación',
+    String? maestria,
+    String experiencia = '5 años de experiencia docente',
+    String referencias = 'Colegio San Judas Tadeo - Lic. Marcos Díaz (809-555-1234)',
+    bool tieneCartaBuenaConducta = true,
+    String? cartaBuenaConductaUrl,
+    List<String> materiasQueImparte = const [],
+    List<String> diasDisponibles = const ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes'],
+    List<String> bloquesDisponibles = const ['08:00 - 09:30', '09:30 - 11:00', '11:15 - 12:45', '13:30 - 15:00'],
   }) async {
+    // Generar credenciales de acceso automático (Issue #21 - Caso 6)
+    final cleanParts = nombreCompleto
+        .trim()
+        .toLowerCase()
+        .replaceAll(RegExp(r'^(lic\.|dra\.|prof\.|tía|ing\.)\s*'), '')
+        .split(' ')
+        .where((s) => s.isNotEmpty)
+        .toList();
+    final userSuffix = cleanParts.length >= 2 ? '${cleanParts[0]}.${cleanParts[1]}' : cleanParts.first;
+    final generatedUsername = 'prof.$userSuffix';
+    const tempPassword = 'Docente2026!';
+
     final newTeacher = AcademicTeacher(
       id: 'tch-${DateTime.now().millisecondsSinceEpoch}',
       colegioId: colegioId,
@@ -905,10 +1077,59 @@ class AcademicRepository {
       estado: estado,
       materiasQuePuedeImpartir: materiasQuePuedeImpartir,
       fotoUrl: fotoUrl,
+      estudios: estudios,
+      maestria: maestria,
+      experiencia: experiencia,
+      referencias: referencias,
+      tieneCartaBuenaConducta: tieneCartaBuenaConducta,
+      cartaBuenaConductaUrl: cartaBuenaConductaUrl,
+      materiasQueImparte: materiasQueImparte.isNotEmpty ? materiasQueImparte : materiasQuePuedeImpartir,
+      calificacionDesempeno: 4.8,
+      diasDisponibles: diasDisponibles,
+      bloquesDisponibles: bloquesDisponibles,
+      usuarioAcceso: generatedUsername,
+      claveTemporal: tempPassword,
+      debeCambiarClave: true,
+      evaluacionesDirector: const [],
     );
     _teachers.add(newTeacher);
     await _saveToStorage();
     return newTeacher;
+  }
+
+  /// Evalúa el desempeño de un profesor por parte del Director (Issue #21 - Caso 5)
+  Future<AcademicTeacher?> evaluateTeacher({
+    required String teacherId,
+    required double puntaje,
+    required String comentario,
+    required String directorNombre,
+    String criterio = 'Desempeño Pedagógico General',
+  }) async {
+    final idx = _teachers.indexWhere((t) => t.id == teacherId);
+    if (idx == -1) return null;
+
+    final current = _teachers[idx];
+    final newEval = TeacherEvaluationRecord(
+      id: 'eval-${DateTime.now().millisecondsSinceEpoch}',
+      fecha: DateTime.now(),
+      directorNombre: directorNombre,
+      puntaje: puntaje.clamp(1.0, 5.0),
+      criterio: criterio,
+      comentario: comentario,
+    );
+
+    final updatedEvaluations = [...current.evaluacionesDirector, newEval];
+    final double promedio =
+        updatedEvaluations.map((e) => e.puntaje).reduce((a, b) => a + b) / updatedEvaluations.length;
+
+    final updatedTeacher = current.copyWith(
+      calificacionDesempeno: double.parse(promedio.toStringAsFixed(1)),
+      evaluacionesDirector: updatedEvaluations,
+    );
+
+    _teachers[idx] = updatedTeacher;
+    await _saveToStorage();
+    return updatedTeacher;
   }
 
   Future<AcademicTeacher?> updateTeacher(AcademicTeacher teacher) async {
@@ -927,7 +1148,7 @@ class AcademicRepository {
   }
 
   // ==========================================
-  // ASIGNACIÓN ACADÉMICA DE PROFESORES (Issue #20)
+  // ASIGNACIÓN ACADÉMICA DE PROFESORES (Issue #20, Issue #21)
   // ==========================================
   Future<List<TeacherAcademicAssignment>> getTeacherAssignments({
     String? colegioId,
@@ -944,8 +1165,119 @@ class AcademicRepository {
     }).toList();
   }
 
-  /// Asigna un profesor a una materia y sección específica.
-  /// Valida que no exista asignación duplicada para la misma materia y sección.
+  /// Verifica la disponibilidad horaria del docente (Issue #21 - Caso 1)
+  String? checkTeacherAvailability({
+    required String profesorId,
+    required String diaSemana,
+    required String bloqueHorario,
+  }) {
+    final prof = _teachers.firstWhere(
+      (t) => t.id == profesorId,
+      orElse: () => const AcademicTeacher(
+        id: '',
+        colegioId: '',
+        nombreCompleto: '',
+        cedula: '',
+        email: '',
+        telefono: '',
+        especialidad: '',
+      ),
+    );
+
+    if (prof.id.isEmpty) return null;
+
+    // Verificar si el día coincide con los días disponibles
+    final cleanDia = diaSemana.toLowerCase();
+    final tieneDia = prof.diasDisponibles.any((d) => cleanDia.contains(d.toLowerCase()));
+    if (!tieneDia && prof.diasDisponibles.isNotEmpty) {
+      return 'El profesor ${prof.nombreCompleto} no tiene disponibilidad configurada para el día "$diaSemana". Días disponibles: ${prof.diasDisponibles.join(", ")}.';
+    }
+
+    // Verificar si el bloque coincide (con o sin AM/PM)
+    final cleanBloque = bloqueHorario.replaceAll(RegExp(r'\s*(AM|PM|am|pm)'), '').trim();
+    final tieneBloque = prof.bloquesDisponibles.any((b) {
+      final cleanB = b.replaceAll(RegExp(r'\s*(AM|PM|am|pm)'), '').trim();
+      return cleanB == cleanBloque || b == bloqueHorario;
+    });
+    if (!tieneBloque && prof.bloquesDisponibles.isNotEmpty) {
+      return 'El profesor ${prof.nombreCompleto} no tiene disponibilidad para el bloque "$bloqueHorario". Bloques disponibles: ${prof.bloquesDisponibles.join(", ")}.';
+    }
+
+    return null;
+  }
+
+  /// Detecta si hay choque o colisión de horarios (Issue #21 - Caso 1)
+  /// Retorna un mensaje con el conflicto o null si está despejado.
+  String? checkScheduleCollision({
+    required String profesorId,
+    required String seccionId,
+    String? diaSemana,
+    String? bloqueHorario,
+    String anioEscolar = '2025-2026',
+    String? excludeAssignmentId,
+  }) {
+    if (diaSemana == null || diaSemana.trim().isEmpty || bloqueHorario == null || bloqueHorario.trim().isEmpty) {
+      return null;
+    }
+
+    // 1. Choque del Profesor: ¿Ya tiene clase ese día y bloque en OTRA sección o curso?
+    final conflictoProfesor = _teacherAssignments.firstWhere(
+      (a) =>
+          a.id != excludeAssignmentId &&
+          a.profesorId == profesorId &&
+          a.anioEscolar == anioEscolar &&
+          a.diaSemana == diaSemana &&
+          a.bloqueHorario == bloqueHorario,
+      orElse: () => const TeacherAcademicAssignment(
+        id: '',
+        colegioId: '',
+        profesorId: '',
+        profesorNombre: '',
+        materiaId: '',
+        materiaNombre: '',
+        cursoId: '',
+        cursoNombre: '',
+        seccionId: '',
+        seccionNombre: '',
+        anioEscolar: '',
+      ),
+    );
+
+    if (conflictoProfesor.id.isNotEmpty) {
+      return 'Conflicto de Horario: El profesor ${conflictoProfesor.profesorNombre} ya imparte "${conflictoProfesor.materiaNombre}" en ${conflictoProfesor.cursoNombre} (${conflictoProfesor.seccionNombre}) los $diaSemana en el bloque $bloqueHorario.';
+    }
+
+    // 2. Choque de la Sección: ¿Esta sección ya tiene OTRA materia asignada en ese mismo día y bloque?
+    final conflictoSeccion = _teacherAssignments.firstWhere(
+      (a) =>
+          a.id != excludeAssignmentId &&
+          a.seccionId == seccionId &&
+          a.anioEscolar == anioEscolar &&
+          a.diaSemana == diaSemana &&
+          a.bloqueHorario == bloqueHorario,
+      orElse: () => const TeacherAcademicAssignment(
+        id: '',
+        colegioId: '',
+        profesorId: '',
+        profesorNombre: '',
+        materiaId: '',
+        materiaNombre: '',
+        cursoId: '',
+        cursoNombre: '',
+        seccionId: '',
+        seccionNombre: '',
+        anioEscolar: '',
+      ),
+    );
+
+    if (conflictoSeccion.id.isNotEmpty) {
+      return 'Conflicto de Horario: La sección "${conflictoSeccion.seccionNombre}" ya tiene asignada la materia "${conflictoSeccion.materiaNombre}" con el profesor ${conflictoSeccion.profesorNombre} los $diaSemana en el bloque $bloqueHorario.';
+    }
+
+    return null;
+  }
+
+  /// Asigna un profesor a una materia y sección específica con horario y disponibilidad validada.
   Future<TeacherAcademicAssignment> assignTeacherToSubjectAndSection({
     required String colegioId,
     required String profesorId,
@@ -954,8 +1286,11 @@ class AcademicRepository {
     required String seccionId,
     required String anioEscolar,
     String? horarioSemanal,
+    String? diaSemana,
+    String? bloqueHorario,
+    String? aula,
   }) async {
-    // 1. Validar si ya existe exactamente esta asignación
+    // 1. Validar duplicado exacto
     final existe = _teacherAssignments.any((a) =>
         a.colegioId == colegioId &&
         a.seccionId == seccionId &&
@@ -964,6 +1299,29 @@ class AcademicRepository {
 
     if (existe) {
       throw Exception('Esta asignación académica ya está registrada para este profesor en la misma sección y materia.');
+    }
+
+    // 2. Validar disponibilidad del profesor y choques de horario si se asigna bloque (Issue #21 - Caso 1)
+    if (diaSemana != null && diaSemana.trim().isNotEmpty && bloqueHorario != null && bloqueHorario.trim().isNotEmpty) {
+      final disponibilidadError = checkTeacherAvailability(
+        profesorId: profesorId,
+        diaSemana: diaSemana,
+        bloqueHorario: bloqueHorario,
+      );
+      if (disponibilidadError != null) {
+        throw Exception(disponibilidadError);
+      }
+
+      final colisionError = checkScheduleCollision(
+        profesorId: profesorId,
+        seccionId: seccionId,
+        diaSemana: diaSemana,
+        bloqueHorario: bloqueHorario,
+        anioEscolar: anioEscolar,
+      );
+      if (colisionError != null) {
+        throw Exception(colisionError);
+      }
     }
 
     // Buscar nombres descriptivos
@@ -1013,6 +1371,8 @@ class AcademicRepository {
       ),
     );
 
+    final computedHorario = horarioSemanal ?? '$diaSemana $bloqueHorario';
+
     final newAssignment = TeacherAcademicAssignment(
       id: 'asg-${DateTime.now().millisecondsSinceEpoch}',
       colegioId: colegioId,
@@ -1025,7 +1385,10 @@ class AcademicRepository {
       seccionId: seccionId,
       seccionNombre: sec.nombre,
       anioEscolar: anioEscolar,
-      horarioSemanal: horarioSemanal,
+      horarioSemanal: computedHorario,
+      diaSemana: diaSemana,
+      bloqueHorario: bloqueHorario,
+      aula: aula ?? sec.aula,
     );
 
     _teacherAssignments.add(newAssignment);
@@ -1040,7 +1403,28 @@ class AcademicRepository {
   }
 
   // ==========================================
-  // ASIGNACIÓN Y TRASLADO DE ESTUDIANTES (Issue #20)
+  // EVENTOS ACADÉMICOS DE AULA (Issue #21 - Caso 4)
+  // ==========================================
+  Future<List<ClassroomEvent>> getClassroomEvents({
+    required String seccionId,
+    String? colegioId,
+  }) async {
+    return _classroomEvents.where((e) {
+      if (colegioId != null && colegioId.isNotEmpty && e.colegioId != colegioId) return false;
+      if (e.seccionId != seccionId) return false;
+      return true;
+    }).toList()
+      ..sort((a, b) => a.fecha.compareTo(b.fecha));
+  }
+
+  Future<ClassroomEvent> addClassroomEvent(ClassroomEvent event) async {
+    _classroomEvents.add(event);
+    await _saveToStorage();
+    return event;
+  }
+
+  // ==========================================
+  // ASIGNACIÓN Y TRASLADO DE ESTUDIANTES (Issue #20, Issue #21)
   // ==========================================
   Future<List<StudentEnrollment>> getEnrollments({
     String? colegioId,
@@ -1067,7 +1451,21 @@ class AcademicRepository {
     required String seccionId,
     required String seccionNombre,
     required String anioEscolar,
+    String? aula,
   }) async {
+    // Buscar aula de la sección si no se pasó
+    String resolvedAula = aula ?? '';
+    if (resolvedAula.isEmpty) {
+      final sec = _sections.firstWhere((s) => s.id == seccionId, orElse: () => const AcademicSection(
+        id: '', colegioId: '', cursoId: '', cursoNombre: '', nombre: '', anioEscolar: '',
+      ));
+      resolvedAula = sec.aula ?? '';
+    }
+
+    final cleanMat = matricula.replaceAll('-', '').toLowerCase();
+    final generatedUsername = 'est.$cleanMat';
+    const tempPassword = 'Estudiante2026!';
+
     // Si ya existe matrícula activa en el mismo año escolar, actualizar
     final existingIndex = _enrollments.indexWhere(
         (e) => e.estudianteId == estudianteId && e.anioEscolar == anioEscolar && e.estado == 'Activo');
@@ -1078,6 +1476,9 @@ class AcademicRepository {
         cursoNombre: cursoNombre,
         seccionId: seccionId,
         seccionNombre: seccionNombre,
+        aula: resolvedAula,
+        usuarioAcceso: generatedUsername,
+        claveTemporal: tempPassword,
       );
       _enrollments[existingIndex] = updated;
       await _saveToStorage();
@@ -1096,6 +1497,9 @@ class AcademicRepository {
       seccionNombre: seccionNombre,
       anioEscolar: anioEscolar,
       fechaAsignacion: DateTime.now(),
+      aula: resolvedAula,
+      usuarioAcceso: generatedUsername,
+      claveTemporal: tempPassword,
     );
 
     _enrollments.add(newEnrollment);

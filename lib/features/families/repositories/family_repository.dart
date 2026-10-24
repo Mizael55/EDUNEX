@@ -449,6 +449,25 @@ class FamilyRepository {
     }
   }
 
+  /// Retorna todos los estudiantes registrados en las familias del centro educativo (Issue #21 - Caso 2 y 3)
+  Future<List<Student>> getAllRegisteredStudents({String? colegioId}) async {
+    final families = await getFamilies(colegioId: colegioId);
+    final List<Student> students = [];
+    for (final fam in families) {
+      if (fam.activo) {
+        students.addAll(fam.estudiantes);
+      }
+    }
+    if (students.isEmpty) {
+      for (final fam in _seedFamilies) {
+        if (fam.activo) {
+          students.addAll(fam.estudiantes);
+        }
+      }
+    }
+    return students;
+  }
+
   /// Retorna la familia asociada al usuario autenticado (para portal de padres)
   Future<Family?> getFamilyForCurrentUser({String? email, String? colegioId}) async {
     final list = await getFamilies();

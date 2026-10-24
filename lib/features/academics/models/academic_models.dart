@@ -213,7 +213,44 @@ class AcademicSubject {
       );
 }
 
-/// Modelo de Perfil de Profesor (Issue #20)
+/// Registro de Evaluación de Desempeño Docente por la Dirección (Issue #21)
+class TeacherEvaluationRecord {
+  final String id;
+  final DateTime fecha;
+  final String directorNombre;
+  final double puntaje; // 1.0 a 5.0
+  final String criterio; // Ej. 'Pedagogía y Gestión de Aula', 'Puntualidad y Planificación'
+  final String comentario;
+
+  const TeacherEvaluationRecord({
+    required this.id,
+    required this.fecha,
+    required this.directorNombre,
+    required this.puntaje,
+    required this.criterio,
+    required this.comentario,
+  });
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'fecha': fecha.toIso8601String(),
+        'director_nombre': directorNombre,
+        'puntaje': puntaje,
+        'criterio': criterio,
+        'comentario': comentario,
+      };
+
+  factory TeacherEvaluationRecord.fromJson(Map<String, dynamic> json) => TeacherEvaluationRecord(
+        id: json['id'] as String? ?? 'eval-${DateTime.now().millisecondsSinceEpoch}',
+        fecha: json['fecha'] != null ? DateTime.parse(json['fecha'] as String) : DateTime.now(),
+        directorNombre: (json['director_nombre'] ?? json['directorNombre']) as String? ?? 'Dirección Académica',
+        puntaje: (json['puntaje'] as num?)?.toDouble() ?? 5.0,
+        criterio: json['criterio'] as String? ?? 'General',
+        comentario: json['comentario'] as String? ?? '',
+      );
+}
+
+/// Modelo de Perfil de Profesor (Issue #20, Issue #21)
 class AcademicTeacher {
   final String id;
   final String colegioId;
@@ -226,6 +263,22 @@ class AcademicTeacher {
   final List<String> materiasQuePuedeImpartir;
   final String? fotoUrl;
 
+  // Nuevos campos del perfil docente (Issue #21)
+  final String estudios; // Ej. "Licenciatura en Educación mención Matemáticas (UASD)"
+  final String? maestria; // Ej. "Maestría en Gestión y Liderazgo de Centros Educativos (INTEC)"
+  final String experiencia; // Ej. "8 años de docencia activa en nivel secundario"
+  final String referencias; // Ej. "Colegio Montesino (Tel: 809-555-0199), Lic. Rafael Peña"
+  final bool tieneCartaBuenaConducta;
+  final String? cartaBuenaConductaUrl;
+  final List<String> materiasQueImparte;
+  final double calificacionDesempeno; // 1.0 a 5.0
+  final List<String> diasDisponibles; // ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes']
+  final List<String> bloquesDisponibles; // ['08:00 - 09:30', '09:30 - 11:00', '11:15 - 12:45', '13:30 - 15:00']
+  final String usuarioAcceso; // Usuario generado automáticamente
+  final String claveTemporal; // Clave de acceso temporal
+  final bool debeCambiarClave;
+  final List<TeacherEvaluationRecord> evaluacionesDirector;
+
   const AcademicTeacher({
     required this.id,
     required this.colegioId,
@@ -237,6 +290,20 @@ class AcademicTeacher {
     this.estado = 'Activo',
     this.materiasQuePuedeImpartir = const [],
     this.fotoUrl,
+    this.estudios = 'Licenciatura en Educación',
+    this.maestria,
+    this.experiencia = '5 años de experiencia en docencia académica',
+    this.referencias = 'Colegio San Judas Tadeo - Lic. Marcos Díaz (809-555-1234)',
+    this.tieneCartaBuenaConducta = true,
+    this.cartaBuenaConductaUrl,
+    this.materiasQueImparte = const [],
+    this.calificacionDesempeno = 4.8,
+    this.diasDisponibles = const ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes'],
+    this.bloquesDisponibles = const ['08:00 - 09:30', '09:30 - 11:00', '11:15 - 12:45', '13:30 - 15:00'],
+    this.usuarioAcceso = '',
+    this.claveTemporal = 'Docente2026!',
+    this.debeCambiarClave = true,
+    this.evaluacionesDirector = const [],
   });
 
   AcademicTeacher copyWith({
@@ -250,6 +317,20 @@ class AcademicTeacher {
     String? estado,
     List<String>? materiasQuePuedeImpartir,
     String? fotoUrl,
+    String? estudios,
+    String? maestria,
+    String? experiencia,
+    String? referencias,
+    bool? tieneCartaBuenaConducta,
+    String? cartaBuenaConductaUrl,
+    List<String>? materiasQueImparte,
+    double? calificacionDesempeno,
+    List<String>? diasDisponibles,
+    List<String>? bloquesDisponibles,
+    String? usuarioAcceso,
+    String? claveTemporal,
+    bool? debeCambiarClave,
+    List<TeacherEvaluationRecord>? evaluacionesDirector,
   }) {
     return AcademicTeacher(
       id: id ?? this.id,
@@ -262,6 +343,20 @@ class AcademicTeacher {
       estado: estado ?? this.estado,
       materiasQuePuedeImpartir: materiasQuePuedeImpartir ?? this.materiasQuePuedeImpartir,
       fotoUrl: fotoUrl ?? this.fotoUrl,
+      estudios: estudios ?? this.estudios,
+      maestria: maestria ?? this.maestria,
+      experiencia: experiencia ?? this.experiencia,
+      referencias: referencias ?? this.referencias,
+      tieneCartaBuenaConducta: tieneCartaBuenaConducta ?? this.tieneCartaBuenaConducta,
+      cartaBuenaConductaUrl: cartaBuenaConductaUrl ?? this.cartaBuenaConductaUrl,
+      materiasQueImparte: materiasQueImparte ?? this.materiasQueImparte,
+      calificacionDesempeno: calificacionDesempeno ?? this.calificacionDesempeno,
+      diasDisponibles: diasDisponibles ?? this.diasDisponibles,
+      bloquesDisponibles: bloquesDisponibles ?? this.bloquesDisponibles,
+      usuarioAcceso: usuarioAcceso ?? this.usuarioAcceso,
+      claveTemporal: claveTemporal ?? this.claveTemporal,
+      debeCambiarClave: debeCambiarClave ?? this.debeCambiarClave,
+      evaluacionesDirector: evaluacionesDirector ?? this.evaluacionesDirector,
     );
   }
 
@@ -276,6 +371,20 @@ class AcademicTeacher {
         'estado': estado,
         'materias_que_puede_impartir': materiasQuePuedeImpartir,
         'foto_url': fotoUrl,
+        'estudios': estudios,
+        'maestria': maestria,
+        'experiencia': experiencia,
+        'referencias': referencias,
+        'tiene_carta_buena_conducta': tieneCartaBuenaConducta,
+        'carta_buena_conducta_url': cartaBuenaConductaUrl,
+        'materias_que_imparte': materiasQueImparte,
+        'calificacion_desempeno': calificacionDesempeno,
+        'dias_disponibles': diasDisponibles,
+        'bloques_disponibles': bloquesDisponibles,
+        'usuario_acceso': usuarioAcceso,
+        'clave_temporal': claveTemporal,
+        'debe_cambiar_clave': debeCambiarClave,
+        'evaluaciones_director': evaluacionesDirector.map((e) => e.toJson()).toList(),
       };
 
   factory AcademicTeacher.fromJson(Map<String, dynamic> json) => AcademicTeacher(
@@ -292,10 +401,32 @@ class AcademicTeacher {
                 .toList() ??
             [],
         fotoUrl: json['foto_url'] as String?,
+        estudios: json['estudios'] as String? ?? 'Licenciatura en Educación',
+        maestria: json['maestria'] as String?,
+        experiencia: json['experiencia'] as String? ?? '5 años de experiencia docente',
+        referencias: json['referencias'] as String? ?? 'Colegio San Judas Tadeo - Lic. Marcos Díaz',
+        tieneCartaBuenaConducta: json['tiene_carta_buena_conducta'] as bool? ?? true,
+        cartaBuenaConductaUrl: json['carta_buena_conducta_url'] as String?,
+        materiasQueImparte: (json['materias_que_imparte'] as List<dynamic>?)
+                ?.map((e) => e.toString())
+                .toList() ??
+            [],
+        calificacionDesempeno: (json['calificacion_desempeno'] as num?)?.toDouble() ?? 4.8,
+        diasDisponibles: (json['dias_disponibles'] as List<dynamic>?)?.map((e) => e.toString()).toList() ??
+            const ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes'],
+        bloquesDisponibles: (json['bloques_disponibles'] as List<dynamic>?)?.map((e) => e.toString()).toList() ??
+            const ['08:00 - 09:30', '09:30 - 11:00', '11:15 - 12:45', '13:30 - 15:00'],
+        usuarioAcceso: json['usuario_acceso'] as String? ?? '',
+        claveTemporal: json['clave_temporal'] as String? ?? 'Docente2026!',
+        debeCambiarClave: json['debe_cambiar_clave'] as bool? ?? true,
+        evaluacionesDirector: (json['evaluaciones_director'] as List<dynamic>?)
+                ?.map((e) => TeacherEvaluationRecord.fromJson(e as Map<String, dynamic>))
+                .toList() ??
+            [],
       );
 }
 
-/// Asignación Académica de Profesor a Materia, Curso y Sección (Issue #20)
+/// Asignación Académica de Profesor a Materia, Curso y Sección con Horarios (Issue #20, Issue #21)
 class TeacherAcademicAssignment {
   final String id;
   final String colegioId;
@@ -309,6 +440,9 @@ class TeacherAcademicAssignment {
   final String seccionNombre;
   final String anioEscolar;
   final String? horarioSemanal;
+  final String? diaSemana; // Ej. 'Lunes y Miércoles', 'Martes y Jueves'
+  final String? bloqueHorario; // Ej. '08:00 - 09:30'
+  final String? aula; // Aula donde se imparte
 
   const TeacherAcademicAssignment({
     required this.id,
@@ -323,6 +457,9 @@ class TeacherAcademicAssignment {
     required this.seccionNombre,
     required this.anioEscolar,
     this.horarioSemanal,
+    this.diaSemana,
+    this.bloqueHorario,
+    this.aula,
   });
 
   TeacherAcademicAssignment copyWith({
@@ -338,6 +475,9 @@ class TeacherAcademicAssignment {
     String? seccionNombre,
     String? anioEscolar,
     String? horarioSemanal,
+    String? diaSemana,
+    String? bloqueHorario,
+    String? aula,
   }) {
     return TeacherAcademicAssignment(
       id: id ?? this.id,
@@ -352,6 +492,9 @@ class TeacherAcademicAssignment {
       seccionNombre: seccionNombre ?? this.seccionNombre,
       anioEscolar: anioEscolar ?? this.anioEscolar,
       horarioSemanal: horarioSemanal ?? this.horarioSemanal,
+      diaSemana: diaSemana ?? this.diaSemana,
+      bloqueHorario: bloqueHorario ?? this.bloqueHorario,
+      aula: aula ?? this.aula,
     );
   }
 
@@ -368,6 +511,9 @@ class TeacherAcademicAssignment {
         'seccion_nombre': seccionNombre,
         'anio_escolar': anioEscolar,
         'horario_semanal': horarioSemanal,
+        'dia_semana': diaSemana,
+        'bloque_horario': bloqueHorario,
+        'aula': aula,
       };
 
   factory TeacherAcademicAssignment.fromJson(Map<String, dynamic> json) => TeacherAcademicAssignment(
@@ -383,6 +529,9 @@ class TeacherAcademicAssignment {
         seccionNombre: (json['seccion_nombre'] ?? json['seccionNombre']) as String? ?? '',
         anioEscolar: (json['anio_escolar'] ?? json['anioEscolar']) as String? ?? '2025-2026',
         horarioSemanal: (json['horario_semanal'] ?? json['horarioSemanal']) as String?,
+        diaSemana: (json['dia_semana'] ?? json['diaSemana']) as String? ?? 'Lunes y Miércoles',
+        bloqueHorario: (json['bloque_horario'] ?? json['bloqueHorario']) as String? ?? '08:00 - 09:30',
+        aula: json['aula'] as String?,
       );
 }
 
@@ -419,7 +568,60 @@ class StudentTransferRecord {
       );
 }
 
-/// Matrícula y Asignación de Estudiante a Curso y Sección (Issue #20)
+/// Evento o Evaluación Académica Programada por el Profesor en el Aula (Issue #21 - Caso 4)
+class ClassroomEvent {
+  final String id;
+  final String colegioId;
+  final String cursoId;
+  final String seccionId;
+  final String titulo; // Ej. 'Examen Parcial de Matemáticas'
+  final String tipo; // 'Examen', 'Proyecto', 'Actividad', 'Excursión'
+  final DateTime fecha;
+  final String profesorNombre;
+  final String materiaNombre;
+  final String descripcion;
+
+  const ClassroomEvent({
+    required this.id,
+    required this.colegioId,
+    required this.cursoId,
+    required this.seccionId,
+    required this.titulo,
+    required this.tipo,
+    required this.fecha,
+    required this.profesorNombre,
+    required this.materiaNombre,
+    required this.descripcion,
+  });
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'colegio_id': colegioId,
+        'curso_id': cursoId,
+        'seccion_id': seccionId,
+        'titulo': titulo,
+        'tipo': tipo,
+        'fecha': fecha.toIso8601String(),
+        'profesor_nombre': profesorNombre,
+        'materia_nombre': materiaNombre,
+        'descripcion': descripcion,
+      };
+
+  factory ClassroomEvent.fromJson(Map<String, dynamic> json) => ClassroomEvent(
+        id: json['id'] as String,
+        colegioId: (json['colegio_id'] ?? json['colegioId']) as String? ?? 'col-1',
+        cursoId: (json['curso_id'] ?? json['cursoId']) as String? ?? '',
+        seccionId: (json['seccion_id'] ?? json['seccionId']) as String? ?? '',
+        titulo: json['titulo'] as String? ?? 'Evento de Aula',
+        tipo: json['tipo'] as String? ?? 'Actividad',
+        fecha: json['fecha'] != null ? DateTime.parse(json['fecha'] as String) : DateTime.now(),
+        profesorNombre: (json['profesor_nombre'] ?? json['profesorNombre']) as String? ?? '',
+        materiaNombre: (json['materia_nombre'] ?? json['materiaNombre']) as String? ?? '',
+        descripcion: json['descripcion'] as String? ?? '',
+      );
+}
+
+/// Matrícula y Asignación de Estudiante a Curso y Sección (Issue #20, Issue #21)
 class StudentEnrollment {
   final String id;
   final String colegioId;
@@ -434,6 +636,9 @@ class StudentEnrollment {
   final String estado; // "Activo", "Trasladado", "Retirado"
   final DateTime fechaAsignacion;
   final List<StudentTransferRecord> historialTraslados;
+  final String aula;
+  final String usuarioAcceso;
+  final String claveTemporal;
 
   const StudentEnrollment({
     required this.id,
@@ -449,6 +654,9 @@ class StudentEnrollment {
     this.estado = 'Activo',
     required this.fechaAsignacion,
     this.historialTraslados = const [],
+    this.aula = '',
+    this.usuarioAcceso = '',
+    this.claveTemporal = 'Estudiante2026!',
   });
 
   StudentEnrollment copyWith({
@@ -465,6 +673,9 @@ class StudentEnrollment {
     String? estado,
     DateTime? fechaAsignacion,
     List<StudentTransferRecord>? historialTraslados,
+    String? aula,
+    String? usuarioAcceso,
+    String? claveTemporal,
   }) {
     return StudentEnrollment(
       id: id ?? this.id,
@@ -480,6 +691,9 @@ class StudentEnrollment {
       estado: estado ?? this.estado,
       fechaAsignacion: fechaAsignacion ?? this.fechaAsignacion,
       historialTraslados: historialTraslados ?? this.historialTraslados,
+      aula: aula ?? this.aula,
+      usuarioAcceso: usuarioAcceso ?? this.usuarioAcceso,
+      claveTemporal: claveTemporal ?? this.claveTemporal,
     );
   }
 
@@ -497,6 +711,9 @@ class StudentEnrollment {
         'estado': estado,
         'fecha_asignacion': fechaAsignacion.toIso8601String(),
         'historial_traslados': historialTraslados.map((t) => t.toJson()).toList(),
+        'aula': aula,
+        'usuario_acceso': usuarioAcceso,
+        'clave_temporal': claveTemporal,
       };
 
   factory StudentEnrollment.fromJson(Map<String, dynamic> json) => StudentEnrollment(
@@ -518,6 +735,9 @@ class StudentEnrollment {
                 ?.map((e) => StudentTransferRecord.fromJson(e as Map<String, dynamic>))
                 .toList() ??
             [],
+        aula: json['aula'] as String? ?? '',
+        usuarioAcceso: json['usuario_acceso'] as String? ?? '',
+        claveTemporal: json['clave_temporal'] as String? ?? 'Estudiante2026!',
       );
 }
 
