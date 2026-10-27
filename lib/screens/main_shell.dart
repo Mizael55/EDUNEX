@@ -89,7 +89,7 @@ class _MainShellState extends State<MainShell> {
     _attendanceRepository = AttendanceRepository(familyRepository: _familyRepository);
     _transportRepository = TransportRepository(familyRepository: _familyRepository);
     _circularRepository = CircularRepository(familyRepository: _familyRepository);
-    _academicRepository = widget.academicRepository ?? AcademicRepository();
+    _academicRepository = widget.academicRepository ?? AcademicRepository(useDemoFallback: false);
     _storeRepository = widget.storeRepository ?? StoreRepository();
     _teacherRepository = widget.teacherRepository ?? TeacherRepository();
     _guidanceRepository = widget.guidanceRepository ?? GuidanceRepository();
@@ -500,6 +500,7 @@ class _MainShellState extends State<MainShell> {
       case 8:
         return AdminGradesScreen(
           academicRepository: _academicRepository,
+          familyRepository: _familyRepository,
           colegioId: widget.userProfile.colegioId ?? 'col-1',
         );
       case 9:

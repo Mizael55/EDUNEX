@@ -458,7 +458,7 @@ class FamilyRepository {
         students.addAll(fam.estudiantes);
       }
     }
-    if (students.isEmpty) {
+    if (students.isEmpty && _useDemoFallback) {
       for (final fam in _seedFamilies) {
         if (fam.activo) {
           students.addAll(fam.estudiantes);

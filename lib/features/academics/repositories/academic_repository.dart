@@ -8,8 +8,11 @@ import '../models/grade_report.dart';
 class AcademicRepository {
   final bool useDemoFallback;
 
-  AcademicRepository({this.useDemoFallback = true}) {
-    _initDemoData();
+  AcademicRepository({this.useDemoFallback = false}) {
+    if (useDemoFallback) {
+      _initDemoData();
+      _reports.addAll(_seedReports);
+    }
     _loadFromStorage();
   }
 
@@ -21,6 +24,7 @@ class AcademicRepository {
   static const String _prefKeyAssignments = 'edunex_academic_assignments_v1';
   static const String _prefKeyEnrollments = 'edunex_academic_enrollments_v1';
   static const String _prefKeyClassroomEvents = 'edunex_academic_events_v1';
+  static const String _prefKeyReports = 'edunex_academic_reports_v1';
 
   // Listados en memoria
   final List<AcademicCourse> _courses = [];
@@ -30,11 +34,13 @@ class AcademicRepository {
   final List<TeacherAcademicAssignment> _teacherAssignments = [];
   final List<StudentEnrollment> _enrollments = [];
   final List<ClassroomEvent> _classroomEvents = [];
+  final List<StudentGradeReport> _reports = [];
 
   // Reportes de calificaciones (MINERD)
-  static final List<StudentGradeReport> _reports = [
+  static final List<StudentGradeReport> _seedReports = [
     StudentGradeReport(
       id: 'grade-rep-001',
+      colegioId: 'col-1',
       studentId: 'f0000000-0000-0000-0000-000000000001',
       studentName: 'Mateo Pérez González',
       matricula: 'EST-2026-01',
@@ -113,6 +119,7 @@ class AcademicRepository {
     ),
     StudentGradeReport(
       id: 'grade-rep-002',
+      colegioId: 'col-1',
       studentId: 'f0000000-0000-0000-0000-000000000002',
       studentName: 'Sofía Pérez González',
       matricula: 'EST-2026-02',
@@ -167,6 +174,7 @@ class AcademicRepository {
     ),
     StudentGradeReport(
       id: 'grade-rep-003',
+      colegioId: 'col-1',
       studentId: 'f0000000-0000-0000-0000-000000000003',
       studentName: 'Lucas Ramírez Méndez',
       matricula: 'EST-2026-03',
@@ -852,6 +860,17 @@ class AcademicRepository {
           _classroomEvents.addAll(list);
         }
       }
+
+      final reportsRaw = prefs.getString(_prefKeyReports);
+      if (reportsRaw != null) {
+        final list = (jsonDecode(reportsRaw) as List<dynamic>)
+            .map((e) => StudentGradeReport.fromJson(e as Map<String, dynamic>))
+            .toList();
+        if (list.isNotEmpty) {
+          _reports.clear();
+          _reports.addAll(list);
+        }
+      }
     } catch (_) {}
   }
 
@@ -868,6 +887,31 @@ class AcademicRepository {
           _prefKeyEnrollments, jsonEncode(_enrollments.map((e) => e.toJson()).toList()));
       await prefs.setString(
           _prefKeyClassroomEvents, jsonEncode(_classroomEvents.map((e) => e.toJson()).toList()));
+      await prefs.setString(
+          _prefKeyReports, jsonEncode(_reports.map((e) => e.toJson()).toList()));
+    } catch (_) {}
+  }
+
+  /// Limpia todos los datos académicos en memoria y en almacenamiento persistente
+  Future<void> clearAllData() async {
+    _courses.clear();
+    _sections.clear();
+    _subjects.clear();
+    _teachers.clear();
+    _teacherAssignments.clear();
+    _enrollments.clear();
+    _classroomEvents.clear();
+    _reports.clear();
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(_prefKeyCourses);
+      await prefs.remove(_prefKeySections);
+      await prefs.remove(_prefKeySubjects);
+      await prefs.remove(_prefKeyTeachers);
+      await prefs.remove(_prefKeyAssignments);
+      await prefs.remove(_prefKeyEnrollments);
+      await prefs.remove(_prefKeyClassroomEvents);
+      await prefs.remove(_prefKeyReports);
     } catch (_) {}
   }
 
@@ -1603,8 +1647,11 @@ class AcademicRepository {
   // ==========================================
   // REPORTES DE CALIFICACIONES (MINERD)
   // ==========================================
-  Future<List<StudentGradeReport>> getReports({String? grado, String? seccion}) async {
+  Future<List<StudentGradeReport>> getReports({String? grado, String? seccion, String? colegioId}) async {
     return _reports.where((r) {
+      if (colegioId != null && colegioId.isNotEmpty && r.colegioId != null && r.colegioId != colegioId) {
+        return false;
+      }
       if (grado != null && grado.isNotEmpty && r.grado != grado) return false;
       if (seccion != null && seccion.isNotEmpty && r.seccion != seccion) return false;
       return true;
@@ -1648,8 +1695,15 @@ class AcademicRepository {
     _reports[reportIndex] = current.copyWith(materias: updatedMaterias);
   }
 
-  Map<String, dynamic> getAcademicMetrics() {
-    if (_reports.isEmpty) {
+  Map<String, dynamic> getAcademicMetrics({String? colegioId}) {
+    final filtered = _reports.where((r) {
+      if (colegioId != null && colegioId.isNotEmpty && r.colegioId != null && r.colegioId != colegioId) {
+        return false;
+      }
+      return true;
+    }).toList();
+
+    if (filtered.isEmpty) {
       return {
         'promedioGeneral': 0.0,
         'tasaAprobacion': 100.0,
@@ -1663,23 +1717,23 @@ class AcademicRepository {
     int honorCount = 0;
     int reforzamientoCount = 0;
 
-    for (final r in _reports) {
+    for (final r in filtered) {
       final p = r.promedioGeneral;
       sumaPromedios += p;
       if (r.honorRoll) honorCount++;
       if (p < 70 && p > 0) reforzamientoCount++;
     }
 
-    final promGeneral = sumaPromedios / _reports.length;
-    final aprobados = _reports.where((r) => r.promedioGeneral >= 70).length;
-    final tasaAprob = (aprobados / _reports.length) * 100.0;
+    final promGeneral = sumaPromedios / filtered.length;
+    final aprobados = filtered.where((r) => r.promedioGeneral >= 70).length;
+    final tasaAprob = (aprobados / filtered.length) * 100.0;
 
     return {
       'promedioGeneral': promGeneral,
       'tasaAprobacion': tasaAprob,
       'cuadroHonorCount': honorCount,
       'reforzamientoCount': reforzamientoCount,
-      'totalEvaluados': _reports.length,
+      'totalEvaluados': filtered.length,
     };
   }
 }

@@ -69,14 +69,14 @@ class _AdminGradesScreenState extends State<AdminGradesScreen> with SingleTicker
   Future<void> _loadAllData() async {
     setState(() => _isLoading = true);
     final gradoFilter = _selectedGrado == 'Todos los Grados' ? null : _selectedGrado;
-    final reports = await widget.academicRepository.getReports(grado: gradoFilter);
+    final reports = await widget.academicRepository.getReports(grado: gradoFilter, colegioId: widget.colegioId);
     final courses = await widget.academicRepository.getCourses(colegioId: widget.colegioId);
     final sections = await widget.academicRepository.getSections(colegioId: widget.colegioId);
     final subjects = await widget.academicRepository.getSubjects(colegioId: widget.colegioId);
     final teachers = await widget.academicRepository.getTeachers(colegioId: widget.colegioId);
     final assignments = await widget.academicRepository.getTeacherAssignments(colegioId: widget.colegioId);
     final enrollments = await widget.academicRepository.getEnrollments(colegioId: widget.colegioId);
-    final famRepo = widget.familyRepository ?? FamilyRepository(useDemoFallback: true);
+    final famRepo = widget.familyRepository ?? FamilyRepository(useDemoFallback: false);
     final registered = await famRepo.getAllRegisteredStudents(colegioId: widget.colegioId);
 
     final activeSectionId = _selectedAulaSectionId ?? (sections.isNotEmpty ? sections.first.id : null);
@@ -2067,7 +2067,7 @@ class _AdminGradesScreenState extends State<AdminGradesScreen> with SingleTicker
   // Preserva 100% de los elementos de widget_test.dart
   // =========================================================
   Widget _buildGradeReportsAndKpisTab() {
-    final metrics = widget.academicRepository.getAcademicMetrics();
+    final metrics = widget.academicRepository.getAcademicMetrics(colegioId: widget.colegioId);
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(24.0),

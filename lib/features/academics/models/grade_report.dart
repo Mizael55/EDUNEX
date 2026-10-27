@@ -72,6 +72,7 @@ class SubjectGrade {
 
 class StudentGradeReport {
   final String id;
+  final String? colegioId;
   final String studentId;
   final String studentName;
   final String matricula;
@@ -84,6 +85,7 @@ class StudentGradeReport {
 
   const StudentGradeReport({
     required this.id,
+    this.colegioId,
     required this.studentId,
     required this.studentName,
     required this.matricula,
@@ -119,12 +121,14 @@ class StudentGradeReport {
   }
 
   StudentGradeReport copyWith({
+    String? colegioId,
     String? calificacionConducta,
     String? observacionesDocente,
     List<SubjectGrade>? materias,
   }) {
     return StudentGradeReport(
       id: id,
+      colegioId: colegioId ?? this.colegioId,
       studentId: studentId,
       studentName: studentName,
       matricula: matricula,
@@ -136,4 +140,35 @@ class StudentGradeReport {
       materias: materias ?? this.materias,
     );
   }
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'colegioId': colegioId,
+        'studentId': studentId,
+        'studentName': studentName,
+        'matricula': matricula,
+        'grado': grado,
+        'seccion': seccion,
+        'anioEscolar': anioEscolar,
+        'calificacionConducta': calificacionConducta,
+        'observacionesDocente': observacionesDocente,
+        'materias': materias.map((m) => m.toJson()).toList(),
+      };
+
+  factory StudentGradeReport.fromJson(Map<String, dynamic> json) => StudentGradeReport(
+        id: json['id'] as String,
+        colegioId: json['colegioId'] as String?,
+        studentId: json['studentId'] as String,
+        studentName: json['studentName'] as String,
+        matricula: json['matricula'] as String,
+        grado: json['grado'] as String,
+        seccion: json['seccion'] as String,
+        anioEscolar: json['anioEscolar'] as String,
+        calificacionConducta: json['calificacionConducta'] as String? ?? 'A - Sobresaliente',
+        observacionesDocente: json['observacionesDocente'] as String? ?? '',
+        materias: (json['materias'] as List<dynamic>?)
+                ?.map((m) => SubjectGrade.fromJson(m as Map<String, dynamic>))
+                .toList() ??
+            const [],
+      );
 }

@@ -1169,7 +1169,7 @@ void main() {
   });
 
   test('AcademicRepository: manages student grade reports, honors, and grade updates', () async {
-    final repo = AcademicRepository();
+    final repo = AcademicRepository(useDemoFallback: true);
 
     // Get all reports
     final reports = await repo.getReports();
@@ -1205,7 +1205,7 @@ void main() {
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.resetPhysicalSize);
 
-    final academicRepo = AcademicRepository();
+    final academicRepo = AcademicRepository(useDemoFallback: true);
 
     await tester.pumpWidget(
       MaterialApp(
@@ -1257,7 +1257,7 @@ void main() {
     );
 
     final familyRepo = FamilyRepository(useDemoFallback: true);
-    final academicRepo = AcademicRepository();
+    final academicRepo = AcademicRepository(useDemoFallback: true);
 
     await tester.pumpWidget(
       MaterialApp(
@@ -2034,7 +2034,7 @@ void main() {
     test('TeacherRepository calculates weighted period averages and publishes to AcademicRepository', () async {
       TeacherRepository.restoreSeedData();
       final teacherRepo = TeacherRepository(useDemoFallback: true);
-      final academicRepo = AcademicRepository();
+      final academicRepo = AcademicRepository(useDemoFallback: true);
 
       final classes = await teacherRepo.getClasses(docenteId: 'docente-001');
       expect(classes.isNotEmpty, isTrue);
@@ -2123,7 +2123,7 @@ void main() {
 
       TeacherRepository.restoreSeedData();
       final teacherRepo = TeacherRepository(useDemoFallback: true);
-      final academicRepo = AcademicRepository();
+      final academicRepo = AcademicRepository(useDemoFallback: true);
       final attendanceRepo = AttendanceRepository();
 
       final teacherUser = UserProfile(
