@@ -519,6 +519,7 @@ class SchoolRepository {
     FamilyRepository.clearAllData();
     TeacherRepository.clearAllData();
     GuidanceRepository.clearAllData();
+    AuthRepository.clearAllUsers();
 
     try {
       final prefs = await SharedPreferences.getInstance();

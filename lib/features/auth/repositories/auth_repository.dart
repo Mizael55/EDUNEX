@@ -120,81 +120,18 @@ class AuthRepository {
           return fallbackProfile;
         }
       } on AuthException catch (e) {
-        debugPrint('Aviso de Supabase Auth: ${e.message}. Verificando perfiles locales.');
-        // Si Supabase falla pero el usuario coincide con un rol preferido en pruebas, permitimos el acceso local
-        final role = preferredRole ??
-            (cleanEmail.contains('superadmin')
-                ? UserRole.superadmin
-                : cleanEmail.contains('admin')
-                    ? UserRole.adminColegio
-                    : cleanEmail.contains('docente')
-                        ? UserRole.docente
-                        : cleanEmail.contains('estudiante')
-                            ? UserRole.estudiante
-                            : UserRole.tutorFamiliar);
-
-        final localProfile = UserProfile(
-          id: 'local-${cleanEmail.hashCode}',
-          colegioId: role == UserRole.superadmin ? null : 'a0000000-0000-0000-0000-000000000001',
-          email: cleanEmail,
-          nombres: role == UserRole.superadmin
-              ? 'Administrador'
-              : (role == UserRole.tutorFamiliar ? 'Tutor' : 'Usuario'),
-          apellidos: role == UserRole.superadmin ? 'SaaS EDUNEX' : 'EDUNEX',
-          rol: role,
-          colegioNombre: role == UserRole.superadmin ? 'EDUNEX Global Platform' : 'Colegio Cliente EDUNEX',
+        debugPrint('Error de autenticación en Supabase: ${e.message}');
+        throw Exception(
+          'Credenciales inválidas o usuario no registrado. Este usuario no existe en la base de datos; debe ser creado previamente por el administrador para poder acceder.',
         );
-        _currentProfile = localProfile;
-        return localProfile;
       } catch (e) {
         debugPrint('Error inesperado durante inicio de sesión: $e');
         rethrow;
       }
     } else {
-      // Modo DEMO / Local (cuando las claves reales de Supabase aún no se han configurado)
-      await Future.delayed(const Duration(milliseconds: 300));
-
-      final role = preferredRole ??
-          (cleanEmail.contains('superadmin')
-              ? UserRole.superadmin
-              : cleanEmail.contains('admin')
-                  ? UserRole.adminColegio
-                  : cleanEmail.contains('docente')
-                      ? UserRole.docente
-                      : cleanEmail.contains('estudiante')
-                          ? UserRole.estudiante
-                          : UserRole.tutorFamiliar);
-
-      final demoProfile = UserProfile(
-        id: 'demo-user-id-001',
-        colegioId: role == UserRole.superadmin ? null : 'a0000000-0000-0000-0000-000000000001',
-        sucursalId: role == UserRole.superadmin ? null : 'b0000000-0000-0000-0000-000000000001',
-        email: cleanEmail,
-        nombres: role == UserRole.superadmin
-            ? 'Administrador'
-            : (role == UserRole.adminColegio
-                ? 'Lic. Carlos'
-                : role == UserRole.docente
-                    ? 'Prof. María'
-                    : role == UserRole.estudiante
-                        ? 'Mateo'
-                        : 'Tutor'),
-        apellidos: role == UserRole.superadmin
-            ? 'SaaS EDUNEX'
-            : (role == UserRole.adminColegio
-                ? 'Rodríguez'
-                : role == UserRole.docente
-                    ? 'González'
-                    : role == UserRole.estudiante
-                        ? 'Pérez González'
-                        : 'Familiar'),
-        rol: role,
-        colegioNombre: role == UserRole.superadmin ? 'EDUNEX Global Platform' : 'Colegio Cliente EDUNEX',
-        telefono: '809-555-0123',
+      throw Exception(
+        'La base de datos de Supabase no está configurada o no está disponible.',
       );
-
-      _currentProfile = demoProfile;
-      return demoProfile;
     }
   }
 

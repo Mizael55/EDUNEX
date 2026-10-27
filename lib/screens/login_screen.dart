@@ -29,7 +29,7 @@ class _LoginScreenState extends State<LoginScreen> {
     {
       'role': UserRole.superadmin,
       'name': 'Dueño SaaS',
-      'email': 'superadmin@edunex.edu',
+      'email': 'admin@edunex.edu',
       'icon': UserRole.superadmin.icon,
       'color': UserRole.superadmin.color,
     },
