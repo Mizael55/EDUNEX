@@ -186,6 +186,22 @@ void main() {
     expect(find.text('Panel Maestro SaaS'), findsWidgets);
     expect(find.text('Colegios Clientes'), findsWidgets);
     expect(find.text('Red Central EDUNEX (SaaS)'), findsOneWidget);
+    final purgeBtn = find.text('Resetear DB (QA Clean Slate)');
+    expect(purgeBtn, findsOneWidget);
+
+    // Scroll to and tap purge button, verify confirmation dialog appears
+    await tester.ensureVisible(purgeBtn);
+    await tester.pumpAndSettle();
+    await tester.tap(purgeBtn);
+    await tester.pumpAndSettle();
+
+    expect(find.text('¿Resetear Base de Datos?'), findsOneWidget);
+    expect(find.text('Sí, Eliminar y Resetear'), findsOneWidget);
+
+    // Cancel dialog
+    await tester.tap(find.text('Cancelar'));
+    await tester.pumpAndSettle();
+    expect(find.text('¿Resetear Base de Datos?'), findsNothing);
   });
 
   test('SchoolRepository createSchoolWithDirector creates school and director data', () async {
@@ -528,6 +544,7 @@ void main() {
         home: MainShell(
           userProfile: parentProfile,
           familyRepository: familyRepo,
+          storeRepository: StoreRepository(useDemoFallback: true),
         ),
       ),
     );
@@ -631,7 +648,7 @@ void main() {
 
   test('EventRepository manages school events and registrations correctly', () async {
     final familyRepo = FamilyRepository(useDemoFallback: true);
-    final eventRepo = EventRepository(familyRepository: familyRepo);
+    final eventRepo = EventRepository(familyRepository: familyRepo, useDemoFallback: true);
 
     final events = await eventRepo.getEvents();
     expect(events.isNotEmpty, isTrue);
@@ -684,7 +701,7 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
 
     final familyRepo = FamilyRepository(useDemoFallback: true);
-    final eventRepo = EventRepository(familyRepository: familyRepo);
+    final eventRepo = EventRepository(familyRepository: familyRepo, useDemoFallback: true);
 
     await tester.pumpWidget(
       MaterialApp(
@@ -725,7 +742,7 @@ void main() {
     );
 
     final familyRepo = FamilyRepository(useDemoFallback: true);
-    final eventRepo = EventRepository(familyRepository: familyRepo);
+    final eventRepo = EventRepository(familyRepository: familyRepo, useDemoFallback: true);
 
     await tester.pumpWidget(
       MaterialApp(
@@ -765,7 +782,7 @@ void main() {
 
   test('AttendanceRepository loads, updates and justifies records correctly', () async {
     final familyRepo = FamilyRepository(useDemoFallback: true);
-    final attendanceRepo = AttendanceRepository(familyRepository: familyRepo);
+    final attendanceRepo = AttendanceRepository(familyRepository: familyRepo, useDemoFallback: true);
 
     // 1. Fetch records for date and section
     final records = await attendanceRepo.getAttendanceForDateAndSection(
@@ -800,7 +817,7 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
 
     final familyRepo = FamilyRepository(useDemoFallback: true);
-    final attendanceRepo = AttendanceRepository(familyRepository: familyRepo);
+    final attendanceRepo = AttendanceRepository(familyRepository: familyRepo, useDemoFallback: true);
 
     await tester.pumpWidget(
       MaterialApp(
@@ -851,7 +868,7 @@ void main() {
     );
 
     final familyRepo = FamilyRepository(useDemoFallback: true);
-    final attendanceRepo = AttendanceRepository(familyRepository: familyRepo);
+    final attendanceRepo = AttendanceRepository(familyRepository: familyRepo, useDemoFallback: true);
 
     await tester.pumpWidget(
       MaterialApp(
@@ -895,7 +912,7 @@ void main() {
 
   test('TransportRepository loads routes, updates status and manages passenger boarding', () async {
     final familyRepo = FamilyRepository(useDemoFallback: true);
-    final transportRepo = TransportRepository(familyRepository: familyRepo);
+    final transportRepo = TransportRepository(familyRepository: familyRepo, useDemoFallback: true);
 
     // 1. Fetch routes
     final routes = await transportRepo.getRoutes(colegioId: 'a0000000-0000-0000-0000-000000000001');
@@ -928,7 +945,7 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
 
     final familyRepo = FamilyRepository(useDemoFallback: true);
-    final transportRepo = TransportRepository(familyRepository: familyRepo);
+    final transportRepo = TransportRepository(familyRepository: familyRepo, useDemoFallback: true);
 
     await tester.pumpWidget(
       MaterialApp(
@@ -965,7 +982,7 @@ void main() {
 
   test('CircularRepository loads circulars, filters by grade and signs digital consent', () async {
     final familyRepo = FamilyRepository(useDemoFallback: true);
-    final circularRepo = CircularRepository(familyRepository: familyRepo);
+    final circularRepo = CircularRepository(familyRepository: familyRepo, useDemoFallback: true);
 
     // 1. Fetch circulars
     final circulars = await circularRepo.getCirculars(colegioId: 'a0000000-0000-0000-0000-000000000001');
@@ -1008,7 +1025,7 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
 
     final familyRepo = FamilyRepository(useDemoFallback: true);
-    final circularRepo = CircularRepository(familyRepository: familyRepo);
+    final circularRepo = CircularRepository(familyRepository: familyRepo, useDemoFallback: true);
 
     await tester.pumpWidget(
       MaterialApp(
@@ -1055,7 +1072,7 @@ void main() {
     );
 
     final familyRepo = FamilyRepository(useDemoFallback: true);
-    final circularRepo = CircularRepository(familyRepository: familyRepo);
+    final circularRepo = CircularRepository(familyRepository: familyRepo, useDemoFallback: true);
 
     await tester.pumpWidget(
       MaterialApp(
@@ -1464,7 +1481,7 @@ void main() {
   });
 
   test('StoreRepository manages catalog, stock adjustments, orders, and fulfillment end-to-end', () async {
-    final repo = StoreRepository();
+    final repo = StoreRepository(useDemoFallback: true);
 
     // 1. Catalog loading
     final products = await repo.getProducts();
@@ -1535,7 +1552,7 @@ void main() {
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.resetPhysicalSize);
 
-    final storeRepo = StoreRepository();
+    final storeRepo = StoreRepository(useDemoFallback: true);
 
     await tester.pumpWidget(
       MaterialApp(
@@ -1590,7 +1607,7 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
 
     final familyRepo = FamilyRepository(useDemoFallback: true);
-    final storeRepo = StoreRepository();
+    final storeRepo = StoreRepository(useDemoFallback: true);
     final parentUser = UserProfile(
       id: 'usr-parent-01',
       email: 'familia@edunex.edu',
@@ -2077,7 +2094,7 @@ void main() {
     test('TeacherRepository records class attendance and behavior logs correctly', () async {
       TeacherRepository.restoreSeedData();
       final teacherRepo = TeacherRepository(useDemoFallback: true);
-      final attendanceRepo = AttendanceRepository();
+      final attendanceRepo = AttendanceRepository(useDemoFallback: true);
 
       final classes = await teacherRepo.getClasses(docenteId: 'docente-001');
       final testClass = classes.first;
@@ -2124,7 +2141,7 @@ void main() {
       TeacherRepository.restoreSeedData();
       final teacherRepo = TeacherRepository(useDemoFallback: true);
       final academicRepo = AcademicRepository(useDemoFallback: true);
-      final attendanceRepo = AttendanceRepository();
+      final attendanceRepo = AttendanceRepository(useDemoFallback: true);
 
       final teacherUser = UserProfile(
         id: 'docente-001',

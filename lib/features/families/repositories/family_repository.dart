@@ -81,6 +81,10 @@ class FamilyRepository {
     _demoFamilies.clear();
     _customFamilies.clear();
     _abonoApprovalRequests.clear();
+    _receipts.clear();
+    _agreements.clear();
+    _questions.clear();
+    _billingRuns.clear();
     _prefsLoaded = false;
     try {
       SharedPreferences.getInstance()
@@ -1200,12 +1204,14 @@ class FamilyRepository {
 
   /// Obtiene todos los comprobantes de pago emitidos para una familia
   Future<List<PaymentReceipt>> getReceiptsForFamily(String familiaId) async {
-    return _receipts.where((r) => r.familiaId == familiaId).toList();
+    final list = _useDemoFallback ? _receipts : _receipts.where((r) => !r.id.startsWith('rec-00')).toList();
+    return list.where((r) => r.familiaId == familiaId).toList();
   }
 
   /// Obtiene los acuerdos y convenios de pago solicitados por la familia
   Future<List<PaymentAgreementRequest>> getAgreementsForFamily(String familiaId) async {
-    return _agreements.where((a) => a.familiaId == familiaId).toList();
+    final list = _useDemoFallback ? _agreements : _agreements.where((a) => !a.id.startsWith('agr-00')).toList();
+    return list.where((a) => a.familiaId == familiaId).toList();
   }
 
   /// Registra una nueva solicitud de acuerdo de pago o mejora de cuota
@@ -1232,12 +1238,14 @@ class FamilyRepository {
 
   /// Obtiene todas las preguntas y consultas formuladas por familias al centro escolar
   Future<List<ParentQuestion>> getAllQuestions({String? colegioId}) async {
-    return List<ParentQuestion>.from(_questions);
+    final list = _useDemoFallback ? _questions : _questions.where((q) => !q.id.startsWith('qst-00')).toList();
+    return List<ParentQuestion>.from(list);
   }
 
   /// Obtiene las preguntas y consultas formuladas por la familia
   Future<List<ParentQuestion>> getQuestionsForFamily(String familiaId) async {
-    return _questions.where((q) => q.familiaId == familiaId).toList();
+    final list = _useDemoFallback ? _questions : _questions.where((q) => !q.id.startsWith('qst-00')).toList();
+    return list.where((q) => q.familiaId == familiaId).toList();
   }
 
   /// Responde oficialmente a una consulta familiar desde la administración
@@ -1717,7 +1725,9 @@ class FamilyRepository {
     String? familiaId,
     PaymentApprovalStatus? status,
   }) async {
-    var list = List<PaymentApprovalRequest>.from(_abonoApprovalRequests);
+    var list = _useDemoFallback
+        ? List<PaymentApprovalRequest>.from(_abonoApprovalRequests)
+        : _abonoApprovalRequests.where((r) => !r.id.startsWith('apr-00')).toList();
     if (familiaId != null) {
       list = list.where((r) => r.familiaId == familiaId).toList();
     }

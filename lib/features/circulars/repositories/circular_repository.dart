@@ -5,12 +5,18 @@ import '../../families/repositories/family_repository.dart';
 /// Repositorio para la Gestión de Circulares Oficiales, Avisos y Autorizaciones Digitales
 class CircularRepository {
   final FamilyRepository? _familyRepository;
+  final bool useDemoFallback;
   final List<CircularItem> _circulars;
 
   CircularRepository({
     FamilyRepository? familyRepository,
+    this.useDemoFallback = false,
   })  : _familyRepository = familyRepository,
-        _circulars = List<CircularItem>.from(_defaultCirculars);
+        _circulars = useDemoFallback ? List<CircularItem>.from(_defaultCirculars) : [];
+
+  void clearAllData() {
+    _circulars.clear();
+  }
 
   static final List<CircularItem> _defaultCirculars = [
     CircularItem(

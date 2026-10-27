@@ -225,7 +225,8 @@ class TeacherRepository {
 
   /// Retorna las asignaturas asignadas al docente
   Future<List<TeacherClass>> getClasses({String? docenteId, String? colegioId}) async {
-    final list = _useDemoFallback ? List<TeacherClass>.from(_demoClasses) : List<TeacherClass>.from(_demoClasses);
+    if (!_useDemoFallback) return <TeacherClass>[];
+    final list = List<TeacherClass>.from(_demoClasses);
     if (docenteId != null) {
       return list.where((c) => c.docenteId == docenteId).toList();
     }
@@ -234,6 +235,7 @@ class TeacherRepository {
 
   /// Obtiene una clase por su ID
   Future<TeacherClass?> getClassById(String classId) async {
+    if (!_useDemoFallback) return null;
     try {
       return _demoClasses.firstWhere((c) => c.id == classId);
     } catch (_) {
@@ -243,6 +245,7 @@ class TeacherRepository {
 
   /// Obtiene las evaluaciones de una clase y período
   Future<List<TeacherEvaluationItem>> getEvaluations(String classId, {String? periodo}) async {
+    if (!_useDemoFallback) return [];
     return _demoEvaluations.where((e) {
       if (e.classId != classId) return false;
       if (periodo != null && e.periodo != periodo) return false;
@@ -342,6 +345,7 @@ class TeacherRepository {
 
   /// Obtiene los registros del observador escolar
   Future<List<StudentBehaviorLog>> getBehaviorLogs({String? classId, String? studentId}) async {
+    if (!_useDemoFallback) return [];
     final list = _demoBehaviorLogs.where((l) {
       if (classId != null && l.classId != classId) return false;
       if (studentId != null && l.studentId != studentId) return false;

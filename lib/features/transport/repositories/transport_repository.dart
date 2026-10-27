@@ -5,12 +5,18 @@ import '../../families/repositories/family_repository.dart';
 /// Repositorio Operativo para la Gestión de Rutas, Unidades y Pasajeros de Transporte Escolar
 class TransportRepository {
   final FamilyRepository? _familyRepository;
+  final bool useDemoFallback;
   final List<BusRoute> _routes;
 
   TransportRepository({
     FamilyRepository? familyRepository,
+    this.useDemoFallback = false,
   })  : _familyRepository = familyRepository,
-        _routes = List<BusRoute>.from(_defaultRoutes);
+        _routes = useDemoFallback ? List<BusRoute>.from(_defaultRoutes) : [];
+
+  void clearAllData() {
+    _routes.clear();
+  }
 
   static final List<BusRoute> _defaultRoutes = [
     BusRoute(

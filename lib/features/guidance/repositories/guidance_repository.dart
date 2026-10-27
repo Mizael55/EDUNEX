@@ -150,6 +150,7 @@ class GuidanceRepository {
     String? urgencia,
     String? searchQuery,
   }) async {
+    if (!_useDemoFallback) return [];
     return _demoCases.where((c) {
       if (colegioId != null && c.colegioId != colegioId) return false;
       if (estado != null && estado != 'Todos' && c.estado != estado) return false;

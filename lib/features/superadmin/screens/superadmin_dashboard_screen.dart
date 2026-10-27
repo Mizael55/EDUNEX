@@ -76,6 +76,144 @@ class _SuperAdminDashboardScreenState extends State<SuperAdminDashboardScreen> {
     );
   }
 
+  Future<void> _showPurgeConfirmationDialog() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.red.shade100,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(Icons.warning_amber_rounded, color: Colors.red.shade700, size: 28),
+              ),
+              const SizedBox(width: 12),
+              const Expanded(
+                child: Text(
+                  '¿Resetear Base de Datos?',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+                ),
+              ),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Esta acción es IRREVERSIBLE y fue diseñada para pruebas de QA Clean Slate:',
+                style: TextStyle(color: Colors.grey.shade800, fontSize: 13, fontWeight: FontWeight.w600),
+              ),
+              const SizedBox(height: 10),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.red.shade50,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: Colors.red.shade200),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('• Se eliminarán TODOS los colegios registrados.', style: TextStyle(fontSize: 12, color: Colors.red.shade900)),
+                    Text('• Se borrarán familias, estudiantes, tutores, pagos y notas.', style: TextStyle(fontSize: 12, color: Colors.red.shade900)),
+                    Text('• Se eliminarán todos los usuarios de Supabase Auth.', style: TextStyle(fontSize: 12, color: Colors.red.shade900)),
+                    Text('• Se limpiarán todos los cachés locales y preferencias.', style: TextStyle(fontSize: 12, color: Colors.red.shade900)),
+                    const SizedBox(height: 6),
+                    Text(
+                      'Únicamente se conservará el usuario del Super Admin (admin@edunex.edu) para que el QA empiece con data limpia.',
+                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.red.shade900),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: const Text('Cancelar', style: TextStyle(color: Colors.grey)),
+            ),
+            ElevatedButton.icon(
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              icon: const Icon(Icons.delete_forever_rounded, size: 18),
+              label: const Text('Sí, Eliminar y Resetear'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red.shade700,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirmed == true && mounted) {
+      _executePurge();
+    }
+  }
+
+  Future<void> _executePurge() async {
+    setState(() => _isLoading = true);
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Row(
+          children: [
+            SizedBox(
+              width: 18,
+              height: 18,
+              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+            ),
+            SizedBox(width: 12),
+            Text('Purgando base de datos en Supabase y limpiando memoria...'),
+          ],
+        ),
+        duration: Duration(seconds: 4),
+      ),
+    );
+
+    try {
+      final result = await widget.schoolRepository.purgeAllDataExceptSuperAdmin();
+      await _loadData();
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            backgroundColor: AppColors.accentGreen,
+            content: Row(
+              children: [
+                const Icon(Icons.check_circle_rounded, color: Colors.white),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(result['message'] as String? ?? 'Base de datos reseteada con éxito.'),
+                ),
+              ],
+            ),
+            duration: const Duration(seconds: 5),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            backgroundColor: Colors.red.shade800,
+            content: Text('Error al resetear base de datos: $e'),
+          ),
+        );
+      }
+    }
+  }
+
   void _toggleSubscription(School school) {
     final nextStatus = school.isActive ? 'suspended' : 'active';
     final actionName = school.isActive ? 'Suspender Servicio' : 'Reactivar Servicio';
@@ -163,7 +301,7 @@ class _SuperAdminDashboardScreenState extends State<SuperAdminDashboardScreen> {
             // Cabecera Principal del Dueño del Software
             LayoutBuilder(
               builder: (context, constraints) {
-                final isCompact = constraints.maxWidth < 750;
+                final isCompact = constraints.maxWidth < 1150;
                 final titleSection = Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -239,31 +377,46 @@ class _SuperAdminDashboardScreenState extends State<SuperAdminDashboardScreen> {
                   ),
                 );
 
+                final purgeButton = OutlinedButton.icon(
+                  onPressed: _showPurgeConfirmationDialog,
+                  icon: const Icon(Icons.delete_forever_rounded, size: 18, color: Colors.redAccent),
+                  label: const Text('Resetear DB (QA Clean Slate)'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: Colors.red.shade700,
+                    side: BorderSide(color: Colors.red.shade300, width: 1.5),
+                    backgroundColor: Colors.red.shade50,
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                );
+
+                final actionButtons = Wrap(
+                  spacing: 10,
+                  runSpacing: 10,
+                  children: [
+                    purgeButton,
+                    businessModelButton,
+                    actionButton,
+                  ],
+                );
+
                 if (isCompact) {
                   return Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       titleSection,
                       const SizedBox(height: 14),
-                      Wrap(
-                        spacing: 12,
-                        runSpacing: 8,
-                        children: [
-                          businessModelButton,
-                          actionButton,
-                        ],
-                      ),
+                      actionButtons,
                     ],
                   );
                 }
 
                 return Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Expanded(child: titleSection),
-                    const SizedBox(width: 16),
-                    businessModelButton,
-                    const SizedBox(width: 12),
-                    actionButton,
+                    const SizedBox(width: 14),
+                    actionButtons,
                   ],
                 );
               },

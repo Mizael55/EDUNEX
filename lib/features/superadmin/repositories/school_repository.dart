@@ -1,9 +1,13 @@
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/config/supabase_config.dart';
 import '../models/school.dart';
 import '../../auth/repositories/auth_repository.dart';
 import '../../auth/models/user_role.dart';
+import '../../families/repositories/family_repository.dart';
+import '../../teacher_portal/repositories/teacher_repository.dart';
+import '../../guidance/repositories/guidance_repository.dart';
 
 /// Repositorio de Colegios y Clientes para el Dueño del Software (Superadmin)
 class SchoolRepository {
@@ -436,6 +440,96 @@ class SchoolRepository {
       'trialSchools': trialSchools,
       'totalStudents': totalStudents,
       'estimatedMRR': estimatedMRR,
+    };
+  }
+
+  /// Elimina toda la información de la base de datos (Supabase) y limpia las memorias locales,
+  /// preservando EXCLUSIVAMENTE al usuario Super Admin configurado (por defecto admin@edunex.edu).
+  Future<Map<String, dynamic>> purgeAllDataExceptSuperAdmin({
+    String superAdminEmail = 'admin@edunex.edu',
+  }) async {
+    int deletedAuthUsers = 0;
+    int tablesCleared = 0;
+
+    if (_supabaseClient != null && SupabaseConfig.isConfigured) {
+      // 1. Tablas en orden estricto de dependencias FK
+      final tablesToClear = [
+        'documentos_estudiante',
+        'pagos',
+        'cargos',
+        'estudiantes',
+        'tutores',
+        'autorizaciones_retiro',
+        'familias',
+        'horarios_seccion',
+        'secciones',
+        'materias',
+        'grados',
+        'sucursales',
+        'plantillas_contrato',
+        'rutas_transporte',
+        'registros_asistencia',
+        'circulares',
+        'inscripciones_evento',
+        'eventos',
+        'casos_psicologia',
+      ];
+
+      for (final table in tablesToClear) {
+        try {
+          await _supabaseClient.from(table).delete().neq('id', '00000000-0000-0000-0000-000000000000');
+          tablesCleared++;
+        } catch (e) {
+          debugPrint('Aviso limpiando tabla $table: $e');
+        }
+      }
+
+      // Purgar perfiles dejando sólo el superadmin
+      try {
+        await _supabaseClient.from('perfiles').delete().neq('email', superAdminEmail);
+        tablesCleared++;
+      } catch (e) {
+        debugPrint('Aviso limpiando perfiles: $e');
+      }
+
+      // Purgar colegios
+      try {
+        await _supabaseClient.from('colegios').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+        tablesCleared++;
+      } catch (e) {
+        debugPrint('Aviso limpiando colegios: $e');
+      }
+
+      // Purgar usuarios de Auth excepto el superadmin
+      try {
+        final users = await _supabaseClient.auth.admin.listUsers();
+        for (final u in users) {
+          if (u.email?.trim().toLowerCase() != superAdminEmail.trim().toLowerCase()) {
+            await _supabaseClient.auth.admin.deleteUser(u.id);
+            deletedAuthUsers++;
+          }
+        }
+      } catch (e) {
+        debugPrint('Aviso eliminando usuarios auth: $e');
+      }
+    }
+
+    // 2. Limpiar todos los repositorios en memoria y almacenamiento local
+    clearAllData();
+    FamilyRepository.clearAllData();
+    TeacherRepository.clearAllData();
+    GuidanceRepository.clearAllData();
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.clear();
+    } catch (_) {}
+
+    return {
+      'success': true,
+      'tablesCleared': tablesCleared,
+      'deletedAuthUsers': deletedAuthUsers,
+      'message': 'Base de datos y memorias locales purgadas al 100%. Solo se preservó el usuario Super Admin ($superAdminEmail).',
     };
   }
 }

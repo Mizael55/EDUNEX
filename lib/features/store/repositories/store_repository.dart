@@ -3,7 +3,20 @@ import '../models/store_item.dart';
 
 /// Repositorio en memoria y sincronizado para la Tienda Escolar EDUNEX
 class StoreRepository {
-  final List<StoreProduct> _products = [
+  final bool useDemoFallback;
+  final List<StoreProduct> _products;
+  final List<StoreOrder> _orders;
+
+  StoreRepository({this.useDemoFallback = false})
+      : _products = useDemoFallback ? List<StoreProduct>.from(_defaultProducts) : [],
+        _orders = useDemoFallback ? List<StoreOrder>.from(_defaultOrders) : [];
+
+  void clearAllData() {
+    _products.clear();
+    _orders.clear();
+  }
+
+  static final List<StoreProduct> _defaultProducts = [
     const StoreProduct(
       id: 'prod-001',
       colegioId: 'school-001',
@@ -105,7 +118,7 @@ class StoreRepository {
     ),
   ];
 
-  final List<StoreOrder> _orders = [
+  static final List<StoreOrder> _defaultOrders = [
     StoreOrder(
       id: 'ord-001',
       colegioId: 'a0000000-0000-0000-0000-000000000001',

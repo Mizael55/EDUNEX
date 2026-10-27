@@ -83,16 +83,16 @@ class _MainShellState extends State<MainShell> {
   @override
   void initState() {
     super.initState();
-    _familyRepository = widget.familyRepository ?? FamilyRepository();
-    _schoolRepository = widget.schoolRepository ?? SchoolRepository();
-    _eventRepository = EventRepository(familyRepository: _familyRepository);
-    _attendanceRepository = AttendanceRepository(familyRepository: _familyRepository);
-    _transportRepository = TransportRepository(familyRepository: _familyRepository);
-    _circularRepository = CircularRepository(familyRepository: _familyRepository);
+    _familyRepository = widget.familyRepository ?? FamilyRepository(useDemoFallback: false);
+    _schoolRepository = widget.schoolRepository ?? SchoolRepository(useDemoFallback: false);
+    _eventRepository = EventRepository(familyRepository: _familyRepository, useDemoFallback: false);
+    _attendanceRepository = AttendanceRepository(familyRepository: _familyRepository, useDemoFallback: false);
+    _transportRepository = TransportRepository(familyRepository: _familyRepository, useDemoFallback: false);
+    _circularRepository = CircularRepository(familyRepository: _familyRepository, useDemoFallback: false);
     _academicRepository = widget.academicRepository ?? AcademicRepository(useDemoFallback: false);
-    _storeRepository = widget.storeRepository ?? StoreRepository();
-    _teacherRepository = widget.teacherRepository ?? TeacherRepository();
-    _guidanceRepository = widget.guidanceRepository ?? GuidanceRepository();
+    _storeRepository = widget.storeRepository ?? StoreRepository(useDemoFallback: false);
+    _teacherRepository = widget.teacherRepository ?? TeacherRepository(useDemoFallback: false);
+    _guidanceRepository = widget.guidanceRepository ?? GuidanceRepository(useDemoFallback: false);
     _loadSchoolName();
   }
 

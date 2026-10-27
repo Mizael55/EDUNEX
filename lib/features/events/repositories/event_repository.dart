@@ -6,13 +6,21 @@ import '../../families/repositories/family_repository.dart';
 /// Repositorio de Eventos, Actividades Extracurriculares y Excursiones en EDUNEX
 class EventRepository {
   final FamilyRepository? _familyRepository;
+  final bool useDemoFallback;
   final List<SchoolEvent> _events;
   final List<EventRegistration> _registrations;
 
-  EventRepository({FamilyRepository? familyRepository})
-      : _familyRepository = familyRepository,
-        _events = List<SchoolEvent>.from(_defaultEvents),
-        _registrations = List<EventRegistration>.from(_defaultRegistrations);
+  EventRepository({
+    FamilyRepository? familyRepository,
+    this.useDemoFallback = false,
+  })  : _familyRepository = familyRepository,
+        _events = useDemoFallback ? List<SchoolEvent>.from(_defaultEvents) : [],
+        _registrations = useDemoFallback ? List<EventRegistration>.from(_defaultRegistrations) : [];
+
+  void clearAllData() {
+    _events.clear();
+    _registrations.clear();
+  }
 
   static final List<SchoolEvent> _defaultEvents = [
     SchoolEvent(

@@ -6,12 +6,18 @@ import '../../families/models/student.dart';
 /// Repositorio para la Gestión de Asistencia Escolar Diaria y Seguimiento Familiar
 class AttendanceRepository {
   final FamilyRepository? _familyRepository;
+  final bool useDemoFallback;
   final List<AttendanceRecord> _records;
 
   AttendanceRepository({
     FamilyRepository? familyRepository,
+    this.useDemoFallback = false,
   })  : _familyRepository = familyRepository,
-        _records = List<AttendanceRecord>.from(_defaultRecords);
+        _records = useDemoFallback ? List<AttendanceRecord>.from(_defaultRecords) : [];
+
+  void clearAllData() {
+    _records.clear();
+  }
 
   static final List<AttendanceRecord> _defaultRecords = [
     // Registros para Mateo Pérez (1ro de Primaria - Sección A)
