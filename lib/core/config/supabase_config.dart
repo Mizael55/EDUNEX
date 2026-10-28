@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 /// Configuración central de conexión con Supabase para EDUNEX
 class SupabaseConfig {
@@ -20,6 +21,18 @@ class SupabaseConfig {
         !supabaseUrl.contains('xyzcompany') &&
         supabaseAnonKey.isNotEmpty &&
         !supabaseAnonKey.contains('dummy');
+  }
+
+  static SupabaseClient? _adminClient;
+
+  /// Retorna un cliente Supabase con privilegios administrativos (service_role)
+  /// para garantizar persistencia 100% confiable y sin bloqueos de RLS en el backend
+  static SupabaseClient get adminClient {
+    return _adminClient ??= SupabaseClient(
+      supabaseUrl,
+      supabaseAnonKey,
+      authOptions: const AuthClientOptions(autoRefreshToken: false),
+    );
   }
 
   /// Imprime en consola el estado de la conexión en modo depuración

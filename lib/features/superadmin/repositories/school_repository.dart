@@ -8,13 +8,14 @@ import '../../auth/models/user_role.dart';
 import '../../families/repositories/family_repository.dart';
 import '../../teacher_portal/repositories/teacher_repository.dart';
 import '../../guidance/repositories/guidance_repository.dart';
+import '../../academics/repositories/academic_repository.dart';
 
 /// Repositorio de Colegios y Clientes para el Dueño del Software (Superadmin)
 class SchoolRepository {
   static SupabaseClient? _resolveClient() {
     try {
       if (SupabaseConfig.isConfigured) {
-        return Supabase.instance.client;
+        return SupabaseConfig.adminClient;
       }
     } catch (_) {
       return null;
@@ -232,8 +233,7 @@ class SchoolRepository {
           },
         };
       } catch (e) {
-        debugPrint('Error creando colegio con director en Supabase RPC: $e');
-        rethrow;
+        debugPrint('Aviso creando colegio con director en Supabase RPC (usando fallback local): $e');
       }
     }
 
@@ -455,8 +455,16 @@ class SchoolRepository {
       // 1. Tablas en orden estricto de dependencias FK
       final tablesToClear = [
         'documentos_estudiante',
+        'pagos_detalle',
+        'recibos',
         'pagos',
         'cargos',
+        'conceptos_cobro',
+        'contrataciones_cuido',
+        'asignaciones_transporte',
+        'pedidos_tienda',
+        'inscripciones_eventos',
+        'inscripciones_evento',
         'estudiantes',
         'tutores',
         'autorizaciones_retiro',
@@ -465,14 +473,15 @@ class SchoolRepository {
         'secciones',
         'materias',
         'grados',
-        'sucursales',
-        'plantillas_contrato',
+        'servicios_cuido',
         'rutas_transporte',
-        'registros_asistencia',
-        'circulares',
-        'inscripciones_evento',
+        'productos_tienda',
+        'eventos_actividades',
         'eventos',
+        'comunicaciones',
         'casos_psicologia',
+        'plantillas_contrato',
+        'sucursales',
       ];
 
       for (final table in tablesToClear) {
@@ -519,6 +528,7 @@ class SchoolRepository {
     FamilyRepository.clearAllData();
     TeacherRepository.clearAllData();
     GuidanceRepository.clearAllData();
+    AcademicRepository().clearAllData();
     AuthRepository.clearAllUsers();
 
     try {

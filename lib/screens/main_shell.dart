@@ -501,7 +501,7 @@ class _MainShellState extends State<MainShell> {
         return AdminGradesScreen(
           academicRepository: _academicRepository,
           familyRepository: _familyRepository,
-          colegioId: widget.userProfile.colegioId ?? 'col-1',
+          colegioId: widget.userProfile.colegioId ?? '',
         );
       case 9:
         return AdminInquiriesScreen(
@@ -516,7 +516,7 @@ class _MainShellState extends State<MainShell> {
       case 11:
         return GuidanceManagementScreen(
           guidanceRepository: _guidanceRepository,
-          colegioId: widget.userProfile.colegioId ?? 'a0000000-0000-0000-0000-000000000001',
+          colegioId: widget.userProfile.colegioId ?? '',
         );
       default:
         return _buildPlaceholderScreen(_navItems[_selectedIndex].title);

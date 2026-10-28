@@ -472,6 +472,86 @@ class _FamilyDetailDialogState extends State<FamilyDetailDialog> {
     DocumentPreviewDialog.show(context, document: doc, studentName: studentName);
   }
 
+  void _toggleStudentStatus(Student student) {
+    if (student.activo) {
+      final motivoController = TextEditingController(text: 'Traslado escolar voluntario');
+      showDialog(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: Row(
+            children: [
+              Icon(Icons.warning_amber_rounded, color: Colors.red.shade700, size: 24),
+              const SizedBox(width: 8),
+              const Text('Dar de Baja a Estudiante', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('¿Confirmas que deseas dar de baja a ${student.nombreCompleto} de la institución educativa?'),
+              const SizedBox(height: 12),
+              TextField(
+                controller: motivoController,
+                decoration: const InputDecoration(
+                  labelText: 'Motivo de la baja o retiro',
+                  border: OutlineInputBorder(),
+                  hintText: 'Ej. Traslado, retiro familiar...',
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(),
+              child: const Text('Cancelar'),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.red.shade700, foregroundColor: Colors.white),
+              onPressed: () async {
+                Navigator.of(ctx).pop();
+                await _repository.deactivateStudent(studentId: student.id, motivo: motivoController.text.trim());
+                setState(() {
+                  final updatedStudents = _family.estudiantes.map((s) {
+                    if (s.id == student.id) return s.copyWith(activo: false);
+                    return s;
+                  }).toList();
+                  _family = _family.copyWith(estudiantes: updatedStudents);
+                });
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Estudiante ${student.nombreCompleto} ha sido dado de baja.'),
+                      backgroundColor: Colors.red.shade800,
+                    ),
+                  );
+                }
+              },
+              child: const Text('Confirmar Baja'),
+            ),
+          ],
+        ),
+      );
+    } else {
+      // Reactivar estudiante
+      _repository.reactivateStudent(studentId: student.id);
+      setState(() {
+        final updatedStudents = _family.estudiantes.map((s) {
+          if (s.id == student.id) return s.copyWith(activo: true);
+          return s;
+        }).toList();
+        _family = _family.copyWith(estudiantes: updatedStudents);
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Estudiante ${student.nombreCompleto} ha sido reactivado exitosamente.'),
+          backgroundColor: AppColors.accentGreen,
+        ),
+      );
+    }
+  }
+
   void _showAttachTutorDocumentDialog(Tutor tutor) {
     final docTypes = [
       'Copia Física de Cédula de Identidad',
@@ -1183,13 +1263,39 @@ class _FamilyDetailDialogState extends State<FamilyDetailDialog> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      student.nombreCompleto,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 15,
-                        color: AppColors.textPrimary,
-                      ),
+                    Row(
+                      children: [
+                        Flexible(
+                          child: Text(
+                            student.nombreCompleto,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 15,
+                              color: AppColors.textPrimary,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: student.activo ? const Color(0xFFDCFCE7) : const Color(0xFFFEE2E2),
+                            borderRadius: BorderRadius.circular(6),
+                            border: Border.all(
+                              color: student.activo ? const Color(0xFF86EFAC) : const Color(0xFFFCA5A5),
+                            ),
+                          ),
+                          child: Text(
+                            student.activo ? 'Activo' : 'Dado de baja',
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                              color: student.activo ? const Color(0xFF166534) : const Color(0xFF991B1B),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                     const SizedBox(height: 2),
                     Text(
@@ -1200,6 +1306,30 @@ class _FamilyDetailDialogState extends State<FamilyDetailDialog> {
                       ),
                     ),
                   ],
+                ),
+              ),
+              OutlinedButton.icon(
+                key: Key('btn_baja_estudiante_${student.id}'),
+                onPressed: () => _toggleStudentStatus(student),
+                icon: Icon(
+                  student.activo ? Icons.person_remove_rounded : Icons.person_add_alt_1_rounded,
+                  size: 13,
+                  color: student.activo ? Colors.red.shade700 : AppColors.accentGreen,
+                ),
+                label: Text(
+                  student.activo ? 'Dar de Baja' : 'Reactivar Alumno',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: student.activo ? Colors.red.shade700 : AppColors.accentGreen,
+                  ),
+                ),
+                style: OutlinedButton.styleFrom(
+                  side: BorderSide(
+                    color: student.activo ? Colors.red.shade200 : AppColors.accentGreen.withValues(alpha: 0.4),
+                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                 ),
               ),
             ],

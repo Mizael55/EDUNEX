@@ -59,6 +59,28 @@ class StudentDocument {
     return null;
   }
 
+  StudentDocument copyWith({
+    String? id,
+    String? tipo,
+    String? nombre,
+    String? nombreArchivo,
+    String? urlArchivo,
+    DateTime? fechaSubida,
+    int? tamanoBytes,
+    bool? verificado,
+  }) {
+    return StudentDocument(
+      id: id ?? this.id,
+      tipo: tipo ?? this.tipo,
+      nombre: nombre ?? this.nombre,
+      nombreArchivo: nombreArchivo ?? this.nombreArchivo,
+      urlArchivo: urlArchivo ?? this.urlArchivo,
+      fechaSubida: fechaSubida ?? this.fechaSubida,
+      tamanoBytes: tamanoBytes ?? this.tamanoBytes,
+      verificado: verificado ?? this.verificado,
+    );
+  }
+
   factory StudentDocument.fromJson(Map<String, dynamic> json) {
     DateTime parsedDate;
     try {

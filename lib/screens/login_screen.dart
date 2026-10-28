@@ -19,7 +19,7 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _obscurePassword = true;
   bool _rememberMe = true;
   bool _isLoading = false;
-  int _selectedRoleIndex = 1;
+  int _selectedRoleIndex = 0;
 
   // Personalización del Centro Educativo (Logo y Nombre institucional)
   String? _customSchoolName;
@@ -36,28 +36,28 @@ class _LoginScreenState extends State<LoginScreen> {
     {
       'role': UserRole.adminColegio,
       'name': 'Administrador',
-      'email': 'admin@edunex.edu',
+      'email': '',
       'icon': UserRole.adminColegio.icon,
       'color': UserRole.adminColegio.color,
     },
     {
       'role': UserRole.docente,
       'name': 'Docente',
-      'email': 'docente@edunex.edu',
+      'email': '',
       'icon': UserRole.docente.icon,
       'color': UserRole.docente.color,
     },
     {
       'role': UserRole.tutorFamiliar,
       'name': 'Tutor o Familia',
-      'email': 'familia@edunex.edu',
+      'email': '',
       'icon': UserRole.tutorFamiliar.icon,
       'color': UserRole.tutorFamiliar.color,
     },
     {
       'role': UserRole.estudiante,
       'name': 'Estudiante',
-      'email': 'estudiante@edunex.edu',
+      'email': '',
       'icon': UserRole.estudiante.icon,
       'color': UserRole.estudiante.color,
     },
@@ -74,11 +74,15 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() {
       _selectedRoleIndex = index;
       final selectedRole = _roles[index]['role'] as UserRole;
-      final registered = AuthRepository.getRegisteredUsersByRole(selectedRole);
-      if (registered.isNotEmpty) {
-        _userController.text = registered.last.email;
+      if (selectedRole == UserRole.superadmin) {
+        _userController.text = 'admin@edunex.edu';
       } else {
-        _userController.text = _roles[index]['email'] as String;
+        final registered = AuthRepository.getRegisteredUsersByRole(selectedRole);
+        if (registered.isNotEmpty) {
+          _userController.text = registered.last.email;
+        } else {
+          _userController.text = '';
+        }
       }
     });
   }

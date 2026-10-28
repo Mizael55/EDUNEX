@@ -74,18 +74,11 @@ class AuthRepository {
     UserRole? preferredRole,
   }) async {
     final cleanEmail = email.trim().toLowerCase();
-
-    // 1. Verificar si el usuario fue registrado en la sesión
-    if (_registeredUsers.containsKey(cleanEmail)) {
-      _currentProfile = _registeredUsers[cleanEmail];
-      return _currentProfile!;
-    }
-
     final client = _supabaseClient;
 
-    if (client != null) {
+    if (client != null && SupabaseConfig.isConfigured) {
       try {
-        // Autenticación oficial contra Supabase Auth
+        // Autenticación oficial contra Supabase Auth en la base de datos
         final authResponse = await client.auth.signInWithPassword(
           email: cleanEmail,
           password: password,
@@ -107,17 +100,9 @@ class AuthRepository {
           _currentProfile = UserProfile.fromMap(profileData);
           return _currentProfile!;
         } else {
-          // Si no existe perfil en la tabla, creamos un perfil básico
-          final fallbackProfile = UserProfile(
-            id: user.id,
-            email: user.email ?? cleanEmail,
-            nombres: 'Usuario',
-            apellidos: 'EDUNEX',
-            rol: preferredRole ?? UserRole.adminColegio,
-            colegioNombre: 'Colegio Bilingüe EDUNEX',
+          throw Exception(
+            'El usuario está autenticado pero no tiene un perfil configurado en la base de datos.',
           );
-          _currentProfile = fallbackProfile;
-          return fallbackProfile;
         }
       } on AuthException catch (e) {
         debugPrint('Error de autenticación en Supabase: ${e.message}');
@@ -129,8 +114,13 @@ class AuthRepository {
         rethrow;
       }
     } else {
+      // Modo local/offline para pruebas sin conexión
+      if (_registeredUsers.containsKey(cleanEmail)) {
+        _currentProfile = _registeredUsers[cleanEmail];
+        return _currentProfile!;
+      }
       throw Exception(
-        'La base de datos de Supabase no está configurada o no está disponible.',
+        'Credenciales inválidas o usuario no registrado en el sistema local.',
       );
     }
   }

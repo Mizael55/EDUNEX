@@ -22,7 +22,7 @@ class FamilyRepository {
   static SupabaseClient? _resolveClient() {
     try {
       if (SupabaseConfig.isConfigured) {
-        return Supabase.instance.client;
+        return SupabaseConfig.adminClient;
       }
     } catch (_) {
       return null;
@@ -255,7 +255,6 @@ class FamilyRepository {
     bool onlyWithDebt = false,
     String? colegioId,
   }) async {
-    await _loadPersistedCustomFamilies();
     List<Family> families = [];
 
     if (_supabaseClient != null && SupabaseConfig.isConfigured && !_useDemoFallback) {
@@ -283,25 +282,36 @@ class FamilyRepository {
             .map((item) => Family.fromJson(item as Map<String, dynamic>))
             .toList();
       } catch (e) {
-        debugPrint('Aviso: Usando datos de respaldo para familias: $e');
-        families = _useDemoFallback ? List<Family>.from(_demoFamilies) : [];
+        debugPrint('Aviso: Error cargando familias de Supabase (modo desconectado/offline): $e');
+        families = _demoFamilies.isNotEmpty ? List<Family>.from(_demoFamilies) : List<Family>.from(_seedFamilies);
+        if (_customFamilies.isNotEmpty) {
+          for (final cf in _customFamilies) {
+            final existingIdx = families.indexWhere((f) => f.id == cf.id);
+            if (existingIdx != -1) {
+              families[existingIdx] = cf;
+            } else {
+              families.insert(0, cf);
+            }
+          }
+        }
       }
     } else {
+      await _loadPersistedCustomFamilies();
       families = _useDemoFallback ? List<Family>.from(_demoFamilies) : [];
-    }
 
-    if (_customFamilies.isNotEmpty) {
-      for (final cf in _customFamilies) {
-        final existingIdx = families.indexWhere((f) => f.id == cf.id);
-        if (existingIdx != -1) {
-          families[existingIdx] = cf;
-        } else {
-          families.insert(0, cf);
+      if (_customFamilies.isNotEmpty) {
+        for (final cf in _customFamilies) {
+          final existingIdx = families.indexWhere((f) => f.id == cf.id);
+          if (existingIdx != -1) {
+            families[existingIdx] = cf;
+          } else {
+            families.insert(0, cf);
+          }
         }
       }
     }
 
-    // Filtrar por colegio si se especificó (Issue #16)
+    // Filtrar por colegio si se especificó (Issue #16 / #23)
     if (colegioId != null && colegioId.isNotEmpty) {
       families = families.where((f) => f.colegioId == colegioId).toList();
     }
@@ -768,7 +778,7 @@ class FamilyRepository {
 
         final createdFamilyId = familyData['id'] as String;
 
-        await _supabaseClient.from('tutores').insert({
+        final tutorInsert = await _supabaseClient.from('tutores').insert({
           'familia_id': createdFamilyId,
           'nombres': tutorNombres,
           'apellidos': tutorApellidos,
@@ -778,13 +788,18 @@ class FamilyRepository {
           'email': tutorEmail,
           'es_contacto_principal': true,
           'autorizado_recoger': true,
-        });
+        }).select().single();
 
-        // Insertar tutores adicionales en Supabase
+        final createdTutorId = tutorInsert['id'] as String;
+        final List<Tutor> savedTutores = [
+          newTutor.copyWith(id: createdTutorId, familiaId: createdFamilyId),
+        ];
+
+        // Insertar tutores adicionales en Supabase (Issue #19)
         if (additionalTutors != null) {
           for (final at in additionalTutors) {
             try {
-              await _supabaseClient.from('tutores').insert({
+              final atInsert = await _supabaseClient.from('tutores').insert({
                 'familia_id': createdFamilyId,
                 'nombres': at.nombres,
                 'apellidos': at.apellidos,
@@ -794,15 +809,17 @@ class FamilyRepository {
                 'email': at.email,
                 'es_contacto_principal': false,
                 'autorizado_recoger': at.autorizadoRecoger,
-              });
+              }).select().single();
+              savedTutores.add(at.copyWith(id: atInsert['id'] as String, familiaId: createdFamilyId));
             } catch (e) {
               debugPrint('Aviso inserting extra tutor in Supabase: $e');
+              savedTutores.add(at.copyWith(familiaId: createdFamilyId));
             }
           }
         }
 
+        final List<Student> savedStudents = [];
         for (final st in students) {
-          Map<String, dynamic>? studentInsert;
           final extraData = {
             'grado_nombre': st.gradoNombre,
             'seccion_nombre': st.seccionNombre,
@@ -813,48 +830,148 @@ class FamilyRepository {
             'pediatra_contacto': st.pediatraContacto,
             'criterios_evaluados': st.criteriosEvaluados,
           };
-          try {
-            studentInsert = await _supabaseClient.from('estudiantes').insert({
-              'colegio_id': colegioId,
-              'familia_id': createdFamilyId,
-              'matricula': st.matricula,
-              'nombres': st.nombres,
-              'apellidos': st.apellidos,
-              'fecha_nacimiento': st.fechaNacimiento.toIso8601String().split('T').first,
-              'genero': st.genero ?? 'No especificado',
-              'foto_url': st.fotoUrl,
-              'condiciones_medicas': jsonEncode(extraData),
-              'activo': true,
-            }).select().maybeSingle();
-          } catch (e) {
-            debugPrint('Aviso inserting student in Supabase: $e');
-          }
+          final studentInsert = await _supabaseClient.from('estudiantes').insert({
+            'colegio_id': colegioId,
+            'familia_id': createdFamilyId,
+            'matricula': st.matricula,
+            'nombres': st.nombres,
+            'apellidos': st.apellidos,
+            'fecha_nacimiento': st.fechaNacimiento.toIso8601String().split('T').first,
+            'genero': st.genero ?? 'No especificado',
+            'foto_url': st.fotoUrl,
+            'condiciones_medicas': jsonEncode(extraData),
+            'activo': true,
+          }).select().single();
 
-          final createdStudentId = studentInsert != null ? studentInsert['id'] as String? : null;
+          final createdStudentId = studentInsert['id'] as String;
+          final List<StudentDocument> savedDocs = [];
 
           // Insertar documentos en la tabla documentos_estudiante
           for (final doc in st.documentosExpediente) {
             try {
-              await _supabaseClient.from('documentos_estudiante').insert({
-                'estudiante_id': createdStudentId ?? st.id,
+              final docInsert = await _supabaseClient.from('documentos_estudiante').insert({
+                'estudiante_id': createdStudentId,
                 'tipo': doc.tipo,
                 'archivo_url': doc.url ?? 'https://storage.edunex.edu.do/expedientes/${doc.nombreArchivo}',
                 'aprobado': doc.verificado,
                 'observaciones': '${doc.nombreArchivo} (${doc.tamanoFormateado})',
-              });
+              }).select().single();
+              savedDocs.add(doc.copyWith(id: docInsert['id'] as String));
             } catch (e) {
               debugPrint('Aviso inserting documento_estudiante in Supabase: $e');
+              savedDocs.add(doc);
             }
           }
+
+          savedStudents.add(
+            st.copyWith(
+              id: createdStudentId,
+              colegioId: colegioId,
+              familiaId: createdFamilyId,
+              documentosExpediente: savedDocs,
+            ),
+          );
         }
+
+        final realFamily = newFamily.copyWith(
+          id: createdFamilyId,
+          tutores: savedTutores,
+          estudiantes: savedStudents,
+        );
+
+        return realFamily;
       } catch (e) {
-        debugPrint('Aviso: Guardando familia localmente tras error Supabase: $e');
+        debugPrint('Error persistiendo familia completa en Supabase (usando fallback local): $e');
+        _customFamilies.insert(0, newFamily);
+        await _persistCustomFamilies();
+        return newFamily;
       }
     }
 
     _customFamilies.insert(0, newFamily);
     await _persistCustomFamilies();
     return newFamily;
+  }
+
+  /// Da de baja a un estudiante del colegio (Issue #23 Caso 1)
+  Future<void> deactivateStudent({
+    required String studentId,
+    String? motivo,
+  }) async {
+    if (_supabaseClient != null && SupabaseConfig.isConfigured && !_useDemoFallback) {
+      try {
+        await _supabaseClient.from('estudiantes').update({
+          'activo': false,
+        }).eq('id', studentId);
+      } catch (e) {
+        debugPrint('Error dando de baja al estudiante en Supabase: $e');
+        rethrow;
+      }
+    }
+
+    for (int i = 0; i < _customFamilies.length; i++) {
+      final fam = _customFamilies[i];
+      final stIdx = fam.estudiantes.indexWhere((s) => s.id == studentId);
+      if (stIdx != -1) {
+        final updatedEst = fam.estudiantes[stIdx].copyWith(activo: false);
+        final list = List<Student>.from(fam.estudiantes);
+        list[stIdx] = updatedEst;
+        _customFamilies[i] = fam.copyWith(estudiantes: list);
+        break;
+      }
+    }
+
+    for (int i = 0; i < _demoFamilies.length; i++) {
+      final fam = _demoFamilies[i];
+      final stIdx = fam.estudiantes.indexWhere((s) => s.id == studentId);
+      if (stIdx != -1) {
+        final updatedEst = fam.estudiantes[stIdx].copyWith(activo: false);
+        final list = List<Student>.from(fam.estudiantes);
+        list[stIdx] = updatedEst;
+        _demoFamilies[i] = fam.copyWith(estudiantes: list);
+        break;
+      }
+    }
+  }
+
+  /// Reactiva a un estudiante dado de baja previamente (Issue #23 Caso 1)
+  Future<void> reactivateStudent({
+    required String studentId,
+  }) async {
+    if (_supabaseClient != null && SupabaseConfig.isConfigured && !_useDemoFallback) {
+      try {
+        await _supabaseClient.from('estudiantes').update({
+          'activo': true,
+        }).eq('id', studentId);
+      } catch (e) {
+        debugPrint('Error reactivando al estudiante en Supabase: $e');
+        rethrow;
+      }
+    }
+
+    for (int i = 0; i < _customFamilies.length; i++) {
+      final fam = _customFamilies[i];
+      final stIdx = fam.estudiantes.indexWhere((s) => s.id == studentId);
+      if (stIdx != -1) {
+        final updatedEst = fam.estudiantes[stIdx].copyWith(activo: true);
+        final list = List<Student>.from(fam.estudiantes);
+        list[stIdx] = updatedEst;
+        _customFamilies[i] = fam.copyWith(estudiantes: list);
+        break;
+      }
+    }
+
+    for (int i = 0; i < _demoFamilies.length; i++) {
+      final fam = _demoFamilies[i];
+      final stIdx = fam.estudiantes.indexWhere((s) => s.id == studentId);
+      if (stIdx != -1) {
+        final updatedEst = fam.estudiantes[stIdx].copyWith(activo: true);
+        final list = List<Student>.from(fam.estudiantes);
+        list[stIdx] = updatedEst;
+        _demoFamilies[i] = fam.copyWith(estudiantes: list);
+        break;
+      }
+    }
   }
 
   /// Agrega un nuevo tutor o persona autorizada a una familia existente (Issue #19)
@@ -1467,6 +1584,10 @@ class FamilyRepository {
           } catch (e) {
             debugPrint('Aviso inserting documento_estudiante in Supabase: $e');
           }
+        }
+
+        if (createdStudentId != null) {
+          return student.copyWith(id: createdStudentId);
         }
       } catch (e) {
         debugPrint('Aviso: Estudiante guardado localmente tras error Supabase: $e');

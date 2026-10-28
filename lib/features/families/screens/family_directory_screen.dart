@@ -5,6 +5,7 @@ import '../repositories/family_repository.dart';
 import 'family_detail_dialog.dart';
 import 'create_family_dialog.dart';
 import '../../finances/screens/record_payment_dialog.dart';
+import '../../superadmin/repositories/school_repository.dart';
 
 /// Pantalla del Directorio de Cuentas Familiares en EDUNEX
 class FamilyDirectoryScreen extends StatefulWidget {
@@ -62,6 +63,33 @@ class _FamilyDirectoryScreenState extends State<FamilyDirectoryScreen> {
     }
   }
 
+  Future<void> _openCreateFamilyDialog() async {
+    String? targetColegioId = widget.colegioId;
+    if (targetColegioId == null || targetColegioId.isEmpty) {
+      final schools = await SchoolRepository().getSchools();
+      if (schools.isNotEmpty) {
+        targetColegioId = schools.first.id;
+      }
+    }
+    if (!mounted) return;
+    if (targetColegioId == null || targetColegioId.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No hay centros educativos registrados en el sistema. Registra un colegio primero.'),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+      return;
+    }
+
+    CreateFamilyDialog.show(
+      context,
+      repository: widget.repository,
+      colegioId: targetColegioId,
+      onFamilyCreated: (_) => _loadFamilies(),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -99,14 +127,7 @@ class _FamilyDirectoryScreenState extends State<FamilyDirectoryScreen> {
                 ),
                 if (widget.canCreateFamily)
                   ElevatedButton.icon(
-                    onPressed: () {
-                      CreateFamilyDialog.show(
-                        context,
-                        repository: widget.repository,
-                        colegioId: widget.colegioId ?? 'a0000000-0000-0000-0000-000000000001',
-                        onFamilyCreated: (_) => _loadFamilies(),
-                      );
-                    },
+                    onPressed: _openCreateFamilyDialog,
                     icon: const Icon(Icons.add_rounded, size: 20),
                     label: const Text('Nueva Familia'),
                     style: ElevatedButton.styleFrom(
