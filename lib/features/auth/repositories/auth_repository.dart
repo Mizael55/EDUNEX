@@ -4,6 +4,8 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/config/supabase_config.dart';
 import '../models/user_profile.dart';
 import '../models/user_role.dart';
+import '../../superadmin/models/audit_log.dart';
+import '../../superadmin/repositories/audit_repository.dart';
 
 /// Repositorio central de autenticación y gestión de sesiones para EDUNEX
 class AuthRepository {
@@ -98,6 +100,25 @@ class AuthRepository {
 
         if (profileData != null) {
           _currentProfile = UserProfile.fromMap(profileData);
+
+          // Registrar evento de auditoría en la base de datos
+          AuditRepository().recordAuditLog(
+            AuditLog(
+              id: UniqueKey().toString(),
+              timestamp: DateTime.now(),
+              accion: 'INICIO_SESION',
+              descripcion: 'Inicio de sesión exitoso: ${_currentProfile!.email} (${_currentProfile!.nombreCompleto})',
+              usuario: _currentProfile!.email,
+              rol: _currentProfile!.rol.displayName,
+              colegioId: _currentProfile!.colegioId,
+              colegioNombre: _currentProfile!.colegioNombre,
+              modulo: 'Seguridad',
+              nivel: 'SUCCESS',
+              estadoAnterior: 'Sesión inactiva',
+              nuevoEstado: 'Sesión activa (Rol: ${_currentProfile!.rol.displayName})',
+            ),
+          );
+
           return _currentProfile!;
         } else {
           throw Exception(
@@ -106,6 +127,23 @@ class AuthRepository {
         }
       } on AuthException catch (e) {
         debugPrint('Error de autenticación en Supabase: ${e.message}');
+
+        // Registrar intento fallido en auditoría
+        AuditRepository().recordAuditLog(
+          AuditLog(
+            id: UniqueKey().toString(),
+            timestamp: DateTime.now(),
+            accion: 'INTENTO_LOGIN_FALLIDO',
+            descripcion: 'Intento fallido de inicio de sesión para $cleanEmail: credenciales inválidas',
+            usuario: cleanEmail,
+            rol: 'Desconocido',
+            modulo: 'Seguridad',
+            nivel: 'WARNING',
+            estadoAnterior: 'Intento de autenticación',
+            nuevoEstado: 'Acceso rechazado por el sistema',
+          ),
+        );
+
         throw Exception(
           'Credenciales inválidas o usuario no registrado. Este usuario no existe en la base de datos; debe ser creado previamente por el administrador para poder acceder.',
         );
@@ -117,6 +155,24 @@ class AuthRepository {
       // Modo local/offline para pruebas sin conexión
       if (_registeredUsers.containsKey(cleanEmail)) {
         _currentProfile = _registeredUsers[cleanEmail];
+
+        AuditRepository().recordAuditLog(
+          AuditLog(
+            id: UniqueKey().toString(),
+            timestamp: DateTime.now(),
+            accion: 'INICIO_SESION',
+            descripcion: 'Inicio de sesión exitoso (modo local): ${_currentProfile!.email}',
+            usuario: _currentProfile!.email,
+            rol: _currentProfile!.rol.displayName,
+            colegioId: _currentProfile!.colegioId,
+            colegioNombre: _currentProfile!.colegioNombre,
+            modulo: 'Seguridad',
+            nivel: 'SUCCESS',
+            estadoAnterior: 'Sesión inactiva',
+            nuevoEstado: 'Sesión activa (Rol: ${_currentProfile!.rol.displayName})',
+          ),
+        );
+
         return _currentProfile!;
       }
       throw Exception(
@@ -127,6 +183,29 @@ class AuthRepository {
 
   /// Cierra la sesión activa
   Future<void> signOut() async {
+    if (_currentProfile != null) {
+      final userEmail = _currentProfile!.email;
+      final userRole = _currentProfile!.rol.displayName;
+      final colId = _currentProfile!.colegioId;
+      final colName = _currentProfile!.colegioNombre;
+
+      AuditRepository().recordAuditLog(
+        AuditLog(
+          id: UniqueKey().toString(),
+          timestamp: DateTime.now(),
+          accion: 'CIERRE_SESION',
+          descripcion: 'Cierre de sesión del usuario $userEmail ($userRole)',
+          usuario: userEmail,
+          rol: userRole,
+          colegioId: colId,
+          colegioNombre: colName,
+          modulo: 'Seguridad',
+          nivel: 'INFO',
+          estadoAnterior: 'Sesión activa (Rol: $userRole)',
+          nuevoEstado: 'Sesión finalizada (Usuario desconectado)',
+        ),
+      );
+    }
     final client = _supabaseClient;
     if (client != null) {
       await client.auth.signOut();

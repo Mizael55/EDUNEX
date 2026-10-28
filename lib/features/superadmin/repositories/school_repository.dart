@@ -227,6 +227,23 @@ class SchoolRepository {
           cedula: directorCedula,
         );
 
+        AuditRepository().recordAuditLog(
+          AuditLog(
+            id: 'aud-alta-${DateTime.now().millisecondsSinceEpoch}',
+            timestamp: DateTime.now(),
+            accion: 'ALTA_INSTITUCIONAL',
+            descripcion: 'Enrolamiento y alta oficial del colegio cliente "$nombre"',
+            usuario: 'superadmin@edunex.edu',
+            rol: 'SuperAdmin',
+            colegioId: school.id,
+            colegioNombre: school.nombre,
+            modulo: 'Institucional',
+            nivel: 'SUCCESS',
+            estadoAnterior: 'Institución inexistente en plataforma EDUNEX',
+            nuevoEstado: 'Colegio activo: $nombre (RNC: ${rnc ?? "N/D"}, Siglas: ${siglas ?? "N/D"}, Cupo: $maxEstudiantes)',
+          ),
+        );
+
         return {
           'school': school,
           'director': {
@@ -278,6 +295,23 @@ class SchoolRepository {
       colegioNombre: fallbackSchool.nombre,
       telefono: telefono,
       cedula: directorCedula,
+    );
+
+    AuditRepository().recordAuditLog(
+      AuditLog(
+        id: 'aud-alta-${DateTime.now().millisecondsSinceEpoch}',
+        timestamp: DateTime.now(),
+        accion: 'ALTA_INSTITUCIONAL',
+        descripcion: 'Enrolamiento y alta oficial del colegio cliente "$nombre"',
+        usuario: 'superadmin@edunex.edu',
+        rol: 'SuperAdmin',
+        colegioId: fallbackSchool.id,
+        colegioNombre: fallbackSchool.nombre,
+        modulo: 'Institucional',
+        nivel: 'SUCCESS',
+        estadoAnterior: 'Institución inexistente en plataforma EDUNEX',
+        nuevoEstado: 'Colegio activo: $nombre (RNC: ${rnc ?? "N/D"}, Siglas: ${siglas ?? "N/D"}, Cupo: $maxEstudiantes)',
+      ),
     );
 
     return {
@@ -415,6 +449,25 @@ class SchoolRepository {
         totalFamilias: old.totalFamilias,
       );
     }
+
+    final schoolName = await getSchoolNameById(schoolId) ?? 'Colegio';
+    final oldStatus = newStatus == 'suspended' ? 'active' : 'suspended';
+    AuditRepository().recordAuditLog(
+      AuditLog(
+        id: 'aud-sub-${DateTime.now().millisecondsSinceEpoch}',
+        timestamp: DateTime.now(),
+        accion: newStatus == 'suspended' ? 'SUSPENSION_SERVICIO' : 'ACTIVACION_SERVICIO',
+        descripcion: 'Cambio de estado de licencia SaaS para "$schoolName" a "$newStatus"',
+        usuario: 'superadmin@edunex.edu',
+        rol: 'SuperAdmin',
+        colegioId: schoolId,
+        colegioNombre: schoolName,
+        modulo: 'Seguridad',
+        nivel: newStatus == 'suspended' ? 'WARNING' : 'SUCCESS',
+        estadoAnterior: 'Estado licencia anterior: $oldStatus',
+        nuevoEstado: 'Nuevo estado licencia: $newStatus',
+      ),
+    );
   }
 
   /// Actualiza el logotipo oficial del colegio tipo perfil
@@ -515,10 +568,28 @@ class SchoolRepository {
         logoUrl: logoUrl?.trim() ?? old.logoUrl,
       );
       _demoSchools[index] = updated;
+
+      AuditRepository().recordAuditLog(
+        AuditLog(
+          id: 'aud-mod-${DateTime.now().millisecondsSinceEpoch}',
+          timestamp: DateTime.now(),
+          accion: 'MODIFICACION_COLEGIO',
+          descripcion: 'Actualización de datos de registro del colegio "$nombre"',
+          usuario: 'superadmin@edunex.edu',
+          rol: 'SuperAdmin',
+          colegioId: schoolId,
+          colegioNombre: nombre,
+          modulo: 'Institucional',
+          nivel: 'INFO',
+          estadoAnterior: 'RNC: ${old.rnc ?? "N/D"}, Siglas: ${old.siglas ?? "N/D"}, Cupo: ${old.maxEstudiantes}',
+          nuevoEstado: 'Nombre: $nombre, RNC: ${rnc ?? old.rnc ?? "N/D"}, Cupo: ${maxEstudiantes ?? old.maxEstudiantes} alumnos',
+        ),
+      );
+
       return updated;
     }
 
-    return School(
+    final fallback = School(
       id: schoolId,
       nombre: nombre,
       rnc: rnc,
@@ -534,6 +605,25 @@ class SchoolRepository {
       directorTelefono: directorTelefono,
       directorEmail: directorEmail,
     );
+
+    AuditRepository().recordAuditLog(
+      AuditLog(
+        id: 'aud-mod-${DateTime.now().millisecondsSinceEpoch}',
+        timestamp: DateTime.now(),
+        accion: 'MODIFICACION_COLEGIO',
+        descripcion: 'Actualización de datos de registro del colegio "$nombre"',
+        usuario: 'superadmin@edunex.edu',
+        rol: 'SuperAdmin',
+        colegioId: schoolId,
+        colegioNombre: nombre,
+        modulo: 'Institucional',
+        nivel: 'INFO',
+        estadoAnterior: 'Registro previo',
+        nuevoEstado: 'Nombre: $nombre, RNC: ${rnc ?? "N/D"}, Cupo: ${maxEstudiantes ?? 500} alumnos',
+      ),
+    );
+
+    return fallback;
   }
 
   /// Permite al SuperAdmin resetear la contraseña del director o usuario institucional
@@ -565,6 +655,8 @@ class SchoolRepository {
         modulo: 'Seguridad',
         nivel: 'WARNING',
         ipAddress: '179.52.14.88 (Santo Domingo, DO)',
+        estadoAnterior: 'Contraseña anterior activa para $directorEmail',
+        nuevoEstado: 'Nueva contraseña generada y actualizada en base de datos',
       ),
     );
   }
@@ -684,6 +776,21 @@ class SchoolRepository {
       final prefs = await SharedPreferences.getInstance();
       await prefs.clear();
     } catch (_) {}
+
+    AuditRepository().recordAuditLog(
+      AuditLog(
+        id: 'aud-purge-${DateTime.now().millisecondsSinceEpoch}',
+        timestamp: DateTime.now(),
+        accion: 'RESET_BASE_DATOS',
+        descripcion: 'Purga integral de base de datos (QA Clean Slate) ejecutada por SuperAdmin.',
+        usuario: superAdminEmail,
+        rol: 'SuperAdmin',
+        modulo: 'Sistema',
+        nivel: 'CRITICAL',
+        estadoAnterior: 'Base de datos con datos escolares y registros de colegios',
+        nuevoEstado: 'Base de datos limpia (Clean Slate QA) - Preservado usuario $superAdminEmail',
+      ),
+    );
 
     return {
       'success': true,

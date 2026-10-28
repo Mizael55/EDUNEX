@@ -399,7 +399,69 @@ class _SuperAdminAuditScreenState extends State<SuperAdminAuditScreen> {
                     log.descripcion,
                     style: const TextStyle(fontSize: 13, color: AppColors.textPrimary, fontWeight: FontWeight.w500),
                   ),
-                  const SizedBox(height: 4),
+                  if (log.estadoAnterior != null || log.nuevoEstado != null) ...[
+                    const SizedBox(height: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF8FAFC),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: const Color(0xFFE2E8F0)),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          if (log.estadoAnterior != null)
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: Colors.red.shade50,
+                                    borderRadius: BorderRadius.circular(4),
+                                    border: Border.all(color: Colors.red.shade200),
+                                  ),
+                                  child: Text('ESTADO ANTERIOR', style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Colors.red.shade700)),
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    log.estadoAnterior!,
+                                    style: TextStyle(fontSize: 12, color: Colors.grey.shade700, decoration: TextDecoration.lineThrough),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          if (log.estadoAnterior != null && log.nuevoEstado != null)
+                            const SizedBox(height: 6),
+                          if (log.nuevoEstado != null)
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: Colors.green.shade50,
+                                    borderRadius: BorderRadius.circular(4),
+                                    border: Border.all(color: Colors.green.shade200),
+                                  ),
+                                  child: Text('NUEVO ESTADO', style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Colors.green.shade700)),
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    log.nuevoEstado!,
+                                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.green.shade900),
+                                  ),
+                                ),
+                              ],
+                            ),
+                        ],
+                      ),
+                    ),
+                  ],
+                  const SizedBox(height: 6),
                   Row(
                     children: [
                       const Icon(Icons.person_outline_rounded, size: 12, color: AppColors.textSecondary),
@@ -456,6 +518,14 @@ class _SuperAdminAuditScreenState extends State<SuperAdminAuditScreen> {
               if (log.colegioNombre != null) _buildDetailItem('Colegio:', log.colegioNombre!),
               if (log.ipAddress != null) _buildDetailItem('Dirección IP / Origen:', log.ipAddress!),
               _buildDetailItem('Fecha y Hora:', log.timestamp.toString()),
+              if (log.estadoAnterior != null) ...[
+                const SizedBox(height: 6),
+                _buildDetailItem('Estado Anterior:', log.estadoAnterior!),
+              ],
+              if (log.nuevoEstado != null) ...[
+                const SizedBox(height: 6),
+                _buildDetailItem('Nuevo Estado:', log.nuevoEstado!),
+              ],
             ],
           ),
         ),

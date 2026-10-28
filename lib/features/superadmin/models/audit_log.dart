@@ -14,6 +14,8 @@ class AuditLog {
   final String modulo;
   final String nivel; // 'INFO', 'WARNING', 'CRITICAL', 'SUCCESS'
   final String? ipAddress;
+  final String? estadoAnterior;
+  final String? nuevoEstado;
 
   const AuditLog({
     required this.id,
@@ -27,6 +29,8 @@ class AuditLog {
     required this.modulo,
     this.nivel = 'INFO',
     this.ipAddress,
+    this.estadoAnterior,
+    this.nuevoEstado,
   });
 
   Color get nivelColor {
@@ -72,6 +76,8 @@ class AuditLog {
     'modulo': modulo,
     'nivel': nivel,
     'ip_address': ipAddress,
+    if (estadoAnterior != null) 'estado_anterior': estadoAnterior,
+    if (nuevoEstado != null) 'nuevo_estado': nuevoEstado,
   };
 
   factory AuditLog.fromJson(Map<String, dynamic> json) {
@@ -89,6 +95,8 @@ class AuditLog {
       modulo: json['modulo'] as String? ?? 'Sistema',
       nivel: json['nivel'] as String? ?? 'INFO',
       ipAddress: json['ip_address'] as String?,
+      estadoAnterior: json['estado_anterior'] as String?,
+      nuevoEstado: json['nuevo_estado'] as String?,
     );
   }
 }

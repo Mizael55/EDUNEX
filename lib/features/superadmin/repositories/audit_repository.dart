@@ -103,6 +103,12 @@ class AuditRepository {
         if (log.ipAddress != null && log.ipAddress!.isNotEmpty) {
           payload['ip_address'] = log.ipAddress;
         }
+        if (log.estadoAnterior != null && log.estadoAnterior!.isNotEmpty) {
+          payload['estado_anterior'] = log.estadoAnterior;
+        }
+        if (log.nuevoEstado != null && log.nuevoEstado!.isNotEmpty) {
+          payload['nuevo_estado'] = log.nuevoEstado;
+        }
 
         await _supabaseClient.from('logs_auditoria').insert(payload);
       } catch (e) {
