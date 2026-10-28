@@ -29,6 +29,9 @@ import '../features/store/repositories/store_repository.dart';
 import '../features/store/screens/admin_store_screen.dart';
 import '../features/superadmin/repositories/school_repository.dart';
 import '../features/superadmin/screens/superadmin_dashboard_screen.dart';
+import '../features/superadmin/screens/school_inspection_screen.dart';
+import '../features/superadmin/screens/superadmin_audit_screen.dart';
+import '../features/superadmin/repositories/audit_repository.dart';
 import '../features/superadmin/widgets/edit_school_logo_dialog.dart';
 import '../features/superadmin/models/school.dart';
 import '../features/finances/screens/finance_overview_screen.dart';
@@ -77,6 +80,7 @@ class _MainShellState extends State<MainShell> {
   late final StoreRepository _storeRepository;
   late final TeacherRepository _teacherRepository;
   late final GuidanceRepository _guidanceRepository;
+  late final AuditRepository _auditRepository;
   String _schoolName = 'Colegio Cliente EDUNEX';
   String? _schoolLogoUrl;
   School? _inspectedSchool;
@@ -94,6 +98,7 @@ class _MainShellState extends State<MainShell> {
     _storeRepository = widget.storeRepository ?? StoreRepository(useDemoFallback: false);
     _teacherRepository = widget.teacherRepository ?? TeacherRepository(useDemoFallback: false);
     _guidanceRepository = widget.guidanceRepository ?? GuidanceRepository(useDemoFallback: false);
+    _auditRepository = AuditRepository();
     _loadSchoolName();
   }
 
@@ -170,12 +175,12 @@ class _MainShellState extends State<MainShell> {
       if (_inspectedSchool != null) {
         return [
           const NavigationItem(
-            title: 'Panel del Colegio Auditado',
-            icon: Icons.dashboard_rounded,
+            title: 'Información del Colegio',
+            icon: Icons.business_rounded,
           ),
           const NavigationItem(
-            title: 'Cuentas Familiares',
-            icon: Icons.people_alt_rounded,
+            title: 'Auditoría del Colegio',
+            icon: Icons.history_rounded,
           ),
           const NavigationItem(
             title: 'Finanzas del Colegio',
@@ -196,6 +201,10 @@ class _MainShellState extends State<MainShell> {
         const NavigationItem(
           title: 'Finanzas & Facturación SaaS',
           icon: Icons.account_balance_wallet_rounded,
+        ),
+        const NavigationItem(
+          title: 'Auditoría Global',
+          icon: Icons.security_rounded,
         ),
       ];
     }
@@ -332,20 +341,23 @@ class _MainShellState extends State<MainShell> {
       if (_inspectedSchool != null) {
         switch (_selectedIndex) {
           case 0:
-            return DashboardOverviewScreen(
-              familyRepository: _familyRepository,
-              schoolName: _inspectedSchool?.nombre,
-              colegioId: _inspectedSchool?.id,
-              onReturnToSuperAdmin: () => setState(() {
+            return SchoolInspectionScreen(
+              school: _inspectedSchool!,
+              schoolRepository: _schoolRepository,
+              auditRepository: _auditRepository,
+              onReturnToMaster: () => setState(() {
                 _inspectedSchool = null;
                 _selectedIndex = 0;
               }),
-              onNavigateToFamilies: () => setState(() => _selectedIndex = 1),
+              onSchoolUpdated: (updated) => setState(() {
+                _inspectedSchool = updated;
+              }),
             );
           case 1:
-            return FamilyDirectoryScreen(
-              repository: _familyRepository,
+            return SuperAdminAuditScreen(
+              repository: _auditRepository,
               colegioId: _inspectedSchool?.id,
+              schoolName: _inspectedSchool?.nombre,
             );
           case 2:
             return FinanceOverviewScreen(
@@ -375,6 +387,10 @@ class _MainShellState extends State<MainShell> {
             isSuperAdmin: true,
             familyRepository: _familyRepository,
             schoolRepository: _schoolRepository,
+          );
+        case 3:
+          return SuperAdminAuditScreen(
+            repository: _auditRepository,
           );
         default:
           return _buildPlaceholderScreen(_navItems[_selectedIndex].title);

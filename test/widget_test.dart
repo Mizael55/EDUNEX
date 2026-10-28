@@ -10,6 +10,9 @@ import 'package:edunex/features/auth/repositories/auth_repository.dart';
 import 'package:edunex/features/superadmin/repositories/school_repository.dart';
 import 'package:edunex/features/superadmin/screens/business_model_dialog.dart';
 import 'package:edunex/features/superadmin/screens/create_school_dialog.dart';
+import 'package:edunex/features/superadmin/screens/school_inspection_screen.dart';
+import 'package:edunex/features/superadmin/screens/superadmin_audit_screen.dart';
+import 'package:edunex/features/superadmin/repositories/audit_repository.dart';
 import 'package:edunex/features/parent_portal/screens/parent_payments_screen.dart';
 import 'package:edunex/features/parent_portal/screens/parent_services_screen.dart';
 import 'package:edunex/features/parent_portal/screens/parent_store_screen.dart';
@@ -2670,6 +2673,66 @@ void main() {
 
       expect(find.textContaining('cedula_padre_qa.pdf'), findsOneWidget);
       expect(find.textContaining('Adjuntar Documento / Cédula'), findsWidgets);
+    });
+
+    testWidgets('SuperAdmin School Inspection view renders only school info, edit button, no operational actions, and Auditoría screen', (WidgetTester tester) async {
+      tester.view.physicalSize = const Size(1280, 900);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+
+      final schoolRepo = SchoolRepository(useDemoFallback: true);
+      final auditRepo = AuditRepository();
+      final school = await schoolRepo.getSchoolById('a0000000-0000-0000-0000-000000000001');
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: SchoolInspectionScreen(
+            school: school!,
+            schoolRepository: schoolRepo,
+            auditRepository: auditRepo,
+            onReturnToMaster: () {},
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Verify that school info is displayed
+      expect(find.textContaining('Centro Educativo Nuevo Orden'), findsWidgets);
+      expect(find.text('Editar Información de Registro'), findsOneWidget);
+      expect(find.text('Ficha Institucional & Capacidad'), findsOneWidget);
+      expect(find.text('Representación Legal & Dirección'), findsOneWidget);
+      expect(find.text('Plan SaaS & Tarificación'), findsOneWidget);
+
+      // Verify ZERO operational actions to add families or students
+      expect(find.text('Enrolar Familia'), findsNothing);
+      expect(find.text('Matricular Alumno'), findsNothing);
+      expect(find.text('Registrar Pago'), findsNothing);
+      expect(find.text('+ Nueva Familia'), findsNothing);
+
+      // Tap 'Editar Información de Registro' button and verify dialog opens
+      await tester.tap(find.text('Editar Información de Registro'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Datos Institucionales & Legales'), findsOneWidget);
+      expect(find.text('Guardar Cambios'), findsOneWidget);
+
+      // Close dialog
+      await tester.tap(find.text('Cancelar'));
+      await tester.pumpAndSettle();
+
+      // Test SuperAdminAuditScreen
+      await tester.pumpWidget(
+        MaterialApp(
+          home: SuperAdminAuditScreen(
+            repository: auditRepo,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Auditoría Global del Sistema & Trazabilidad SaaS'), findsOneWidget);
+      expect(find.text('Eventos Registrados'), findsOneWidget);
+      expect(find.text('Registro Histórico de Auditoría'), findsOneWidget);
     });
   });
 }

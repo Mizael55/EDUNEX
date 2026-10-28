@@ -457,6 +457,83 @@ class SchoolRepository {
     }
   }
 
+  /// Actualiza los datos de registro institucional de un colegio (Nombre, RNC, siglas, contacto, capacidad, director, etc.)
+  Future<School> updateSchoolRegistration({
+    required String schoolId,
+    required String nombre,
+    String? rnc,
+    String? siglas,
+    String? telefono,
+    String? emailContacto,
+    String? direccion,
+    int? maxEstudiantes,
+    String? directorNombre,
+    String? directorCedula,
+    String? directorTelefono,
+    String? directorEmail,
+    String? logoUrl,
+  }) async {
+    final updatePayload = <String, dynamic>{
+      'nombre': nombre.trim(),
+    };
+    if (rnc != null) updatePayload['rnc'] = rnc.trim();
+    if (siglas != null) updatePayload['siglas'] = siglas.trim();
+    if (telefono != null) updatePayload['telefono'] = telefono.trim();
+    if (emailContacto != null) updatePayload['email_contacto'] = emailContacto.trim();
+    if (direccion != null) updatePayload['direccion'] = direccion.trim();
+    if (maxEstudiantes != null) updatePayload['max_estudiantes'] = maxEstudiantes;
+    if (logoUrl != null) updatePayload['logo_url'] = logoUrl.trim();
+
+    if (_supabaseClient != null && SupabaseConfig.isConfigured) {
+      try {
+        await _supabaseClient
+            .from('colegios')
+            .update(updatePayload)
+            .eq('id', schoolId);
+      } catch (e) {
+        debugPrint('Aviso: Error actualizando colegio en Supabase: $e');
+      }
+    }
+
+    final index = _demoSchools.indexWhere((s) => s.id == schoolId);
+    if (index != -1) {
+      final old = _demoSchools[index];
+      final updated = old.copyWith(
+        nombre: nombre.trim(),
+        rnc: rnc?.trim() ?? old.rnc,
+        siglas: siglas?.trim() ?? old.siglas,
+        telefono: telefono?.trim() ?? old.telefono,
+        emailContacto: emailContacto?.trim() ?? old.emailContacto,
+        direccion: direccion?.trim() ?? old.direccion,
+        maxEstudiantes: maxEstudiantes ?? old.maxEstudiantes,
+        directorNombre: directorNombre?.trim() ?? old.directorNombre,
+        directorCedula: directorCedula?.trim() ?? old.directorCedula,
+        directorTelefono: directorTelefono?.trim() ?? old.directorTelefono,
+        directorEmail: directorEmail?.trim() ?? old.directorEmail,
+        logoUrl: logoUrl?.trim() ?? old.logoUrl,
+      );
+      _demoSchools[index] = updated;
+      return updated;
+    }
+
+    return School(
+      id: schoolId,
+      nombre: nombre,
+      rnc: rnc,
+      siglas: siglas,
+      telefono: telefono,
+      emailContacto: emailContacto,
+      direccion: direccion,
+      logoUrl: logoUrl,
+      estadoSuscripcion: 'active',
+      maxEstudiantes: maxEstudiantes ?? 500,
+      directorNombre: directorNombre,
+      directorCedula: directorCedula,
+      directorTelefono: directorTelefono,
+      directorEmail: directorEmail,
+    );
+  }
+
   /// Retorna las métricas ejecutivas globales del negocio SaaS
   Future<Map<String, dynamic>> getSaaSMasterKpis() async {
     final list = await getSchools();

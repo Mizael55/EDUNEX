@@ -459,12 +459,12 @@ class _SuperAdminDashboardScreenState extends State<SuperAdminDashboardScreen> {
                       color: AppColors.electricBlue,
                     ),
                     _buildKpiCard(
-                      title: 'Ingresos MRR Est.',
-                      value: 'RD\$ ${((_kpis['estimatedMRR'] as num?)?.toDouble() ?? 0.0).toStringAsFixed(0)}',
-                      subtitle: 'Mensualidad recurrente SaaS',
-                      description: 'Facturación mensual estimada generada por las licencias.',
-                      icon: Icons.trending_up_rounded,
-                      color: AppColors.accentGreen,
+                      title: 'Auditoría del Sistema',
+                      value: 'Activa',
+                      subtitle: 'Trazabilidad y Seguridad',
+                      description: 'Supervisión en vivo de accesos, registros y eventos SaaS.',
+                      icon: Icons.security_rounded,
+                      color: const Color(0xFF0284C7),
                     ),
                     _buildKpiCard(
                       title: 'Infraestructura',

@@ -283,83 +283,85 @@ class _DashboardOverviewScreenState extends State<DashboardOverviewScreen> {
               },
             ),
 
-            const SizedBox(height: 28),
+            if (widget.onReturnToSuperAdmin == null) ...[
+              const SizedBox(height: 28),
 
-            // Acciones Rápidas
-            const Text(
-              'Acciones Rápidas',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: AppColors.textPrimary,
+              // Acciones Rápidas (Exclusivo para la administración del colegio, no para SuperAdmin)
+              const Text(
+                'Acciones Rápidas',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.textPrimary,
+                ),
               ),
-            ),
-            const SizedBox(height: 14),
-            Wrap(
-              spacing: 12,
-              runSpacing: 12,
-              children: [
-                _buildQuickAction(
-                  key: const Key('btn_quick_enrolar_familia'),
-                  icon: Icons.person_add_alt_1_rounded,
-                  label: 'Enrolar Familia',
-                  color: AppColors.electricBlue,
-                  onTap: () async {
-                    final canEnroll = await _verifyPaymentMethodBeforeEnroll();
-                    if (!canEnroll || !mounted) return;
-                    CreateFamilyDialog.show(
-                      context,
-                      repository: widget.familyRepository,
-                      colegioId: widget.colegioId ?? 'a0000000-0000-0000-0000-000000000001',
-                      onFamilyCreated: (_) => _loadData(),
-                    );
-                  },
-                ),
-                _buildQuickAction(
-                  icon: Icons.school_rounded,
-                  label: 'Matricular Alumno',
-                  color: AppColors.navyPrimary,
-                  onTap: () async {
-                    final canEnroll = await _verifyPaymentMethodBeforeEnroll();
-                    if (!canEnroll || !mounted) return;
-                    EnrollStudentDialog.show(
-                      context,
-                      repository: widget.familyRepository,
-                      colegioId: widget.colegioId,
-                      onStudentEnrolled: (_) => _loadData(),
-                    );
-                  },
-                ),
-                _buildQuickAction(
-                  icon: Icons.receipt_long_rounded,
-                  label: 'Registrar Pago',
-                  color: AppColors.accentGreen,
-                  onTap: () {
-                    RecordPaymentDialog.show(
-                      context,
-                      repository: widget.familyRepository,
-                      onPaymentRecorded: () => _loadData(),
-                    );
-                  },
-                ),
-                _buildQuickAction(
-                  icon: Icons.child_care_rounded,
-                  label: 'Asistencia Cuido',
-                  color: AppColors.electricBlue,
-                  onTap: () {
-                    DaycareAttendanceDialog.show(context);
-                  },
-                ),
-                _buildQuickAction(
-                  icon: Icons.directions_bus_rounded,
-                  label: 'Rutas Transporte',
-                  color: const Color(0xFFB45309),
-                  onTap: () {
-                    TransportRoutesDialog.show(context);
-                  },
-                ),
-              ],
-            ),
+              const SizedBox(height: 14),
+              Wrap(
+                spacing: 12,
+                runSpacing: 12,
+                children: [
+                  _buildQuickAction(
+                    key: const Key('btn_quick_enrolar_familia'),
+                    icon: Icons.person_add_alt_1_rounded,
+                    label: 'Enrolar Familia',
+                    color: AppColors.electricBlue,
+                    onTap: () async {
+                      final canEnroll = await _verifyPaymentMethodBeforeEnroll();
+                      if (!canEnroll || !mounted) return;
+                      CreateFamilyDialog.show(
+                        context,
+                        repository: widget.familyRepository,
+                        colegioId: widget.colegioId ?? 'a0000000-0000-0000-0000-000000000001',
+                        onFamilyCreated: (_) => _loadData(),
+                      );
+                    },
+                  ),
+                  _buildQuickAction(
+                    icon: Icons.school_rounded,
+                    label: 'Matricular Alumno',
+                    color: AppColors.navyPrimary,
+                    onTap: () async {
+                      final canEnroll = await _verifyPaymentMethodBeforeEnroll();
+                      if (!canEnroll || !mounted) return;
+                      EnrollStudentDialog.show(
+                        context,
+                        repository: widget.familyRepository,
+                        colegioId: widget.colegioId,
+                        onStudentEnrolled: (_) => _loadData(),
+                      );
+                    },
+                  ),
+                  _buildQuickAction(
+                    icon: Icons.receipt_long_rounded,
+                    label: 'Registrar Pago',
+                    color: AppColors.accentGreen,
+                    onTap: () {
+                      RecordPaymentDialog.show(
+                        context,
+                        repository: widget.familyRepository,
+                        onPaymentRecorded: () => _loadData(),
+                      );
+                    },
+                  ),
+                  _buildQuickAction(
+                    icon: Icons.child_care_rounded,
+                    label: 'Asistencia Cuido',
+                    color: AppColors.electricBlue,
+                    onTap: () {
+                      DaycareAttendanceDialog.show(context);
+                    },
+                  ),
+                  _buildQuickAction(
+                    icon: Icons.directions_bus_rounded,
+                    label: 'Rutas Transporte',
+                    color: const Color(0xFFB45309),
+                    onTap: () {
+                      TransportRoutesDialog.show(context);
+                    },
+                  ),
+                ],
+              ),
+            ],
 
             const SizedBox(height: 32),
 
