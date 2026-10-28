@@ -256,6 +256,22 @@ class _CreateSchoolDialogState extends State<CreateSchoolDialog> {
     return null;
   }
 
+  double _calculateSaaSFee() {
+    final count = int.tryParse(_maxEstudiantesController.text.trim()) ?? _selectedMaxEstudiantes;
+    double base;
+    if (count <= 250) {
+      base = 4000.0;
+    } else if (count <= 400) {
+      base = 5500.0;
+    } else {
+      base = 7000.0;
+    }
+    if (_hasBranches && _branchControllers.isNotEmpty) {
+      base += base * 0.15 * _branchControllers.length;
+    }
+    return base;
+  }
+
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
 
@@ -301,15 +317,8 @@ class _CreateSchoolDialogState extends State<CreateSchoolDialog> {
 
       final newSchool = result['school'] as School;
 
-      // Issue #16: Inicializar comunidad escolar para el colegio cliente
-      try {
-        await FamilyRepository.seedInitialFamiliesForSchool(
-          schoolId: newSchool.id,
-          schoolName: newSchool.nombre,
-        );
-      } catch (e) {
-        debugPrint('Aviso inicializando familias del colegio: $e');
-      }
+      // Issue #23 Caso 2: Cero familias precargadas.
+      // El centro creado desde cero debe estar 100% limpio (0 familias) para que QA sea quien agregue la data.
 
       if (mounted) {
         setState(() {
@@ -1036,6 +1045,77 @@ Contraseña: $password
                       ),
                       const SizedBox(height: 16),
 
+                      // Tarificación SaaS Escolar en Vivo (Issue #22)
+                      Container(
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF0FDF4),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: const Color(0xFF86EFAC)),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Row(
+                              children: [
+                                Icon(Icons.monetization_on_rounded, size: 20, color: Color(0xFF166534)),
+                                SizedBox(width: 8),
+                                Text(
+                                  'Plan SaaS Calculado (Issue #22)',
+                                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF166534)),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Text('Cuota Mensual (MRR):', style: TextStyle(fontSize: 11, color: Color(0xFF15803D))),
+                                    Text(
+                                      'RD\$ ${_calculateSaaSFee().toStringAsFixed(2)}',
+                                      style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 18, color: Color(0xFF166534)),
+                                    ),
+                                  ],
+                                ),
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.end,
+                                  children: [
+                                    const Text('Facturación Anual (ARR):', style: TextStyle(fontSize: 11, color: Color(0xFF15803D))),
+                                    Text(
+                                      'RD\$ ${(_calculateSaaSFee() * 12).toStringAsFixed(2)}',
+                                      style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 18, color: Color(0xFF166534)),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 6),
+                            Text(
+                              () {
+                                final count = int.tryParse(_maxEstudiantesController.text.trim()) ?? _selectedMaxEstudiantes;
+                                String baseLabel;
+                                if (count <= 250) {
+                                  baseLabel = '100 a 250 alumnos: RD\$ 4,000 / mes';
+                                } else if (count <= 400) {
+                                  baseLabel = '251 a 400 alumnos: RD\$ 5,500 / mes';
+                                } else {
+                                  baseLabel = '450+ alumnos: RD\$ 7,000 / mes';
+                                }
+                                if (_hasBranches && _branchControllers.isNotEmpty) {
+                                  return '• Base ($baseLabel) + 15% por cada una de las ${_branchControllers.length} sucursal(es) adicional(es).';
+                                }
+                                return '• Base: $baseLabel (Sede Única sin recargo).';
+                              }(),
+                              style: const TextStyle(fontSize: 10, color: Color(0xFF15803D), fontWeight: FontWeight.w500),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+
                       // CASO 4: Soporte Multi-sucursales
                       Container(
                         padding: const EdgeInsets.all(14),
@@ -1538,10 +1618,62 @@ Contraseña: $password
                                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                                       ),
                                     ),
+                                    IconButton(
+                                      icon: const Icon(Icons.delete_outline_rounded, size: 18, color: Colors.redAccent),
+                                      tooltip: 'Eliminar documento',
+                                      onPressed: () {
+                                        setState(() {
+                                          _schoolDocuments.remove(keyName);
+                                        });
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          SnackBar(
+                                            content: Text('Documento "$keyName" eliminado.'),
+                                            backgroundColor: Colors.redAccent,
+                                            duration: const Duration(seconds: 2),
+                                          ),
+                                        );
+                                      },
+                                    ),
                                   ],
                                 ),
                               );
                             }),
+                            if (_schoolDocuments.isEmpty)
+                              Container(
+                                padding: const EdgeInsets.all(12),
+                                margin: const EdgeInsets.only(bottom: 10),
+                                decoration: BoxDecoration(
+                                  color: Colors.amber.shade50,
+                                  borderRadius: BorderRadius.circular(10),
+                                  border: Border.all(color: Colors.amber.shade200),
+                                ),
+                                child: const Row(
+                                  children: [
+                                    Icon(Icons.info_outline_rounded, color: Color(0xFFB45309), size: 18),
+                                    SizedBox(width: 8),
+                                    Expanded(
+                                      child: Text(
+                                        'No hay documentos adjuntos. Puedes cargar archivos usando el botón de abajo.',
+                                        style: TextStyle(fontSize: 11, color: Color(0xFF92400E)),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            OutlinedButton.icon(
+                              onPressed: () async {
+                                final newDocType = 'Documento Institucional ${_schoolDocuments.length + 1}';
+                                await _pickRealSchoolDoc(newDocType, newDocType);
+                              },
+                              icon: const Icon(Icons.add_circle_outline_rounded, size: 15),
+                              label: const Text('+ Agregar Documento Institucional', style: TextStyle(fontSize: 11)),
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: AppColors.navyPrimary,
+                                side: const BorderSide(color: AppColors.navyPrimary),
+                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                              ),
+                            ),
                           ],
                         ),
                       ),

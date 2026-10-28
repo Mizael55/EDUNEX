@@ -8,6 +8,7 @@ import '../models/tutor.dart';
 import '../repositories/family_repository.dart';
 import '../../../core/services/file_upload_service.dart';
 import '../widgets/document_preview_dialog.dart';
+import 'enroll_student_dialog.dart';
 
 /// Modal para visualizar en detalle el expediente de una Cuenta Familiar Única
 class FamilyDetailDialog extends StatefulWidget {
@@ -48,6 +49,169 @@ class _FamilyDetailDialogState extends State<FamilyDetailDialog> {
     super.initState();
     _family = widget.family;
     _repository = widget.repository ?? FamilyRepository();
+  }
+
+  Future<void> _showAddStudentModal() async {
+    final newStudent = await EnrollStudentDialog.show(
+      context,
+      repository: _repository,
+      initialFamily: _family,
+      colegioId: _family.colegioId,
+    );
+    if (newStudent != null && mounted) {
+      final updatedList = List<Student>.from(_family.estudiantes)..add(newStudent);
+      setState(() {
+        _family = _family.copyWith(estudiantes: updatedList);
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('¡${newStudent.nombreCompleto} inscrito en el núcleo familiar con éxito!'),
+          backgroundColor: AppColors.accentGreen,
+        ),
+      );
+    }
+  }
+
+  void _showAssignServicesModal() {
+    if (_family.estudiantes.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Debes tener al menos un estudiante matriculado para cargar servicios.'),
+          backgroundColor: Colors.orangeAccent,
+        ),
+      );
+      return;
+    }
+
+    String selectedStudentId = _family.estudiantes.first.id;
+    final availableServices = [
+      {'nombre': 'Transporte Escolar (Ruta Completa)', 'costo': 2500.0, 'icono': Icons.directions_bus_rounded},
+      {'nombre': 'Cuido Vespertino / Tanda Extendida', 'costo': 4500.0, 'icono': Icons.child_care_rounded},
+      {'nombre': 'Almuerzo Escolar & Nutrición', 'costo': 3800.0, 'icono': Icons.restaurant_rounded},
+      {'nombre': 'Club de Robótica & STEAM', 'costo': 1800.0, 'icono': Icons.precision_manufacturing_rounded},
+      {'nombre': 'Deportes Extracurriculares (Fútbol/Basket)', 'costo': 1500.0, 'icono': Icons.sports_soccer_rounded},
+    ];
+    final selectedServices = <String>{};
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setModalState) {
+          final student = _family.estudiantes.firstWhere((s) => s.id == selectedStudentId);
+
+          return AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            title: const Row(
+              children: [
+                Icon(Icons.room_service_rounded, color: AppColors.navyPrimary, size: 24),
+                SizedBox(width: 10),
+                Text('Cargar Servicios Escolares (Issue #24)', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+              ],
+            ),
+            content: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 480),
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('Selecciona el estudiante del núcleo familiar:', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 6),
+                    DropdownButtonFormField<String>(
+                      value: selectedStudentId,
+                      isExpanded: true,
+                      decoration: const InputDecoration(border: OutlineInputBorder(), isDense: true),
+                      items: _family.estudiantes.map((st) {
+                        return DropdownMenuItem(value: st.id, child: Text('${st.nombreCompleto} (${st.matricula})'));
+                      }).toList(),
+                      onChanged: (val) {
+                        if (val != null) setModalState(() => selectedStudentId = val);
+                      },
+                    ),
+                    const SizedBox(height: 16),
+                    const Text('Servicios disponibles para contratar:', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 8),
+                    ...availableServices.map((srv) {
+                      final name = srv['nombre'] as String;
+                      final cost = srv['costo'] as double;
+                      final icon = srv['icono'] as IconData;
+                      final isSelected = selectedServices.contains(name) || student.serviciosActivos.contains(name);
+
+                      return CheckboxListTile(
+                        value: isSelected,
+                        dense: true,
+                        contentPadding: EdgeInsets.zero,
+                        secondary: Icon(icon, color: AppColors.navyPrimary, size: 20),
+                        title: Text(name, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                        subtitle: Text('RD\$ ${cost.toStringAsFixed(2)} / mes', style: const TextStyle(fontSize: 11, color: AppColors.accentGreen, fontWeight: FontWeight.bold)),
+                        onChanged: student.serviciosActivos.contains(name)
+                            ? null
+                            : (checked) {
+                                setModalState(() {
+                                  if (checked == true) {
+                                    selectedServices.add(name);
+                                  } else {
+                                    selectedServices.remove(name);
+                                  }
+                                });
+                              },
+                      );
+                    }),
+                  ],
+                ),
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(ctx).pop(),
+                child: const Text('Cancelar'),
+              ),
+              ElevatedButton.icon(
+                onPressed: selectedServices.isEmpty
+                    ? null
+                    : () async {
+                        double totalAdded = 0;
+                        for (final srvName in selectedServices) {
+                          final match = availableServices.firstWhere((e) => e['nombre'] == srvName);
+                          totalAdded += match['costo'] as double;
+                        }
+
+                        final updatedStudents = _family.estudiantes.map((st) {
+                          if (st.id == selectedStudentId) {
+                            final list = List<String>.from(st.serviciosActivos)..addAll(selectedServices);
+                            return st.copyWith(serviciosActivos: list);
+                          }
+                          return st;
+                        }).toList();
+
+                        final updatedFamily = _family.copyWith(
+                          estudiantes: updatedStudents,
+                          balancePendiente: _family.balancePendiente + totalAdded,
+                        );
+
+                        if (mounted) {
+                          setState(() => _family = updatedFamily);
+                          Navigator.of(ctx).pop();
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('¡Servicios cargados exitosamente (+RD\$ ${totalAdded.toStringAsFixed(2)}) a la cuenta familiar!'),
+                              backgroundColor: AppColors.accentGreen,
+                            ),
+                          );
+                        }
+                      },
+                icon: const Icon(Icons.check_rounded, size: 16),
+                label: const Text('Confirmar y Cargar a Cuenta'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.navyPrimary,
+                  foregroundColor: Colors.white,
+                ),
+              ),
+            ],
+          );
+        },
+      ),
+    );
   }
 
   void _showAddTutorModal() {
@@ -1072,21 +1236,58 @@ class _FamilyDetailDialogState extends State<FamilyDetailDialog> {
                     const SizedBox(height: 24),
 
                     // Sección: Estudiantes matriculados (Hermanos agrupados)
-                    Row(
+                    Wrap(
+                      spacing: 12,
+                      runSpacing: 8,
+                      alignment: WrapAlignment.spaceBetween,
+                      crossAxisAlignment: WrapCrossAlignment.center,
                       children: [
-                        const Icon(
-                          Icons.school_rounded,
-                          color: AppColors.navyPrimary,
-                          size: 20,
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(
+                              Icons.school_rounded,
+                              color: AppColors.navyPrimary,
+                              size: 20,
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              'Hijos Matriculados (${family.estudiantes.length})',
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                color: AppColors.textPrimary,
+                              ),
+                            ),
+                          ],
                         ),
-                        const SizedBox(width: 8),
-                        Text(
-                          'Hijos Matriculados (${family.estudiantes.length})',
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.textPrimary,
-                          ),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: [
+                            OutlinedButton.icon(
+                              onPressed: _showAssignServicesModal,
+                              icon: const Icon(Icons.room_service_rounded, size: 16),
+                              label: const Text('Cargar Servicios'),
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: AppColors.navyPrimary,
+                                side: const BorderSide(color: AppColors.navyPrimary),
+                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                              ),
+                            ),
+                            ElevatedButton.icon(
+                              onPressed: _showAddStudentModal,
+                              icon: const Icon(Icons.person_add_alt_1_rounded, size: 16),
+                              label: const Text('+ Inscribir / Agregar Hijo'),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: AppColors.navyPrimary,
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                              ),
+                            ),
+                          ],
                         ),
                       ],
                     ),

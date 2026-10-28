@@ -347,6 +347,40 @@ class SchoolRepository {
     return result['school'] as School;
   }
 
+  /// Actualiza la suscripción y método de pago de un colegio
+  Future<void> updateSchoolSubscription({
+    required String schoolId,
+    required String newStatus,
+    String? metodoPago,
+  }) async {
+    if (_supabaseClient != null && SupabaseConfig.isConfigured) {
+      try {
+        final updateData = <String, dynamic>{
+          'estado_suscripcion': newStatus,
+        };
+        if (metodoPago != null) {
+          updateData['metodo_pago'] = metodoPago;
+        }
+        await _supabaseClient
+            .from('colegios')
+            .update(updateData)
+            .eq('id', schoolId);
+      } catch (e) {
+        debugPrint('Error actualizando suscripción: $e');
+      }
+    }
+
+    final index = _demoSchools.indexWhere((s) => s.id == schoolId);
+    if (index != -1) {
+      final old = _demoSchools[index];
+      _demoSchools[index] = old.copyWith(
+        estadoSuscripcion: newStatus,
+        metodoPago: metodoPago ?? old.metodoPago,
+        metodoPagoRegistrado: metodoPago != null || old.metodoPagoRegistrado,
+      );
+    }
+  }
+
   /// Actualiza el estado de la suscripción (Activar, Suspender, etc.)
   Future<void> updateSubscriptionStatus(String schoolId, String newStatus) async {
     if (_supabaseClient != null && SupabaseConfig.isConfigured) {
@@ -431,15 +465,17 @@ class SchoolRepository {
     final trialSchools = list.where((s) => s.isTrial).length;
     final totalStudents = list.fold<int>(0, (sum, s) => sum + s.totalEstudiantes);
 
-    // Estimación de MRR (RD$): Asumiendo RD$ 40,000 promedio mensual por colegio suscrito
-    final estimatedMRR = activeSchools * 45000.0;
+    // MRR y ARR reales calculados según las cuotas individuales de cada colegio (Issue #22)
+    final realMRR = list.fold<double>(0.0, (sum, s) => sum + s.cuotaMensualSaaS);
+    final realARR = realMRR * 12;
 
     return {
       'totalSchools': totalSchools,
       'activeSchools': activeSchools,
       'trialSchools': trialSchools,
       'totalStudents': totalStudents,
-      'estimatedMRR': estimatedMRR,
+      'estimatedMRR': realMRR,
+      'estimatedARR': realARR,
     };
   }
 

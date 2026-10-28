@@ -6,6 +6,7 @@ import 'family_detail_dialog.dart';
 import 'create_family_dialog.dart';
 import '../../finances/screens/record_payment_dialog.dart';
 import '../../superadmin/repositories/school_repository.dart';
+import '../../schools/screens/school_payment_method_screen.dart';
 
 /// Pantalla del Directorio de Cuentas Familiares en EDUNEX
 class FamilyDirectoryScreen extends StatefulWidget {
@@ -81,6 +82,62 @@ class _FamilyDirectoryScreenState extends State<FamilyDirectoryScreen> {
       );
       return;
     }
+
+    try {
+      final school = await SchoolRepository().getSchoolById(targetColegioId);
+      if (school != null && !school.tieneMetodoPagoValido) {
+        if (!mounted) return;
+        showDialog(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            title: const Row(
+              children: [
+                Icon(Icons.lock_clock_rounded, color: Color(0xFFDC2626), size: 24),
+                SizedBox(width: 10),
+                Text('Método de Pago Requerido', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+              ],
+            ),
+            content: const Text(
+              'Para habilitar el enrolamiento de alumnos y familias en tu centro educativo, debes registrar un método de pago en el menú lateral (Método de Pago & Suscripción).',
+              style: TextStyle(fontSize: 13),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(ctx).pop(),
+                child: const Text('Cerrar'),
+              ),
+              ElevatedButton.icon(
+                onPressed: () {
+                  Navigator.of(ctx).pop();
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => Scaffold(
+                        appBar: AppBar(
+                          title: const Text('Método de Pago & Suscripción'),
+                          backgroundColor: AppColors.navyPrimary,
+                          foregroundColor: Colors.white,
+                        ),
+                        body: SchoolPaymentMethodScreen(
+                          colegioId: targetColegioId,
+                        ),
+                      ),
+                    ),
+                  );
+                },
+                icon: const Icon(Icons.credit_card_rounded, size: 16),
+                label: const Text('Configurar Método de Pago'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.navyPrimary,
+                  foregroundColor: Colors.white,
+                ),
+              ),
+            ],
+          ),
+        );
+        return;
+      }
+    } catch (_) {}
 
     CreateFamilyDialog.show(
       context,

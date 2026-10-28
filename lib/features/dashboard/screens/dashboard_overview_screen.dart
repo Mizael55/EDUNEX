@@ -8,6 +8,8 @@ import '../../families/screens/create_family_dialog.dart';
 import '../../finances/screens/record_payment_dialog.dart';
 import '../../services/screens/daycare_attendance_dialog.dart';
 import '../../services/screens/transport_routes_dialog.dart';
+import '../../superadmin/repositories/school_repository.dart';
+import '../../schools/screens/school_payment_method_screen.dart';
 
 /// Pantalla Principal del Dashboard de EDUNEX
 class DashboardOverviewScreen extends StatefulWidget {
@@ -54,6 +56,66 @@ class _DashboardOverviewScreenState extends State<DashboardOverviewScreen> {
     } catch (_) {
       if (mounted) setState(() => _isLoading = false);
     }
+  }
+
+  Future<bool> _verifyPaymentMethodBeforeEnroll() async {
+    if (widget.colegioId == null) return true;
+    try {
+      final school = await SchoolRepository().getSchoolById(widget.colegioId!);
+      if (school != null && !school.tieneMetodoPagoValido) {
+        if (!mounted) return false;
+        showDialog(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            title: const Row(
+              children: [
+                Icon(Icons.lock_clock_rounded, color: Color(0xFFDC2626), size: 24),
+                SizedBox(width: 10),
+                Text('Método de Pago Requerido', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+              ],
+            ),
+            content: const Text(
+              'Para habilitar el enrolamiento de alumnos y familias en tu centro educativo, debes registrar un método de pago o realizar el pago correspondiente en el menú lateral (Método de Pago & Suscripción).',
+              style: TextStyle(fontSize: 13),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(ctx).pop(),
+                child: const Text('Cerrar'),
+              ),
+              ElevatedButton.icon(
+                onPressed: () {
+                  Navigator.of(ctx).pop();
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => Scaffold(
+                        appBar: AppBar(
+                          title: const Text('Método de Pago & Suscripción'),
+                          backgroundColor: AppColors.navyPrimary,
+                          foregroundColor: Colors.white,
+                        ),
+                        body: SchoolPaymentMethodScreen(
+                          colegioId: widget.colegioId,
+                        ),
+                      ),
+                    ),
+                  );
+                },
+                icon: const Icon(Icons.credit_card_rounded, size: 16),
+                label: const Text('Configurar Método de Pago'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.navyPrimary,
+                  foregroundColor: Colors.white,
+                ),
+              ),
+            ],
+          ),
+        );
+        return false;
+      }
+    } catch (_) {}
+    return true;
   }
 
   @override
@@ -242,7 +304,9 @@ class _DashboardOverviewScreenState extends State<DashboardOverviewScreen> {
                   icon: Icons.person_add_alt_1_rounded,
                   label: 'Enrolar Familia',
                   color: AppColors.electricBlue,
-                  onTap: () {
+                  onTap: () async {
+                    final canEnroll = await _verifyPaymentMethodBeforeEnroll();
+                    if (!canEnroll || !mounted) return;
                     CreateFamilyDialog.show(
                       context,
                       repository: widget.familyRepository,
@@ -255,7 +319,9 @@ class _DashboardOverviewScreenState extends State<DashboardOverviewScreen> {
                   icon: Icons.school_rounded,
                   label: 'Matricular Alumno',
                   color: AppColors.navyPrimary,
-                  onTap: () {
+                  onTap: () async {
+                    final canEnroll = await _verifyPaymentMethodBeforeEnroll();
+                    if (!canEnroll || !mounted) return;
                     EnrollStudentDialog.show(
                       context,
                       repository: widget.familyRepository,
@@ -412,23 +478,6 @@ class _DashboardOverviewScreenState extends State<DashboardOverviewScreen> {
                             side: const BorderSide(color: AppColors.navyPrimary),
                             padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                          ),
-                        ),
-                        TextButton.icon(
-                          onPressed: () async {
-                            final schoolId = widget.colegioId ?? 'a0000000-0000-0000-0000-000000000001';
-                            final schoolName = widget.schoolName ?? 'Colegio Cliente';
-                            await FamilyRepository.seedInitialFamiliesForSchool(
-                              schoolId: schoolId,
-                              schoolName: schoolName,
-                            );
-                            _loadData();
-                          },
-                          icon: const Icon(Icons.auto_awesome_rounded, size: 16),
-                          label: const Text('Cargar Comunidad de Prueba'),
-                          style: TextButton.styleFrom(
-                            foregroundColor: AppColors.accentGreen,
-                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                           ),
                         ),
                       ],

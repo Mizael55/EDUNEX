@@ -37,6 +37,7 @@ import '../features/teacher_portal/repositories/teacher_repository.dart';
 import '../features/teacher_portal/screens/teacher_portal_screen.dart';
 import '../features/guidance/repositories/guidance_repository.dart';
 import '../features/guidance/screens/guidance_management_screen.dart';
+import '../features/schools/screens/school_payment_method_screen.dart';
 import 'login_screen.dart';
 
 /// Shell principal responsivo de EDUNEX con navegación adaptativa
@@ -306,6 +307,10 @@ class _MainShellState extends State<MainShell> {
         title: 'Psicología & Convivencia',
         icon: Icons.psychology_rounded,
       ),
+      const NavigationItem(
+        title: 'Método de Pago & Suscripción',
+        icon: Icons.credit_card_rounded,
+      ),
     ];
   }
 
@@ -517,6 +522,12 @@ class _MainShellState extends State<MainShell> {
         return GuidanceManagementScreen(
           guidanceRepository: _guidanceRepository,
           colegioId: widget.userProfile.colegioId ?? '',
+        );
+      case 12:
+        return SchoolPaymentMethodScreen(
+          colegioId: widget.userProfile.colegioId,
+          schoolRepository: _schoolRepository,
+          onPaymentMethodConfigured: () => setState(() {}),
         );
       default:
         return _buildPlaceholderScreen(_navItems[_selectedIndex].title);

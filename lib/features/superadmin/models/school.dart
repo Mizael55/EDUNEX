@@ -31,6 +31,10 @@ class School {
   final String? directorEmail;
   final String? directorCedula;
   final String? directorTelefono;
+  // Issue #22 & #23: Sucursales, Tarificación SaaS y Método de Pago
+  final int sucursalesCount;
+  final String? metodoPago;
+  final bool metodoPagoRegistrado;
 
   const School({
     required this.id,
@@ -59,7 +63,36 @@ class School {
     this.directorEmail,
     this.directorCedula,
     this.directorTelefono,
+    this.sucursalesCount = 0,
+    this.metodoPago,
+    this.metodoPagoRegistrado = false,
   });
+
+  /// Cuota mensual SaaS según rango de alumnos y sucursales (Issue #22)
+  /// - 100 a 250 alumnos: RD$ 4,000 / mes
+  /// - 251 a 400 alumnos: RD$ 5,500 / mes
+  /// - 450 en adelante: RD$ 7,000 / mes
+  /// - +15% de costo adicional por cada sucursal extra
+  double get cuotaMensualSaaS {
+    double base;
+    if (maxEstudiantes <= 250) {
+      base = 4000.0;
+    } else if (maxEstudiantes <= 400) {
+      base = 5500.0;
+    } else {
+      base = 7000.0;
+    }
+    if (sucursalesCount > 0) {
+      base += base * 0.15 * sucursalesCount;
+    }
+    return base;
+  }
+
+  /// Facturación anual del colegio (cuota mensual * 12)
+  double get cuotaAnualSaaS => cuotaMensualSaaS * 12;
+
+  /// Retorna si el colegio tiene método de pago registrado o suscripción activa
+  bool get tieneMetodoPagoValido => metodoPagoRegistrado || (metodoPago != null && metodoPago!.isNotEmpty) || estadoSuscripcion == 'active';
 
   bool get isActive => estadoSuscripcion == 'active';
   bool get isTrial => estadoSuscripcion == 'trial';
@@ -147,6 +180,76 @@ class School {
       directorEmail: json['director_email']?.toString(),
       directorCedula: json['director_cedula']?.toString(),
       directorTelefono: json['director_telefono']?.toString(),
+      sucursalesCount: json['sucursales_count'] is int
+          ? json['sucursales_count'] as int
+          : int.tryParse(json['sucursales_count']?.toString() ?? '0') ?? 0,
+      metodoPago: json['metodo_pago']?.toString(),
+      metodoPagoRegistrado: json['metodo_pago_registrado'] as bool? ??
+          (json['metodo_pago'] != null && json['metodo_pago'].toString().isNotEmpty),
+    );
+  }
+
+  School copyWith({
+    String? id,
+    String? nombre,
+    String? rnc,
+    String? siglas,
+    String? telefono,
+    String? emailContacto,
+    String? direccion,
+    String? logoUrl,
+    String? estadoSuscripcion,
+    int? maxEstudiantes,
+    DateTime? createdAt,
+    int? totalEstudiantes,
+    int? totalFamilias,
+    double? precioInicial,
+    double? precioPrimaria,
+    double? precioSecundaria,
+    double? precioMatricula,
+    bool? sujetoAMejoraPago,
+    double? descuentoProntoPagoAnualPct,
+    double? descuentoProntoPagoSemestralPct,
+    double? descuentoProntoPagoTrimestralPct,
+    double? descuentoHermanosPct,
+    String? directorNombre,
+    String? directorEmail,
+    String? directorCedula,
+    String? directorTelefono,
+    int? sucursalesCount,
+    String? metodoPago,
+    bool? metodoPagoRegistrado,
+  }) {
+    return School(
+      id: id ?? this.id,
+      nombre: nombre ?? this.nombre,
+      rnc: rnc ?? this.rnc,
+      siglas: siglas ?? this.siglas,
+      telefono: telefono ?? this.telefono,
+      emailContacto: emailContacto ?? this.emailContacto,
+      direccion: direccion ?? this.direccion,
+      logoUrl: logoUrl ?? this.logoUrl,
+      estadoSuscripcion: estadoSuscripcion ?? this.estadoSuscripcion,
+      maxEstudiantes: maxEstudiantes ?? this.maxEstudiantes,
+      createdAt: createdAt ?? this.createdAt,
+      totalEstudiantes: totalEstudiantes ?? this.totalEstudiantes,
+      totalFamilias: totalFamilias ?? this.totalFamilias,
+      precioInicial: precioInicial ?? this.precioInicial,
+      precioPrimaria: precioPrimaria ?? this.precioPrimaria,
+      precioSecundaria: precioSecundaria ?? this.precioSecundaria,
+      precioMatricula: precioMatricula ?? this.precioMatricula,
+      sujetoAMejoraPago: sujetoAMejoraPago ?? this.sujetoAMejoraPago,
+      descuentoProntoPagoAnualPct: descuentoProntoPagoAnualPct ?? this.descuentoProntoPagoAnualPct,
+      descuentoProntoPagoSemestralPct: descuentoProntoPagoSemestralPct ?? this.descuentoProntoPagoSemestralPct,
+      descuentoProntoPagoTrimestralPct: descuentoProntoPagoTrimestralPct ?? this.descuentoProntoPagoTrimestralPct,
+      descuentoHermanosPct: descuentoHermanosPct ?? this.descuentoHermanosPct,
+      directorNombre: directorNombre ?? this.directorNombre,
+      directorEmail: directorEmail ?? this.directorEmail,
+      directorCedula: directorCedula ?? this.directorCedula,
+      directorTelefono: directorTelefono ?? this.directorTelefono,
+      sucursalesCount: sucursalesCount ?? this.sucursalesCount,
+      metodoPago: metodoPago ?? this.metodoPago,
+      metodoPagoRegistrado: metodoPagoRegistrado ?? this.metodoPagoRegistrado,
     );
   }
 
@@ -175,6 +278,9 @@ class School {
       'director_email': directorEmail,
       'director_cedula': directorCedula,
       'director_telefono': directorTelefono,
+      'sucursales_count': sucursalesCount,
+      'metodo_pago': metodoPago,
+      'metodo_pago_registrado': metodoPagoRegistrado,
     };
   }
 }

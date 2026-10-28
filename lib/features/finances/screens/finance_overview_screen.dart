@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../../theme/app_colors.dart';
 import '../../families/repositories/family_repository.dart';
+import '../../superadmin/models/school.dart';
 import '../../superadmin/repositories/school_repository.dart';
 import '../models/billing_models.dart';
 import '../models/payment_approval_request.dart';
@@ -33,6 +34,9 @@ class _FinanceOverviewScreenState extends State<FinanceOverviewScreen> {
   final double _totalCobrado = 0.0;
   double _totalPorCobrar = 0.0;
   final List<Map<String, dynamic>> _transacciones = [];
+  List<School> _saasSchools = [];
+  double _totalMRR = 0.0;
+  double _totalARR = 0.0;
   DebtAgingSummary? _agingSummary;
   List<PaymentApprovalRequest> _abonoRequests = [];
   int get _pendingAbonosCount =>
@@ -49,6 +53,24 @@ class _FinanceOverviewScreenState extends State<FinanceOverviewScreen> {
   Future<void> _loadFinances() async {
     setState(() => _isLoading = true);
     try {
+      if (widget.isSuperAdmin) {
+        final schoolRepo = widget.schoolRepository ?? SchoolRepository();
+        final schools = await schoolRepo.getSchools();
+        double mrr = 0.0;
+        for (final s in schools) {
+          mrr += s.cuotaMensualSaaS;
+        }
+        if (mounted) {
+          setState(() {
+            _saasSchools = schools;
+            _totalMRR = mrr;
+            _totalARR = mrr * 12;
+            _isLoading = false;
+          });
+        }
+        return;
+      }
+
       final families = await widget.familyRepository.getFamilies();
       double pending = 0;
       for (final f in families) {
@@ -223,24 +245,24 @@ class _FinanceOverviewScreenState extends State<FinanceOverviewScreen> {
                   childAspectRatio: isWide ? 2.1 : 2.6,
                   children: [
                     _buildFinanceCard(
-                      title: widget.isSuperAdmin ? 'MRR Mensual Estimado' : 'Total Recaudado (Mes)',
-                      amount: widget.isSuperAdmin ? 'RD\$ 85,000.00' : 'RD\$ ${_totalCobrado.toStringAsFixed(2)}',
-                      subtitle: widget.isSuperAdmin ? 'Ingreso recurrente por licencias' : '88 transacciones aprobadas',
+                      title: widget.isSuperAdmin ? 'MRR Mensual SaaS' : 'Total Recaudado (Mes)',
+                      amount: widget.isSuperAdmin ? 'RD\$ ${_totalMRR.toStringAsFixed(2)}' : 'RD\$ ${_totalCobrado.toStringAsFixed(2)}',
+                      subtitle: widget.isSuperAdmin ? '${_saasSchools.length} colegio(s) facturado(s)' : '88 transacciones aprobadas',
                       icon: Icons.trending_up_rounded,
                       color: AppColors.accentGreen,
                     ),
                     _buildFinanceCard(
-                      title: widget.isSuperAdmin ? 'Facturación Pendiente' : 'Cuentas por Cobrar (Mora)',
-                      amount: 'RD\$ ${_totalPorCobrar.toStringAsFixed(2)}',
-                      subtitle: widget.isSuperAdmin ? '2 colegios con vencimiento próximo' : 'Familias con cuotas vencidas',
+                      title: widget.isSuperAdmin ? 'ARR Proyectado Anual' : 'Cuentas por Cobrar (Mora)',
+                      amount: widget.isSuperAdmin ? 'RD\$ ${_totalARR.toStringAsFixed(2)}' : 'RD\$ ${_totalPorCobrar.toStringAsFixed(2)}',
+                      subtitle: widget.isSuperAdmin ? 'Facturación total anualizada' : 'Familias con cuotas vencidas',
                       icon: Icons.account_balance_wallet_rounded,
                       color: const Color(0xFFB45309),
                     ),
                     _buildFinanceCard(
-                      title: widget.isSuperAdmin ? 'Tasa de Cobro SaaS' : 'Eficiencia de Cobro',
-                      amount: '94.2%',
-                      subtitle: 'Meta mensual: >90%',
-                      icon: Icons.pie_chart_outline_rounded,
+                      title: widget.isSuperAdmin ? 'Colegios Activos' : 'Eficiencia de Cobro',
+                      amount: widget.isSuperAdmin ? '${_saasSchools.where((s) => s.isActive).length}' : '94.2%',
+                      subtitle: widget.isSuperAdmin ? 'Instituciones suscritas' : 'Meta mensual: >90%',
+                      icon: Icons.domain_rounded,
                       color: AppColors.electricBlue,
                     ),
                   ],
@@ -442,6 +464,8 @@ class _FinanceOverviewScreenState extends State<FinanceOverviewScreen> {
                   const SizedBox(height: 12),
                   if (_isLoading)
                     const Center(child: Padding(padding: EdgeInsets.all(30), child: CircularProgressIndicator()))
+                  else if (widget.isSuperAdmin)
+                    _buildSaaSSchoolsTable()
                   else if (_transacciones.isEmpty)
                     Padding(
                       padding: const EdgeInsets.symmetric(vertical: 32),
@@ -576,7 +600,133 @@ Método: ${t['metodo']}
   );
 }
 
-Widget _buildAgingSection() {
+  Widget _buildSaaSSchoolsTable() {
+    if (_saasSchools.isEmpty) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 32),
+        child: Center(
+          child: Column(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(14),
+                decoration: const BoxDecoration(
+                  color: Color(0xFFF1F5F9),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.domain_disabled_rounded, size: 32, color: Color(0xFF94A3B8)),
+              ),
+              const SizedBox(height: 12),
+              const Text(
+                'No hay instituciones educativas registradas',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: AppColors.navyPrimary),
+              ),
+              const SizedBox(height: 4),
+              const Text(
+                'Los colegios clientes enrolados en el SaaS y sus planes de facturación aparecerán aquí.',
+                style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return ListView.separated(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      itemCount: _saasSchools.length,
+      separatorBuilder: (_, _) => const Divider(height: 1, color: Color(0xFFF1F5F9)),
+      itemBuilder: (context, index) {
+        final school = _saasSchools[index];
+        final cuotaMensual = school.cuotaMensualSaaS;
+        final cuotaAnual = school.cuotaAnualSaaS;
+
+        String tierDescription;
+        if (school.maxEstudiantes <= 250) {
+          tierDescription = '100 a 250 alumnos (RD\$ 4,000/mes)';
+        } else if (school.maxEstudiantes <= 400) {
+          tierDescription = '251 a 400 alumnos (RD\$ 5,500/mes)';
+        } else {
+          tierDescription = '450+ alumnos (RD\$ 7,000/mes)';
+        }
+
+        return Padding(
+          padding: const EdgeInsets.symmetric(vertical: 14),
+          child: Row(
+            children: [
+              Container(
+                width: 46,
+                height: 46,
+                decoration: BoxDecoration(
+                  color: AppColors.navyPrimary.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(Icons.domain_rounded, color: AppColors.navyPrimary, size: 24),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                flex: 4,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      school.nombre,
+                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: AppColors.navyPrimary),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      'RNC: ${school.rnc ?? "N/D"} • Director: ${school.directorNombre ?? "Lic. Director"}',
+                      style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      '$tierDescription • ${school.maxEstudiantes} alumnos ${school.sucursalesCount > 0 ? "• ${school.sucursalesCount} sucursal(es) (+15%)" : "• Sede única"}',
+                      style: const TextStyle(fontSize: 11, color: Color(0xFF0369A1), fontWeight: FontWeight.w600),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 12),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(
+                    'RD\$ ${cuotaMensual.toStringAsFixed(2)} / mes',
+                    style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15, color: AppColors.accentGreen),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    'Anual: RD\$ ${cuotaAnual.toStringAsFixed(2)}',
+                    style: const TextStyle(fontSize: 11, color: AppColors.textSecondary, fontWeight: FontWeight.w600),
+                  ),
+                ],
+              ),
+              const SizedBox(width: 16),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: school.isActive
+                      ? const Color(0xFFDCFCE7)
+                      : const Color(0xFFFEF3C7),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  school.isActive ? 'ACTIVO' : 'TRIAL',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                    color: school.isActive ? const Color(0xFF166534) : const Color(0xFFB45309),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildAgingSection() {
   final aging = _agingSummary;
   if (aging == null) {
     return const Center(child: Padding(padding: EdgeInsets.all(40), child: CircularProgressIndicator()));

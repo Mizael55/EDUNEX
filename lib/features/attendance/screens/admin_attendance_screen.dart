@@ -172,7 +172,7 @@ class _AdminAttendanceScreenState extends State<AdminAttendanceScreen> {
                             ),
                             const SizedBox(height: 4),
                             Text(
-                              'Registro diario de asistencia, tardanzas y ausencias con notificación inmediata a familias',
+                              'Consolidado institucional y registro diario de asistencia administrado por profesores (Issue #23)',
                               style: TextStyle(
                                 fontSize: 14,
                                 color: AppColors.textSecondary.withValues(alpha: 0.85),
@@ -181,24 +181,74 @@ class _AdminAttendanceScreenState extends State<AdminAttendanceScreen> {
                           ],
                         ),
                       ),
-                      ElevatedButton.icon(
-                        onPressed: _isSaving ? null : _saveAttendance,
-                        icon: _isSaving
-                            ? const SizedBox(
-                                width: 16,
-                                height: 16,
-                                child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                              )
-                            : const Icon(Icons.send_rounded, size: 18),
-                        label: Text(_isSaving ? 'Guardando...' : 'Guardar y Notificar a Padres'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.navyPrimary,
-                          foregroundColor: AppColors.surfaceWhite,
-                          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                        ),
+                      Wrap(
+                        spacing: 10,
+                        runSpacing: 10,
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                            decoration: BoxDecoration(
+                              color: AppColors.navyPrimary.withValues(alpha: 0.08),
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(color: AppColors.navyPrimary.withValues(alpha: 0.2)),
+                            ),
+                            child: const Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.visibility_rounded, size: 16, color: AppColors.navyPrimary),
+                                SizedBox(width: 8),
+                                Text(
+                                  'Modo Auditoría Directiva',
+                                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: AppColors.navyPrimary),
+                                ),
+                              ],
+                            ),
+                          ),
+                          ElevatedButton.icon(
+                            onPressed: _isSaving ? null : _saveAttendance,
+                            icon: _isSaving
+                                ? const SizedBox(
+                                    width: 16,
+                                    height: 16,
+                                    child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                                  )
+                                : const Icon(Icons.send_rounded, size: 18),
+                            label: Text(_isSaving ? 'Guardando...' : 'Guardar y Notificar a Padres'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.navyPrimary,
+                              foregroundColor: AppColors.surfaceWhite,
+                              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                            ),
+                          ),
+                        ],
                       ),
                     ],
+                  ),
+
+                  const SizedBox(height: 16),
+
+                  // Banner didáctico (Issue #23 Caso 3)
+                  Container(
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFEFF6FF),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: const Color(0xFFBFDBFE)),
+                    ),
+                    child: const Row(
+                      children: [
+                        Icon(Icons.info_outline_rounded, color: Color(0xFF1D4ED8), size: 22),
+                        SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            'Control de Asistencia Institucional: El pase de lista operativo diario es administrado por el docente titular en el aula. Este dashboard permite a la dirección auditar la asistencia por curso y sección sin botones manuales de llegada.',
+                            style: TextStyle(fontSize: 12, color: Color(0xFF1E40AF), fontWeight: FontWeight.w500),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
 
                   const SizedBox(height: 20),
@@ -296,6 +346,13 @@ class _AdminAttendanceScreenState extends State<AdminAttendanceScreen> {
                             side: const BorderSide(color: AppColors.navyPrimary),
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                           ),
+                        ),
+
+                        // Botón para refrescar
+                        IconButton(
+                          onPressed: _loadAttendance,
+                          icon: const Icon(Icons.refresh_rounded, color: AppColors.navyPrimary),
+                          tooltip: 'Actualizar asistencia en tiempo real',
                         ),
                       ],
                     ),
@@ -569,7 +626,7 @@ class _AdminAttendanceScreenState extends State<AdminAttendanceScreen> {
 
           const SizedBox(width: 12),
 
-          // Selector de Estado de Asistencia
+          // Selector de Estado de Asistencia / Auditoría Docente (Issue #23)
           Wrap(
             spacing: 6,
             children: [
