@@ -38,39 +38,14 @@ class FamilyRepository {
     this._useDemoFallback = false,
   }) : _supabaseClient = supabaseClient ?? _resolveClient();
 
-  /// Persistencia local en SharedPreferences para garantizar cero pérdida de datos en QA
-  static bool _prefsLoaded = false;
-
+  /// Persistencia 100% en Supabase: Se prohíbe explícitamente guardar data en SharedPreferences
   static Future<void> _persistCustomFamilies() async {
-    try {
-      final prefs = await SharedPreferences.getInstance().timeout(const Duration(milliseconds: 500));
-      final listJson = jsonEncode(_customFamilies.map((f) => f.toJson()).toList());
-      await prefs.setString(_storageKeyCustomFamilies, listJson);
-    } catch (e) {
-      debugPrint('Aviso: No se pudo persistir familias localmente: $e');
-    }
+    // Intencionalmente vacío: Cero guardado en SharedPreferences para garantizar
+    // que el 100% de la información persista única y exclusivamente en Supabase.
   }
 
   static Future<void> _loadPersistedCustomFamilies() async {
-    if (_prefsLoaded) return;
-    try {
-      final prefs = await SharedPreferences.getInstance().timeout(const Duration(milliseconds: 500));
-      _prefsLoaded = true;
-      final listJson = prefs.getString(_storageKeyCustomFamilies);
-      if (listJson != null && listJson.isNotEmpty) {
-        final List decoded = jsonDecode(listJson) as List;
-        for (final item in decoded) {
-          if (item is Map<String, dynamic>) {
-            final f = Family.fromJson(item);
-            if (!_customFamilies.any((existing) => existing.id == f.id)) {
-              _customFamilies.add(f);
-            }
-          }
-        }
-      }
-    } catch (e) {
-      debugPrint('Aviso: Error cargando familias de SharedPreferences: $e');
-    }
+    // Intencionalmente vacío: Toda la data en producción proviene de las tablas de Supabase.
   }
 
   /// Lista de familias de demostración para fallback fuera de línea y tests
@@ -85,7 +60,6 @@ class FamilyRepository {
     _agreements.clear();
     _questions.clear();
     _billingRuns.clear();
-    _prefsLoaded = false;
     try {
       SharedPreferences.getInstance()
           .then((prefs) => prefs.remove(_storageKeyCustomFamilies))
@@ -98,7 +72,6 @@ class FamilyRepository {
     _demoFamilies.clear();
     _demoFamilies.addAll(_seedFamilies);
     _customFamilies.clear();
-    _prefsLoaded = false;
   }
 
   static final List<Family> _seedFamilies = [

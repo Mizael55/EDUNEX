@@ -778,118 +778,14 @@ class AcademicRepository {
   }
 
   // ==========================================
-  // PERSISTENCIA LOCAL (SharedPreferences)
+  // PERSISTENCIA LOCAL (DESHABILITADA)
   // ==========================================
   Future<void> _loadFromStorage() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-
-      final coursesRaw = prefs.getString(_prefKeyCourses);
-      if (coursesRaw != null) {
-        final list = (jsonDecode(coursesRaw) as List<dynamic>)
-            .map((e) => AcademicCourse.fromJson(e as Map<String, dynamic>))
-            .toList();
-        if (list.isNotEmpty) {
-          _courses.clear();
-          _courses.addAll(list);
-        }
-      }
-
-      final sectionsRaw = prefs.getString(_prefKeySections);
-      if (sectionsRaw != null) {
-        final list = (jsonDecode(sectionsRaw) as List<dynamic>)
-            .map((e) => AcademicSection.fromJson(e as Map<String, dynamic>))
-            .toList();
-        if (list.isNotEmpty) {
-          _sections.clear();
-          _sections.addAll(list);
-        }
-      }
-
-      final subjectsRaw = prefs.getString(_prefKeySubjects);
-      if (subjectsRaw != null) {
-        final list = (jsonDecode(subjectsRaw) as List<dynamic>)
-            .map((e) => AcademicSubject.fromJson(e as Map<String, dynamic>))
-            .toList();
-        if (list.isNotEmpty) {
-          _subjects.clear();
-          _subjects.addAll(list);
-        }
-      }
-
-      final teachersRaw = prefs.getString(_prefKeyTeachers);
-      if (teachersRaw != null) {
-        final list = (jsonDecode(teachersRaw) as List<dynamic>)
-            .map((e) => AcademicTeacher.fromJson(e as Map<String, dynamic>))
-            .toList();
-        if (list.isNotEmpty) {
-          _teachers.clear();
-          _teachers.addAll(list);
-        }
-      }
-
-      final assignmentsRaw = prefs.getString(_prefKeyAssignments);
-      if (assignmentsRaw != null) {
-        final list = (jsonDecode(assignmentsRaw) as List<dynamic>)
-            .map((e) => TeacherAcademicAssignment.fromJson(e as Map<String, dynamic>))
-            .toList();
-        if (list.isNotEmpty) {
-          _teacherAssignments.clear();
-          _teacherAssignments.addAll(list);
-        }
-      }
-
-      final enrollmentsRaw = prefs.getString(_prefKeyEnrollments);
-      if (enrollmentsRaw != null) {
-        final list = (jsonDecode(enrollmentsRaw) as List<dynamic>)
-            .map((e) => StudentEnrollment.fromJson(e as Map<String, dynamic>))
-            .toList();
-        if (list.isNotEmpty) {
-          _enrollments.clear();
-          _enrollments.addAll(list);
-        }
-      }
-
-      final eventsRaw = prefs.getString(_prefKeyClassroomEvents);
-      if (eventsRaw != null) {
-        final list = (jsonDecode(eventsRaw) as List<dynamic>)
-            .map((e) => ClassroomEvent.fromJson(e as Map<String, dynamic>))
-            .toList();
-        if (list.isNotEmpty) {
-          _classroomEvents.clear();
-          _classroomEvents.addAll(list);
-        }
-      }
-
-      final reportsRaw = prefs.getString(_prefKeyReports);
-      if (reportsRaw != null) {
-        final list = (jsonDecode(reportsRaw) as List<dynamic>)
-            .map((e) => StudentGradeReport.fromJson(e as Map<String, dynamic>))
-            .toList();
-        if (list.isNotEmpty) {
-          _reports.clear();
-          _reports.addAll(list);
-        }
-      }
-    } catch (_) {}
+    // Intencionalmente vacío: Cero lectura de SharedPreferences en producción.
   }
 
   Future<void> _saveToStorage() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString(_prefKeyCourses, jsonEncode(_courses.map((e) => e.toJson()).toList()));
-      await prefs.setString(_prefKeySections, jsonEncode(_sections.map((e) => e.toJson()).toList()));
-      await prefs.setString(_prefKeySubjects, jsonEncode(_subjects.map((e) => e.toJson()).toList()));
-      await prefs.setString(_prefKeyTeachers, jsonEncode(_teachers.map((e) => e.toJson()).toList()));
-      await prefs.setString(
-          _prefKeyAssignments, jsonEncode(_teacherAssignments.map((e) => e.toJson()).toList()));
-      await prefs.setString(
-          _prefKeyEnrollments, jsonEncode(_enrollments.map((e) => e.toJson()).toList()));
-      await prefs.setString(
-          _prefKeyClassroomEvents, jsonEncode(_classroomEvents.map((e) => e.toJson()).toList()));
-      await prefs.setString(
-          _prefKeyReports, jsonEncode(_reports.map((e) => e.toJson()).toList()));
-    } catch (_) {}
+    // Intencionalmente vacío: Cero guardado en SharedPreferences en producción.
   }
 
   /// Limpia todos los datos académicos en memoria y en almacenamiento persistente
