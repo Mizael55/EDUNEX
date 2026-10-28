@@ -6,27 +6,27 @@ import '../repositories/school_repository.dart';
 
 /// Diálogo para que el SuperAdmin resetee contraseñas de directores y personal escolar
 class ResetPasswordDialog extends StatefulWidget {
-  final String schoolId;
-  final String schoolName;
-  final String userEmail;
-  final String userName;
+  final String? schoolId;
+  final String? schoolName;
+  final String? userEmail;
+  final String? userName;
   final SchoolRepository schoolRepository;
 
   const ResetPasswordDialog({
     super.key,
-    required this.schoolId,
-    required this.schoolName,
-    required this.userEmail,
-    required this.userName,
+    this.schoolId,
+    this.schoolName,
+    this.userEmail,
+    this.userName,
     required this.schoolRepository,
   });
 
   static Future<bool?> show(
     BuildContext context, {
-    required String schoolId,
-    required String schoolName,
-    required String userEmail,
-    required String userName,
+    String? schoolId,
+    String? schoolName,
+    String? userEmail,
+    String? userName,
     required SchoolRepository schoolRepository,
   }) {
     return showDialog<bool>(
@@ -49,6 +49,7 @@ class ResetPasswordDialog extends StatefulWidget {
 class _ResetPasswordDialogState extends State<ResetPasswordDialog> {
   final _formKey = GlobalKey<FormState>();
   late TextEditingController _passwordController;
+  late TextEditingController _emailController;
   bool _obscureText = false;
   bool _isSaving = false;
 
@@ -56,18 +57,21 @@ class _ResetPasswordDialogState extends State<ResetPasswordDialog> {
   void initState() {
     super.initState();
     _passwordController = TextEditingController(text: _generateRandomPassword());
+    _emailController = TextEditingController(text: widget.userEmail ?? '');
   }
 
   @override
   void dispose() {
     _passwordController.dispose();
+    _emailController.dispose();
     super.dispose();
   }
 
   String _generateRandomPassword() {
     const chars = 'abcdefghjkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789!#%*';
     final random = Random();
-    final cleanSchool = widget.schoolName.replaceAll(RegExp(r'[^a-zA-Z]'), '');
+    final nameToClean = widget.schoolName ?? 'Edunex';
+    final cleanSchool = nameToClean.replaceAll(RegExp(r'[^a-zA-Z]'), '');
     final prefix = cleanSchool.length >= 4 ? cleanSchool.substring(0, 4) : 'Edunex';
     final suffix = List.generate(4, (_) => chars[random.nextInt(chars.length)]).join();
     return '${prefix}2026!$suffix';
@@ -77,20 +81,24 @@ class _ResetPasswordDialogState extends State<ResetPasswordDialog> {
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _isSaving = true);
+    final targetEmail = widget.userEmail?.isNotEmpty == true
+        ? widget.userEmail!
+        : _emailController.text.trim();
     final newPassword = _passwordController.text.trim();
+    final resolvedSchoolName = widget.schoolName ?? 'Red Central EDUNEX (SaaS)';
 
     try {
       await widget.schoolRepository.resetDirectorPassword(
-        schoolId: widget.schoolId,
-        directorEmail: widget.userEmail,
+        schoolId: widget.schoolId ?? '',
+        directorEmail: targetEmail,
         newPassword: newPassword,
-        schoolName: widget.schoolName,
+        schoolName: resolvedSchoolName,
       );
 
       if (mounted) {
         setState(() => _isSaving = false);
         Navigator.of(context).pop(true);
-        _showSuccessDialog(newPassword);
+        _showSuccessDialog(targetEmail, newPassword);
       }
     } catch (e) {
       if (mounted) {
@@ -105,7 +113,7 @@ class _ResetPasswordDialogState extends State<ResetPasswordDialog> {
     }
   }
 
-  void _showSuccessDialog(String newPassword) {
+  void _showSuccessDialog(String targetEmail, String newPassword) {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -220,7 +228,7 @@ class _ResetPasswordDialogState extends State<ResetPasswordDialog> {
                           ),
                         ),
                         Text(
-                          widget.schoolName,
+                          widget.schoolName ?? 'Red Central EDUNEX (SaaS)',
                           style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
                         ),
                       ],
@@ -234,36 +242,37 @@ class _ResetPasswordDialogState extends State<ResetPasswordDialog> {
               ),
               const Divider(height: 24),
 
-              // Info usuario
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF8FAFC),
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: const Color(0xFFE2E8F0)),
-                ),
-                child: Row(
-                  children: [
-                    const Icon(Icons.account_circle_outlined, color: AppColors.navyPrimary, size: 24),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            widget.userName,
-                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-                          ),
-                          Text(
-                            widget.userEmail,
-                            style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
-                          ),
-                        ],
+              // Info usuario o campo para escribir email
+              if (widget.userEmail != null && widget.userEmail!.isNotEmpty)
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF8FAFC),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: const Color(0xFFE2E8F0)),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.account_circle_outlined, color: AppColors.navyPrimary, size: 24),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              widget.userName ?? 'Director(a) / Administrador',
+                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                            ),
+                            Text(
+                              widget.userEmail!,
+                              style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
 
               const SizedBox(height: 20),
 
@@ -273,6 +282,31 @@ class _ResetPasswordDialogState extends State<ResetPasswordDialog> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    if (widget.userEmail == null || widget.userEmail!.isEmpty) ...[
+                      const Text(
+                        'Correo Electrónico a Resetear:',
+                        style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+                      ),
+                      const SizedBox(height: 6),
+                      TextFormField(
+                        controller: _emailController,
+                        decoration: const InputDecoration(
+                          hintText: 'ej. director@colegio.edu.do',
+                          prefixIcon: Icon(Icons.email_outlined, size: 20),
+                          border: OutlineInputBorder(),
+                        ),
+                        validator: (val) {
+                          if (val == null || val.trim().isEmpty) {
+                            return 'Ingresa el correo electrónico del usuario';
+                          }
+                          if (!val.contains('@') || !val.contains('.')) {
+                            return 'Ingresa un correo válido (ej. usuario@dominio.com)';
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 16),
+                    ],
                     Wrap(
                       alignment: WrapAlignment.spaceBetween,
                       crossAxisAlignment: WrapCrossAlignment.center,

@@ -602,6 +602,7 @@ class SchoolRepository {
     if (_supabaseClient != null && SupabaseConfig.isConfigured) {
       // 1. Tablas en orden estricto de dependencias FK
       final tablesToClear = [
+        'logs_auditoria',
         'documentos_estudiante',
         'pagos_detalle',
         'recibos',

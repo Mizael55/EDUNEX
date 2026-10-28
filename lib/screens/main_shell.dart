@@ -372,9 +372,20 @@ class _MainShellState extends State<MainShell> {
 
       switch (_selectedIndex) {
         case 0:
+          return SuperAdminDashboardScreen(
+            schoolRepository: _schoolRepository,
+            showOnlySchools: false,
+            onSelectSchoolToInspect: (school) {
+              setState(() {
+                _inspectedSchool = school;
+                _selectedIndex = 0;
+              });
+            },
+          );
         case 1:
           return SuperAdminDashboardScreen(
             schoolRepository: _schoolRepository,
+            showOnlySchools: true,
             onSelectSchoolToInspect: (school) {
               setState(() {
                 _inspectedSchool = school;

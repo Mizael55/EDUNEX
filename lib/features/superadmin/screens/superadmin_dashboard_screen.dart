@@ -16,11 +16,13 @@ import 'reset_password_dialog.dart';
 class SuperAdminDashboardScreen extends StatefulWidget {
   final SchoolRepository schoolRepository;
   final ValueChanged<School>? onSelectSchoolToInspect;
+  final bool showOnlySchools;
 
   const SuperAdminDashboardScreen({
     super.key,
     required this.schoolRepository,
     this.onSelectSchoolToInspect,
+    this.showOnlySchools = false,
   });
 
   @override
@@ -338,18 +340,22 @@ class _SuperAdminDashboardScreenState extends State<SuperAdminDashboardScreen> {
                       ],
                     ),
                     const SizedBox(height: 6),
-                    const Text(
-                      'Directorio de Colegios & Métricas del Negocio',
-                      style: TextStyle(
+                    Text(
+                      widget.showOnlySchools
+                          ? 'Colegios Clientes & Licencias SaaS'
+                          : 'Directorio de Colegios & Métricas del Negocio',
+                      style: const TextStyle(
                         fontSize: 24,
                         fontWeight: FontWeight.bold,
                         color: AppColors.navyPrimary,
                       ),
                     ),
                     const SizedBox(height: 4),
-                    const Text(
-                      'Gestiona los colegios clientes de la plataforma, supervisa suscripciones y audita operaciones.',
-                      style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
+                    Text(
+                      widget.showOnlySchools
+                          ? 'Directorio central de colegios afiliados, control de licencias y acceso a soporte técnico.'
+                          : 'Gestiona los colegios clientes de la plataforma, supervisa suscripciones y audita operaciones.',
+                      style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
                     ),
                   ],
                 );
@@ -361,6 +367,24 @@ class _SuperAdminDashboardScreenState extends State<SuperAdminDashboardScreen> {
                   style: OutlinedButton.styleFrom(
                     foregroundColor: AppColors.navyPrimary,
                     side: const BorderSide(color: AppColors.electricBlue, width: 1.5),
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                );
+
+                final resetPasswordButton = OutlinedButton.icon(
+                  onPressed: () {
+                    ResetPasswordDialog.show(
+                      context,
+                      schoolRepository: widget.schoolRepository,
+                    );
+                  },
+                  icon: const Icon(Icons.lock_reset_rounded, size: 18, color: Color(0xFFB45309)),
+                  label: const Text('Resetear Contraseña'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: const Color(0xFFB45309),
+                    side: const BorderSide(color: Color(0xFFFDE68A), width: 1.5),
+                    backgroundColor: const Color(0xFFFEF3C7),
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   ),
@@ -396,7 +420,8 @@ class _SuperAdminDashboardScreenState extends State<SuperAdminDashboardScreen> {
                   runSpacing: 10,
                   children: [
                     purgeButton,
-                    businessModelButton,
+                    resetPasswordButton,
+                    if (!widget.showOnlySchools) businessModelButton,
                     actionButton,
                   ],
                 );
@@ -423,62 +448,64 @@ class _SuperAdminDashboardScreenState extends State<SuperAdminDashboardScreen> {
               },
             ),
 
-            const SizedBox(height: 16),
+            if (!widget.showOnlySchools) ...[
+              const SizedBox(height: 16),
 
-            // Banner Explicativo del Rol del Dueño del Software
-            _buildAdminGuideBanner(),
+              // Banner Explicativo del Rol del Dueño del Software
+              _buildAdminGuideBanner(),
 
-            const SizedBox(height: 20),
+              const SizedBox(height: 20),
 
-            // Tarjetas de Métricas Maestras (KPIs)
-            LayoutBuilder(
-              builder: (context, constraints) {
-                final isWide = constraints.maxWidth >= 900;
-                final crossAxisCount = isWide ? 4 : (constraints.maxWidth >= 550 ? 2 : 1);
-                return GridView.count(
-                  crossAxisCount: crossAxisCount,
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  crossAxisSpacing: 16,
-                  mainAxisSpacing: 16,
-                  childAspectRatio: isWide ? 1.35 : (constraints.maxWidth >= 550 ? 1.45 : 1.8),
-                  children: [
-                    _buildKpiCard(
-                      title: 'Colegios Clientes',
-                      value: '${_kpis['totalSchools'] ?? _schools.length}',
-                      subtitle: '${_kpis['activeSchools'] ?? _schools.where((s) => s.isActive).length} con suscripción activa',
-                      description: 'Instituciones educativas registradas en la red EDUNEX.',
-                      icon: Icons.domain_rounded,
-                      color: AppColors.navyPrimary,
-                    ),
-                    _buildKpiCard(
-                      title: 'Alumnos en la Red',
-                      value: '${_kpis['totalStudents'] ?? 0}',
-                      subtitle: 'Matrícula total en el país',
-                      description: 'Total de estudiantes inscritos entre todos los colegios.',
-                      icon: Icons.groups_rounded,
-                      color: AppColors.electricBlue,
-                    ),
-                    _buildKpiCard(
-                      title: 'Auditoría del Sistema',
-                      value: 'Activa',
-                      subtitle: 'Trazabilidad y Seguridad',
-                      description: 'Supervisión en vivo de accesos, registros y eventos SaaS.',
-                      icon: Icons.security_rounded,
-                      color: const Color(0xFF0284C7),
-                    ),
-                    _buildKpiCard(
-                      title: 'Infraestructura',
-                      value: '100% OK',
-                      subtitle: 'Supabase DB • Netlify CDN',
-                      description: 'Disponibilidad en vivo de la base de datos PostgreSQL.',
-                      icon: Icons.cloud_done_rounded,
-                      color: AppColors.amberAccent,
-                    ),
-                  ],
-                );
-              },
-            ),
+              // Tarjetas de Métricas Maestras (KPIs)
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  final isWide = constraints.maxWidth >= 900;
+                  final crossAxisCount = isWide ? 4 : (constraints.maxWidth >= 550 ? 2 : 1);
+                  return GridView.count(
+                    crossAxisCount: crossAxisCount,
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    crossAxisSpacing: 16,
+                    mainAxisSpacing: 16,
+                    childAspectRatio: isWide ? 1.35 : (constraints.maxWidth >= 550 ? 1.45 : 1.8),
+                    children: [
+                      _buildKpiCard(
+                        title: 'Colegios Clientes',
+                        value: '${_kpis['totalSchools'] ?? _schools.length}',
+                        subtitle: '${_kpis['activeSchools'] ?? _schools.where((s) => s.isActive).length} con suscripción activa',
+                        description: 'Instituciones educativas registradas en la red EDUNEX.',
+                        icon: Icons.domain_rounded,
+                        color: AppColors.navyPrimary,
+                      ),
+                      _buildKpiCard(
+                        title: 'Alumnos en la Red',
+                        value: '${_kpis['totalStudents'] ?? 0}',
+                        subtitle: 'Matrícula total en el país',
+                        description: 'Total de estudiantes inscritos entre todos los colegios.',
+                        icon: Icons.groups_rounded,
+                        color: AppColors.electricBlue,
+                      ),
+                      _buildKpiCard(
+                        title: 'Auditoría del Sistema',
+                        value: 'Activa',
+                        subtitle: 'Trazabilidad y Seguridad',
+                        description: 'Supervisión en vivo de accesos, registros y eventos SaaS.',
+                        icon: Icons.security_rounded,
+                        color: const Color(0xFF0284C7),
+                      ),
+                      _buildKpiCard(
+                        title: 'Infraestructura',
+                        value: '100% OK',
+                        subtitle: 'Supabase DB • Netlify CDN',
+                        description: 'Disponibilidad en vivo de la base de datos PostgreSQL.',
+                        icon: Icons.cloud_done_rounded,
+                        color: AppColors.amberAccent,
+                      ),
+                    ],
+                  );
+                },
+              ),
+            ],
 
             const SizedBox(height: 28),
 
