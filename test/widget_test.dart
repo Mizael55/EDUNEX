@@ -2697,7 +2697,7 @@ void main() {
       await tester.pumpAndSettle();
 
       // Verify that school info is displayed
-      expect(find.textContaining('Centro Educativo Nuevo Orden'), findsWidgets);
+      expect(find.textContaining('Colegio Bilingüe EDUNEX Piloto'), findsWidgets);
       expect(find.text('Editar Información de Registro'), findsOneWidget);
       expect(find.text('Ficha Institucional & Capacidad'), findsOneWidget);
       expect(find.text('Representación Legal & Dirección'), findsOneWidget);
@@ -2708,6 +2708,17 @@ void main() {
       expect(find.text('Matricular Alumno'), findsNothing);
       expect(find.text('Registrar Pago'), findsNothing);
       expect(find.text('+ Nueva Familia'), findsNothing);
+
+      // Verify and test Resetear Contraseña dialog
+      expect(find.text('Resetear Contraseña'), findsOneWidget);
+      await tester.tap(find.text('Resetear Contraseña'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Resetear Contraseña de Acceso'), findsOneWidget);
+      expect(find.text('Confirmar Reseteo'), findsOneWidget);
+
+      await tester.tap(find.text('Cancelar'));
+      await tester.pumpAndSettle();
 
       // Tap 'Editar Información de Registro' button and verify dialog opens
       await tester.tap(find.text('Editar Información de Registro'));

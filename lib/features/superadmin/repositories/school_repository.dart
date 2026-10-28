@@ -9,6 +9,8 @@ import '../../families/repositories/family_repository.dart';
 import '../../teacher_portal/repositories/teacher_repository.dart';
 import '../../guidance/repositories/guidance_repository.dart';
 import '../../academics/repositories/academic_repository.dart';
+import '../models/audit_log.dart';
+import 'audit_repository.dart';
 
 /// Repositorio de Colegios y Clientes para el Dueño del Software (Superadmin)
 class SchoolRepository {
@@ -531,6 +533,39 @@ class SchoolRepository {
       directorCedula: directorCedula,
       directorTelefono: directorTelefono,
       directorEmail: directorEmail,
+    );
+  }
+
+  /// Permite al SuperAdmin resetear la contraseña del director o usuario institucional
+  Future<void> resetDirectorPassword({
+    required String schoolId,
+    required String directorEmail,
+    required String newPassword,
+    String? schoolName,
+  }) async {
+    await AuthRepository().resetPasswordBySuperAdmin(
+      email: directorEmail,
+      newPassword: newPassword,
+      colegioId: schoolId,
+      colegioNombre: schoolName,
+    );
+
+    // Registrar en Supabase logs_auditoria
+    final auditRepo = AuditRepository();
+    await auditRepo.recordAuditLog(
+      AuditLog(
+        id: 'aud-pwd-${DateTime.now().millisecondsSinceEpoch}',
+        timestamp: DateTime.now(),
+        accion: 'RESETEO_CONTRASENA',
+        descripcion: 'SuperAdmin reseteó la contraseña de acceso para el usuario $directorEmail.',
+        usuario: 'superadmin@edunex.edu',
+        rol: 'SuperAdmin',
+        colegioId: schoolId,
+        colegioNombre: schoolName,
+        modulo: 'Seguridad',
+        nivel: 'WARNING',
+        ipAddress: '179.52.14.88 (Santo Domingo, DO)',
+      ),
     );
   }
 

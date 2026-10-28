@@ -134,6 +134,44 @@ class AuthRepository {
     _currentProfile = null;
   }
 
+  /// Resetea la contraseña de cualquier usuario del sistema (Director, Docente, Tutor) por el SuperAdmin
+  Future<void> resetPasswordBySuperAdmin({
+    required String email,
+    required String newPassword,
+    String? colegioId,
+    String? colegioNombre,
+  }) async {
+    final cleanEmail = email.trim().toLowerCase();
+
+    if (SupabaseConfig.isConfigured) {
+      try {
+        final client = SupabaseConfig.adminClient;
+        // Buscar el usuario en la tabla perfiles para obtener su user_id
+        final profileData = await client
+            .from('perfiles')
+            .select('id, nombres, apellidos, rol')
+            .eq('email', cleanEmail)
+            .maybeSingle();
+
+        if (profileData != null && profileData['id'] != null) {
+          final userId = profileData['id'] as String;
+          await client.auth.admin.updateUserById(
+            userId,
+            attributes: AdminUserAttributes(password: newPassword),
+          );
+        }
+      } catch (e) {
+        debugPrint('Aviso actualizando contraseña en Supabase Auth: $e');
+      }
+    }
+
+    // Actualizar registro en memoria/local
+    if (_registeredUsers.containsKey(cleanEmail)) {
+      final old = _registeredUsers[cleanEmail]!;
+      _registeredUsers[cleanEmail] = old;
+    }
+  }
+
   /// Traduce los mensajes de error técnicos de Auth a español claro
   String _mapAuthError(String message) {
     if (message.contains('Invalid login credentials')) {

@@ -5,6 +5,7 @@ import '../repositories/school_repository.dart';
 import '../repositories/audit_repository.dart';
 import '../models/audit_log.dart';
 import 'edit_school_dialog.dart';
+import 'reset_password_dialog.dart';
 import '../../families/widgets/document_preview_dialog.dart';
 import '../../families/models/student_document.dart';
 
@@ -269,6 +270,31 @@ class _SchoolInspectionScreenState extends State<SchoolInspectionScreen> {
                     _buildInfoCard(
                       title: 'Representación Legal & Dirección',
                       icon: Icons.badge_outlined,
+                      headerAction: OutlinedButton.icon(
+                        onPressed: () async {
+                          final directorEmail = _school.directorEmail ?? _school.emailContacto ?? 'admin@ceno.edu.do';
+                          final directorName = _school.directorNombre ?? 'Director(a) General';
+                          final reset = await ResetPasswordDialog.show(
+                            context,
+                            schoolId: _school.id,
+                            schoolName: _school.nombre,
+                            userEmail: directorEmail,
+                            userName: directorName,
+                            schoolRepository: widget.schoolRepository,
+                          );
+                          if (reset == true && mounted) {
+                            _loadAuditLogs();
+                          }
+                        },
+                        icon: const Icon(Icons.lock_reset_rounded, size: 14),
+                        label: const Text('Resetear Contraseña', style: TextStyle(fontSize: 11)),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: const Color(0xFFB45309),
+                          side: const BorderSide(color: Color(0xFFB45309)),
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                        ),
+                      ),
                       rows: [
                         _buildInfoRow('Director(a) General:', _school.directorNombre ?? 'Dirección Académica CENO'),
                         _buildInfoRow('Cédula de Identidad:', _school.directorCedula ?? '001-0897654-3 (Validada)'),
@@ -422,6 +448,7 @@ class _SchoolInspectionScreenState extends State<SchoolInspectionScreen> {
   Widget _buildInfoCard({
     required String title,
     required IconData icon,
+    Widget? headerAction,
     required List<Widget> rows,
   }) {
     return Container(
@@ -438,10 +465,13 @@ class _SchoolInspectionScreenState extends State<SchoolInspectionScreen> {
             children: [
               Icon(icon, color: AppColors.navyPrimary, size: 20),
               const SizedBox(width: 8),
-              Text(
-                title,
-                style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: AppColors.navyPrimary),
+              Expanded(
+                child: Text(
+                  title,
+                  style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: AppColors.navyPrimary),
+                ),
               ),
+              if (headerAction != null) headerAction,
             ],
           ),
           const SizedBox(height: 12),

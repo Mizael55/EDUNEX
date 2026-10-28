@@ -4,6 +4,7 @@ import '../models/school.dart';
 import '../repositories/school_repository.dart';
 import 'business_model_dialog.dart';
 import 'create_school_dialog.dart';
+import 'reset_password_dialog.dart';
 
 /// Panel Maestro del Dueño del Software (Superadministrador SaaS de EDUNEX).
 ///
@@ -999,6 +1000,30 @@ class _SuperAdminDashboardScreenState extends State<SuperAdminDashboardScreen> {
                           color: school.isActive ? Colors.red.shade700 : AppColors.accentGreen,
                           fontWeight: FontWeight.bold,
                         ),
+                      ),
+                    ),
+
+                    // Botón para Resetear Contraseña (Issue SuperAdmin)
+                    OutlinedButton.icon(
+                      onPressed: () {
+                        final directorEmail = school.directorEmail ?? school.emailContacto ?? 'admin@ceno.edu.do';
+                        final directorName = school.directorNombre ?? 'Director(a) General';
+                        ResetPasswordDialog.show(
+                          context,
+                          schoolId: school.id,
+                          schoolName: school.nombre,
+                          userEmail: directorEmail,
+                          userName: directorName,
+                          schoolRepository: widget.schoolRepository,
+                        );
+                      },
+                      icon: const Icon(Icons.lock_reset_rounded, size: 16, color: Color(0xFFB45309)),
+                      label: const Text('Reset Clave', style: TextStyle(fontSize: 12, color: Color(0xFFB45309), fontWeight: FontWeight.bold)),
+                      style: OutlinedButton.styleFrom(
+                        side: const BorderSide(color: Color(0xFFFDE68A)),
+                        backgroundColor: const Color(0xFFFEF3C7),
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                       ),
                     ),
 
