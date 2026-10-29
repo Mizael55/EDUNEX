@@ -761,26 +761,31 @@ class _MainShellState extends State<MainShell> {
 
     final role = widget.userProfile.rol;
 
-    // Layout de Escritorio con Sidebar elegante adaptado al Rol
+    // Layout de Escritorio con Sidebar flotante moderno adaptado al Rol
     return Scaffold(
-      backgroundColor: AppColors.backgroundLight,
-      body: Row(
-        children: [
-          // Sidebar Fija con Color y Gradiente Específico del Rol
-          Container(
-            width: 270,
-            decoration: BoxDecoration(
-              gradient: role.layoutGradient,
-              boxShadow: const [
-                BoxShadow(
-                  color: Colors.black26,
-                  blurRadius: 10,
-                  offset: Offset(2, 0),
-                ),
-              ],
-            ),
-            child: Column(
-              children: [
+      backgroundColor: const Color(0xFFF8FAFC),
+      body: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Row(
+          children: [
+            // Sidebar Flotante con Esquinas Redondeadas y Sombra Difusa (Modern EdTech)
+            Container(
+              width: 270,
+              decoration: BoxDecoration(
+                gradient: role.layoutGradient,
+                borderRadius: BorderRadius.circular(24),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.10),
+                    blurRadius: 20,
+                    offset: const Offset(0, 8),
+                  ),
+                ],
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(24),
+                child: Column(
+                  children: [
                 // Cabecera del Sidebar con Logo
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
@@ -1057,26 +1062,40 @@ class _MainShellState extends State<MainShell> {
               ],
             ),
           ),
+        ),
 
-          // Área de Contenido Principal con Barra Superior de Rol
-          Expanded(
-            child: Column(
-              children: [
-                Container(
-                  height: 4,
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [role.color, role.activeItemColor],
+        const SizedBox(width: 16),
+
+        // Área de Contenido Principal con Contenedor Moderno
+        Expanded(
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(24),
+            child: Container(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(24),
+                border: Border.all(color: const Color(0xFFE2E8F0)),
+              ),
+              child: Column(
+                children: [
+                  Container(
+                    height: 3,
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [role.color, role.activeItemColor],
+                      ),
                     ),
                   ),
-                ),
-                Expanded(child: _buildBody()),
-              ],
+                  Expanded(child: _buildBody()),
+                ],
+              ),
             ),
           ),
-        ],
-      ),
-    );
+        ),
+      ],
+    ),
+  ),
+);
   }
 }
 
