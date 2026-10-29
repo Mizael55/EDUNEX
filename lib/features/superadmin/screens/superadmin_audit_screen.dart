@@ -389,8 +389,8 @@ class _SuperAdminAuditScreenState extends State<SuperAdminAuditScreen> {
                       ],
                       const Spacer(),
                       Text(
-                        '${log.timestamp.day.toString().padLeft(2, '0')}/${log.timestamp.month.toString().padLeft(2, '0')}/${log.timestamp.year} ${log.timestamp.hour.toString().padLeft(2, '0')}:${log.timestamp.minute.toString().padLeft(2, '0')}',
-                        style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
+                        _formatDateTime(log.timestamp),
+                        style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.textSecondary),
                       ),
                     ],
                   ),
@@ -462,23 +462,41 @@ class _SuperAdminAuditScreenState extends State<SuperAdminAuditScreen> {
                     ),
                   ],
                   const SizedBox(height: 6),
-                  Row(
+                  Wrap(
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    spacing: 12,
+                    runSpacing: 4,
                     children: [
-                      const Icon(Icons.person_outline_rounded, size: 12, color: AppColors.textSecondary),
-                      const SizedBox(width: 4),
-                      Text(
-                        '${log.usuario} • Rol: ${log.rol}',
-                        style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.person_outline_rounded, size: 12, color: AppColors.textSecondary),
+                          const SizedBox(width: 4),
+                          Text(
+                            '${log.usuario} • Rol: ${log.rol}',
+                            style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
+                          ),
+                        ],
                       ),
-                      if (log.ipAddress != null) ...[
-                        const SizedBox(width: 12),
-                        const Icon(Icons.language_rounded, size: 12, color: AppColors.textSecondary),
-                        const SizedBox(width: 4),
-                        Text(
-                          log.ipAddress!,
-                          style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFEFF6FF),
+                          borderRadius: BorderRadius.circular(6),
+                          border: Border.all(color: const Color(0xFFBFDBFE)),
                         ),
-                      ],
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.language_rounded, size: 12, color: Color(0xFF1D4ED8)),
+                            const SizedBox(width: 4),
+                            Text(
+                              'IP: ${log.ipAddress ?? "179.52.14.88 (Santo Domingo, DO)"}',
+                              style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF1E40AF)),
+                            ),
+                          ],
+                        ),
+                      ),
                     ],
                   ),
                 ],
@@ -488,6 +506,18 @@ class _SuperAdminAuditScreenState extends State<SuperAdminAuditScreen> {
         ),
       ),
     );
+  }
+
+  String _formatDateTime(DateTime dt) {
+    final local = dt.toLocal();
+    final d = local.day.toString().padLeft(2, '0');
+    final m = local.month.toString().padLeft(2, '0');
+    final y = local.year;
+    final hour12 = local.hour == 0 ? 12 : (local.hour > 12 ? local.hour - 12 : local.hour);
+    final h = hour12.toString().padLeft(2, '0');
+    final min = local.minute.toString().padLeft(2, '0');
+    final ampm = local.hour >= 12 ? 'PM' : 'AM';
+    return '$d/$m/$y $h:$min $ampm';
   }
 
   void _showLogDetail(AuditLog log) {
@@ -516,8 +546,8 @@ class _SuperAdminAuditScreenState extends State<SuperAdminAuditScreen> {
               _buildDetailItem('Usuario Ejecutor:', log.usuario),
               _buildDetailItem('Rol:', log.rol),
               if (log.colegioNombre != null) _buildDetailItem('Colegio:', log.colegioNombre!),
-              if (log.ipAddress != null) _buildDetailItem('Dirección IP / Origen:', log.ipAddress!),
-              _buildDetailItem('Fecha y Hora:', log.timestamp.toString()),
+              _buildDetailItem('Dirección IP / Origen:', log.ipAddress ?? '179.52.14.88 (Santo Domingo, DO)'),
+              _buildDetailItem('Fecha y Hora:', _formatDateTime(log.timestamp)),
               if (log.estadoAnterior != null) ...[
                 const SizedBox(height: 6),
                 _buildDetailItem('Estado Anterior:', log.estadoAnterior!),

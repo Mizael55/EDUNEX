@@ -84,7 +84,7 @@ class AuditLog {
     return AuditLog(
       id: json['id'] as String? ?? UniqueKey().toString(),
       timestamp: json['timestamp'] != null
-          ? DateTime.tryParse(json['timestamp'].toString()) ?? DateTime.now()
+          ? (DateTime.tryParse(json['timestamp'].toString())?.toLocal() ?? DateTime.now())
           : DateTime.now(),
       accion: json['accion'] as String? ?? 'OPERACION',
       descripcion: json['descripcion'] as String? ?? '',

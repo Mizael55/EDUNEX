@@ -18,17 +18,20 @@ import '../repositories/school_repository.dart';
 class CreateSchoolDialog extends StatefulWidget {
   final SchoolRepository schoolRepository;
   final ValueChanged<School>? onSchoolCreated;
+  final int initialStep;
 
   const CreateSchoolDialog({
     super.key,
     required this.schoolRepository,
     this.onSchoolCreated,
+    this.initialStep = 0,
   });
 
   static Future<void> show(
     BuildContext context, {
     required SchoolRepository schoolRepository,
     ValueChanged<School>? onSchoolCreated,
+    int initialStep = 0,
   }) {
     return showDialog(
       context: context,
@@ -36,6 +39,7 @@ class CreateSchoolDialog extends StatefulWidget {
       builder: (context) => CreateSchoolDialog(
         schoolRepository: schoolRepository,
         onSchoolCreated: onSchoolCreated,
+        initialStep: initialStep,
       ),
     );
   }
@@ -120,11 +124,18 @@ class _CreateSchoolDialogState extends State<CreateSchoolDialog> {
   };
 
   bool _isLoading = false;
+  int _currentStep = 0;
   School? _createdSchool;
   String? _createdDirectorEmail;
   String? _createdDirectorPassword;
   String? _createdDirectorName;
   String? _createdDirectorCedula;
+
+  @override
+  void initState() {
+    super.initState();
+    _currentStep = widget.initialStep;
+  }
 
   @override
   void dispose() {
@@ -272,8 +283,203 @@ class _CreateSchoolDialogState extends State<CreateSchoolDialog> {
     return base;
   }
 
+  bool _validateStep(int stepIndex) {
+    if (stepIndex == 0) {
+      if (_nombreController.text.trim().isEmpty) {
+        _showStepError('Ingresa el Nombre Oficial de la Institución Educativa.');
+        return false;
+      }
+      final rncDigits = _rncController.text.trim().replaceAll(RegExp(r'[^0-9]'), '');
+      if (rncDigits.isEmpty) {
+        _showStepError('Ingresa el RNC Institucional para continuar.');
+        return false;
+      }
+      final requiredLength = _rncType == 'juridica' ? 9 : 11;
+      if (rncDigits.length != requiredLength) {
+        _showStepError('El RNC para Persona ${_rncType == "juridica" ? "Jurídica debe tener 9" : "Física debe tener 11"} dígitos (actual: ${rncDigits.length}).');
+        return false;
+      }
+      return true;
+    }
+
+    if (stepIndex == 1) {
+      final cap = int.tryParse(_maxEstudiantesController.text.trim());
+      if (cap == null || cap <= 0) {
+        _showStepError('Ingresa una capacidad de estudiantes válida mayor a 0.');
+        return false;
+      }
+      return true;
+    }
+
+    if (stepIndex == 2) {
+      if (_directorNombresController.text.trim().isEmpty) {
+        _showStepError('Ingresa los nombres del Director(a) General.');
+        return false;
+      }
+      final cedulaDigits = _directorCedulaController.text.trim().replaceAll(RegExp(r'[^0-9]'), '');
+      if (cedulaDigits.length != 11) {
+        _showStepError('La cédula del director debe contener 11 dígitos numéricos dominicanos.');
+        return false;
+      }
+      final email = _directorEmailController.text.trim();
+      if (email.isEmpty || !email.contains('@') || !email.contains('.')) {
+        _showStepError('Ingresa un correo electrónico válido para el Director.');
+        return false;
+      }
+      if (_directorPasswordController.text.trim().length < 6) {
+        _showStepError('La contraseña del director debe tener al menos 6 caracteres.');
+        return false;
+      }
+      return true;
+    }
+
+    return true;
+  }
+
+  void _showStepError(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const Icon(Icons.warning_amber_rounded, color: Colors.white, size: 20),
+            const SizedBox(width: 10),
+            Expanded(child: Text(message)),
+          ],
+        ),
+        backgroundColor: Colors.amber.shade900,
+        behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 4),
+      ),
+    );
+  }
+
+  void _tryGoToStep(int targetStep) {
+    if (targetStep <= _currentStep) {
+      setState(() => _currentStep = targetStep);
+      return;
+    }
+    // Para avanzar, validar el paso actual y pasos intermedios
+    for (int s = _currentStep; s < targetStep; s++) {
+      if (!_validateStep(s)) {
+        setState(() => _currentStep = s);
+        return;
+      }
+    }
+    setState(() => _currentStep = targetStep);
+  }
+
+  Widget _buildTimelineHeader() {
+    final steps = [
+      {'title': 'Institución', 'subtitle': 'Datos & RNC'},
+      {'title': 'Plan SaaS', 'subtitle': 'Cupo & Tarifas'},
+      {'title': 'Director', 'subtitle': 'Acceso & Cédula'},
+      {'title': 'Documentos', 'subtitle': 'Expediente & Alta'},
+    ];
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: const BoxDecoration(
+        color: Color(0xFFF8FAFC),
+        border: Border(bottom: BorderSide(color: Color(0xFFE2E8F0))),
+      ),
+      child: Row(
+        children: List.generate(steps.length, (stepIdx) {
+          final step = steps[stepIdx];
+          final isPast = stepIdx < _currentStep;
+          final isCurrent = stepIdx == _currentStep;
+
+          Color circleColor;
+          Color textColor;
+          Widget circleContent;
+
+          if (isPast) {
+            circleColor = AppColors.accentGreen;
+            textColor = AppColors.accentGreen;
+            circleContent = const Icon(Icons.check_rounded, size: 14, color: Colors.white);
+          } else if (isCurrent) {
+            circleColor = AppColors.navyPrimary;
+            textColor = AppColors.navyPrimary;
+            circleContent = Text(
+              '${stepIdx + 1}',
+              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12),
+            );
+          } else {
+            circleColor = const Color(0xFFCBD5E1);
+            textColor = const Color(0xFF94A3B8);
+            circleContent = Text(
+              '${stepIdx + 1}',
+              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12),
+            );
+          }
+
+          return Expanded(
+            child: InkWell(
+              onTap: () => _tryGoToStep(stepIdx),
+              borderRadius: BorderRadius.circular(8),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 24,
+                      height: 24,
+                      decoration: BoxDecoration(
+                        color: circleColor,
+                        shape: BoxShape.circle,
+                      ),
+                      alignment: Alignment.center,
+                      child: circleContent,
+                    ),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            step['title']!,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: isCurrent ? FontWeight.bold : FontWeight.w600,
+                              color: textColor,
+                            ),
+                          ),
+                          Text(
+                            step['subtitle']!,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: 9,
+                              color: isCurrent ? AppColors.navyPrimary : AppColors.textSecondary,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    if (stepIdx < steps.length - 1)
+                      const Icon(Icons.chevron_right_rounded, size: 14, color: Color(0xFFCBD5E1)),
+                  ],
+                ),
+              ),
+            ),
+          );
+        }),
+      ),
+    );
+  }
+
   Future<void> _submit() async {
-    if (!_formKey.currentState!.validate()) return;
+    final formValid = _formKey.currentState?.validate() ?? false;
+    if (!formValid) return;
+
+    for (int s = 0; s <= 2; s++) {
+      if (!_validateStep(s)) {
+        setState(() => _currentStep = s);
+        return;
+      }
+    }
 
     setState(() => _isLoading = true);
 
@@ -614,7 +820,10 @@ Contraseña: $password
               ),
             ),
 
-            // Contenido Scrolleable del Formulario
+            // Línea de Tiempo / Timeline Stepper Header
+            _buildTimelineHeader(),
+
+            // Contenido Scrolleable del Formulario (Paso a Paso)
             Flexible(
               child: SingleChildScrollView(
                 padding: const EdgeInsets.all(24),
@@ -623,13 +832,35 @@ Contraseña: $password
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // SECCIÓN 1: DATOS INSTITUCIONALES
-                      _buildSectionHeader(
-                        icon: Icons.school_rounded,
-                        title: '1. Datos de la Institución Educativa',
-                        subtitle: 'Información oficial del colegio en República Dominicana',
-                      ),
-                      const SizedBox(height: 16),
+                      if (_currentStep == 0) _buildStep1Institucion(),
+                      if (_currentStep == 1) _buildStep2PlanSaaS(),
+                      if (_currentStep == 2) _buildStep3Director(),
+                      if (_currentStep == 3) _buildStep4Documentos(),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+
+            // Footer con Navegación Paso a Paso de la Línea de Tiempo
+            _buildTimelineFooter(),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStep1Institucion() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // SECCIÓN 1: DATOS INSTITUCIONALES
+        _buildSectionHeader(
+          icon: Icons.school_rounded,
+          title: '1. Datos de la Institución Educativa',
+          subtitle: 'Información oficial del colegio en República Dominicana',
+        ),
+        const SizedBox(height: 16),
 
                       // CASO 3: Foto/Logo Institucional con Previsualización en Vivo
                       Container(
@@ -1268,18 +1499,21 @@ Contraseña: $password
                           ],
                         ),
                       ),
+      ],
+    );
+  }
 
-                      const SizedBox(height: 28),
-                      const Divider(),
-                      const SizedBox(height: 16),
-
-                      // CASO 2: SECCIÓN DE TARIFARIO ESCOLAR & CRITERIO "SUJETO A MEJORA DE PAGO"
-                      _buildSectionHeader(
-                        icon: Icons.payments_rounded,
-                        title: '2. Tarifario Escolar & Criterios de Pago (Caso 2)',
-                        subtitle: 'Precios base de mensualidades, matrícula y acuerdos flexibles de pronto pago por familia',
-                      ),
-                      const SizedBox(height: 16),
+  Widget _buildStep2PlanSaaS() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // CASO 2: SECCIÓN DE TARIFARIO ESCOLAR & CRITERIO "SUJETO A MEJORA DE PAGO"
+        _buildSectionHeader(
+          icon: Icons.payments_rounded,
+          title: '2. Tarifario Escolar & Criterios de Pago (Caso 2)',
+          subtitle: 'Precios base de mensualidades, matrícula y acuerdos flexibles de pronto pago por familia',
+        ),
+        const SizedBox(height: 16),
 
                       Container(
                         padding: const EdgeInsets.all(16),
@@ -1420,18 +1654,21 @@ Contraseña: $password
                           ],
                         ),
                       ),
+      ],
+    );
+  }
 
-                      const SizedBox(height: 28),
-                      const Divider(),
-                      const SizedBox(height: 16),
-
-                      // SECCIÓN 3: CUENTA DEL DIRECTOR
-                      _buildSectionHeader(
-                        icon: Icons.person_add_alt_1_rounded,
-                        title: '3. Cuenta de Acceso del Director / Administrador',
-                        subtitle: 'Estas serán las credenciales para que el colegio inicie sesión en EDUNEX',
-                      ),
-                      const SizedBox(height: 16),
+  Widget _buildStep3Director() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // SECCIÓN 3: CUENTA DEL DIRECTOR
+        _buildSectionHeader(
+          icon: Icons.person_add_alt_1_rounded,
+          title: '3. Cuenta de Acceso del Director / Administrador',
+          subtitle: 'Estas serán las credenciales para que el colegio inicie sesión en EDUNEX',
+        ),
+        const SizedBox(height: 16),
 
                       Row(
                         children: [
@@ -1524,18 +1761,21 @@ Contraseña: $password
                           return null;
                         },
                       ),
+      ],
+    );
+  }
 
-                      const SizedBox(height: 28),
-                      const Divider(),
-                      const SizedBox(height: 16),
-
-                      // SECCIÓN 4: DOCUMENTOS DE REGISTRO INSTITUCIONAL (Issue #18)
-                      _buildSectionHeader(
-                        icon: Icons.folder_special_rounded,
-                        title: '4. Documentos de Registro del Colegio (Issue #18)',
-                        subtitle: 'Carga los documentos oficiales de acreditación, registro comercial y copia de cédula del director',
-                      ),
-                      const SizedBox(height: 16),
+  Widget _buildStep4Documentos() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // SECCIÓN 4: DOCUMENTOS DE REGISTRO INSTITUCIONAL (Issue #18)
+        _buildSectionHeader(
+          icon: Icons.folder_special_rounded,
+          title: '4. Documentos de Registro del Colegio (Issue #18)',
+          subtitle: 'Carga los documentos oficiales de acreditación, registro comercial y copia de cédula del director',
+        ),
+        const SizedBox(height: 16),
 
                       Container(
                         padding: const EdgeInsets.all(16),
@@ -1677,55 +1917,106 @@ Contraseña: $password
                           ],
                         ),
                       ),
+      ],
+    );
+  }
+
+  Widget _buildTimelineFooter() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: const BoxDecoration(
+        color: Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.vertical(bottom: Radius.circular(20)),
+        border: Border(top: BorderSide(color: Color(0xFFE2E8F0))),
+      ),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final isNarrow = constraints.maxWidth < 620;
+          return Row(
+            children: [
+              if (_currentStep > 0)
+                OutlinedButton.icon(
+                  onPressed: _isLoading ? null : () => setState(() => _currentStep--),
+                  icon: const Icon(Icons.arrow_back_rounded, size: 14),
+                  label: const Text('Anterior'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppColors.textSecondary,
+                    side: const BorderSide(color: Color(0xFFCBD5E1)),
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  ),
+                )
+              else
+                OutlinedButton(
+                  onPressed: _isLoading ? null : () => Navigator.of(context).pop(),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppColors.textSecondary,
+                    side: const BorderSide(color: Color(0xFFCBD5E1)),
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  ),
+                  child: const Text('Cancelar'),
+                ),
+              const Spacer(),
+              if (!isNarrow) ...[
+                Text(
+                  'Paso ${_currentStep + 1} de 4',
+                  style: const TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+                const SizedBox(width: 10),
+              ],
+              Flexible(
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerRight,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (_currentStep < 3)
+                        ElevatedButton.icon(
+                          onPressed: _isLoading ? null : () => _tryGoToStep(_currentStep + 1),
+                          icon: const Icon(Icons.arrow_forward_rounded, size: 16),
+                          label: const Text('Continuar al Paso Siguiente'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.electricBlue,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                          ),
+                        ),
+                      if (_currentStep >= 2) ...[
+                        if (_currentStep < 3) const SizedBox(width: 8),
+                        ElevatedButton.icon(
+                          onPressed: _isLoading ? null : _submit,
+                          icon: _isLoading
+                              ? const SizedBox(
+                                  width: 14,
+                                  height: 14,
+                                  child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                                )
+                              : const Icon(Icons.check_rounded, size: 16),
+                          label: Text(
+                            _isLoading ? 'Habilitando...' : 'Dar de Alta Colegio y Director',
+                          ),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.navyPrimary,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                          ),
+                        ),
+                      ],
                     ],
                   ),
                 ),
               ),
-            ),
-
-            // Footer con Botones
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-              decoration: const BoxDecoration(
-                color: Color(0xFFF8FAFC),
-                borderRadius: BorderRadius.vertical(bottom: Radius.circular(20)),
-                border: Border(top: BorderSide(color: Color(0xFFE2E8F0))),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  OutlinedButton(
-                    onPressed: _isLoading ? null : () => Navigator.of(context).pop(),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: AppColors.textSecondary,
-                      side: const BorderSide(color: Color(0xFFCBD5E1)),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                    ),
-                    child: const Text('Cancelar'),
-                  ),
-                  const SizedBox(width: 12),
-                  ElevatedButton.icon(
-                    onPressed: _isLoading ? null : _submit,
-                    icon: _isLoading
-                        ? const SizedBox(
-                            width: 16,
-                            height: 16,
-                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                          )
-                        : const Icon(Icons.check_rounded, size: 18),
-                    label: Text(_isLoading ? 'Habilitando Colegio...' : 'Dar de Alta Colegio y Director'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.navyPrimary,
-                      foregroundColor: AppColors.surfaceWhite,
-                      padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 12),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
+            ],
+          );
+        },
       ),
     );
   }

@@ -1841,7 +1841,7 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         home: Scaffold(
-          body: CreateSchoolDialog(schoolRepository: schoolRepo),
+          body: CreateSchoolDialog(schoolRepository: schoolRepo, initialStep: 2),
         ),
       ),
     );
@@ -2593,7 +2593,7 @@ void main() {
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
-            body: CreateSchoolDialog(schoolRepository: schoolRepo),
+            body: CreateSchoolDialog(schoolRepository: schoolRepo, initialStep: 3),
           ),
         ),
       );

@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/config/supabase_config.dart';
+import '../../../core/services/ip_service.dart';
 import '../models/audit_log.dart';
 
 /// Repositorio de Auditoría y Trazabilidad para el SuperAdmin SaaS
@@ -82,26 +83,45 @@ class AuditRepository {
 
   /// Registra un nuevo evento de auditoría en la base de datos Supabase
   Future<void> recordAuditLog(AuditLog log) async {
-    _inMemoryLogs.insert(0, log);
+    final resolvedIp = (log.ipAddress != null && log.ipAddress!.isNotEmpty)
+        ? log.ipAddress!
+        : await IpService.getClientIp();
+
+    final enrichedLog = AuditLog(
+      id: log.id,
+      timestamp: log.timestamp,
+      accion: log.accion,
+      descripcion: log.descripcion,
+      usuario: log.usuario,
+      rol: log.rol,
+      colegioId: log.colegioId,
+      colegioNombre: log.colegioNombre,
+      modulo: log.modulo,
+      nivel: log.nivel,
+      ipAddress: resolvedIp,
+      estadoAnterior: log.estadoAnterior,
+      nuevoEstado: log.nuevoEstado,
+    );
+
+    _inMemoryLogs.insert(0, enrichedLog);
 
     if (_supabaseClient != null && SupabaseConfig.isConfigured) {
       try {
         final payload = <String, dynamic>{
+          'timestamp': log.timestamp.toUtc().toIso8601String(),
           'accion': log.accion,
           'descripcion': log.descripcion,
           'usuario': log.usuario,
           'rol': log.rol,
           'modulo': log.modulo,
           'nivel': log.nivel,
+          'ip_address': resolvedIp,
         };
         if (log.colegioId != null && log.colegioId!.isNotEmpty) {
           payload['colegio_id'] = log.colegioId;
         }
         if (log.colegioNombre != null && log.colegioNombre!.isNotEmpty) {
           payload['colegio_nombre'] = log.colegioNombre;
-        }
-        if (log.ipAddress != null && log.ipAddress!.isNotEmpty) {
-          payload['ip_address'] = log.ipAddress;
         }
         if (log.estadoAnterior != null && log.estadoAnterior!.isNotEmpty) {
           payload['estado_anterior'] = log.estadoAnterior;
