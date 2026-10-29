@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../theme/app_colors.dart';
+import '../../../core/widgets/app_toast.dart';
+import '../../../core/widgets/modern_dialog.dart';
 import '../models/school.dart';
 import '../repositories/school_repository.dart';
 import 'business_model_dialog.dart';
@@ -80,82 +82,37 @@ class _SuperAdminDashboardScreenState extends State<SuperAdminDashboardScreen> {
   }
 
   Future<void> _showPurgeConfirmationDialog() async {
-    final confirmed = await showDialog<bool>(
+    final confirmed = await ModernConfirmDialog.show(
       context: context,
       barrierDismissible: false,
-      builder: (dialogContext) {
-        return AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          title: Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: Colors.red.shade100,
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Icon(Icons.warning_amber_rounded, color: Colors.red.shade700, size: 28),
-              ),
-              const SizedBox(width: 12),
-              const Expanded(
-                child: Text(
-                  '¿Resetear Base de Datos?',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
-                ),
-              ),
-            ],
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Esta acción es IRREVERSIBLE y fue diseñada para pruebas de QA Clean Slate:',
-                style: TextStyle(color: Colors.grey.shade800, fontSize: 13, fontWeight: FontWeight.w600),
-              ),
-              const SizedBox(height: 10),
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.red.shade50,
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: Colors.red.shade200),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('• Se eliminarán TODOS los colegios registrados.', style: TextStyle(fontSize: 12, color: Colors.red.shade900)),
-                    Text('• Se borrarán familias, estudiantes, tutores, pagos y notas.', style: TextStyle(fontSize: 12, color: Colors.red.shade900)),
-                    Text('• Se eliminarán todos los usuarios de Supabase Auth.', style: TextStyle(fontSize: 12, color: Colors.red.shade900)),
-                    Text('• Se limpiarán todos los cachés locales y preferencias.', style: TextStyle(fontSize: 12, color: Colors.red.shade900)),
-                    const SizedBox(height: 6),
-                    Text(
-                      'Únicamente se conservará el usuario del Super Admin (admin@edunex.edu) para que el QA empiece con data limpia.',
-                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.red.shade900),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(false),
-              child: const Text('Cancelar', style: TextStyle(color: Colors.grey)),
-            ),
-            ElevatedButton.icon(
-              onPressed: () => Navigator.of(dialogContext).pop(true),
-              icon: const Icon(Icons.delete_forever_rounded, size: 18),
-              label: const Text('Sí, Eliminar y Resetear'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.red.shade700,
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-              ),
+      title: '¿Resetear Base de Datos?',
+      message: 'Esta acción es IRREVERSIBLE y fue diseñada para pruebas de QA Clean Slate.',
+      confirmText: 'Sí, Eliminar y Resetear',
+      cancelText: 'Cancelar',
+      icon: Icons.delete_forever_rounded,
+      isDestructive: true,
+      customBody: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: Colors.red.shade50,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.red.shade200),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('• Se eliminarán TODOS los colegios registrados.', style: TextStyle(fontSize: 12, color: Colors.red.shade900)),
+            Text('• Se borrarán familias, estudiantes, tutores, pagos y notas.', style: TextStyle(fontSize: 12, color: Colors.red.shade900)),
+            Text('• Se eliminarán todos los usuarios de Supabase Auth.', style: TextStyle(fontSize: 12, color: Colors.red.shade900)),
+            Text('• Se limpiarán todos los cachés locales y preferencias.', style: TextStyle(fontSize: 12, color: Colors.red.shade900)),
+            const SizedBox(height: 6),
+            Text(
+              'Únicamente se conservará el usuario del Super Admin (admin@edunex.edu) para que el QA empiece con data limpia.',
+              style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.red.shade900),
             ),
           ],
-        );
-      },
+        ),
+      ),
     );
 
     if (confirmed == true && mounted) {
@@ -166,21 +123,10 @@ class _SuperAdminDashboardScreenState extends State<SuperAdminDashboardScreen> {
   Future<void> _executePurge() async {
     setState(() => _isLoading = true);
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Row(
-          children: [
-            SizedBox(
-              width: 18,
-              height: 18,
-              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-            ),
-            SizedBox(width: 12),
-            Text('Purgando base de datos en Supabase y limpiando memoria...'),
-          ],
-        ),
-        duration: Duration(seconds: 4),
-      ),
+    AppToast.info(
+      context,
+      'Purgando base de datos en Supabase y limpiando memoria...',
+      title: 'Operación en Proceso',
     );
 
     try {
@@ -188,108 +134,68 @@ class _SuperAdminDashboardScreenState extends State<SuperAdminDashboardScreen> {
       await _loadData();
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            backgroundColor: AppColors.accentGreen,
-            content: Row(
-              children: [
-                const Icon(Icons.check_circle_rounded, color: Colors.white),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(result['message'] as String? ?? 'Base de datos reseteada con éxito.'),
-                ),
-              ],
-            ),
-            duration: const Duration(seconds: 5),
-          ),
+        AppToast.success(
+          context,
+          result['message'] as String? ?? 'Base de datos reseteada con éxito.',
+          title: 'Clean Slate Completado',
         );
       }
     } catch (e) {
       if (mounted) {
         setState(() => _isLoading = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            backgroundColor: Colors.red.shade800,
-            content: Text('Error al resetear base de datos: $e'),
-          ),
+        AppToast.error(
+          context,
+          'Error al resetear base de datos: $e',
+          title: 'Error de Reseteo',
         );
       }
     }
   }
 
-  void _toggleSubscription(School school) {
+  void _toggleSubscription(School school) async {
     final nextStatus = school.isActive ? 'suspended' : 'active';
     final actionName = school.isActive ? 'Suspender Servicio' : 'Reactivar Servicio';
     final actionDesc = school.isActive
         ? 'Al suspender el servicio de "${school.nombre}", los directores, maestros y padres de este colegio no podrán acceder al sistema hasta que se reactive su pago.'
         : 'Al reactivar el servicio de "${school.nombre}", se restaurará de inmediato el acceso al sistema para todos sus usuarios.';
 
-    showDialog(
+    final confirmed = await ModernConfirmDialog.show(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Row(
-          children: [
-            Icon(
-              school.isActive ? Icons.pause_circle_filled_rounded : Icons.play_circle_filled_rounded,
-              color: school.isActive ? Colors.red.shade700 : AppColors.accentGreen,
-            ),
-            const SizedBox(width: 8),
-            Text(actionName),
-          ],
+      title: actionName,
+      message: actionDesc,
+      confirmText: actionName,
+      cancelText: 'Cancelar',
+      icon: school.isActive ? Icons.pause_circle_filled_rounded : Icons.play_circle_filled_rounded,
+      iconColor: school.isActive ? const Color(0xFFDC2626) : AppColors.accentGreen,
+      iconBgColor: school.isActive ? const Color(0xFFFEE2E2) : AppColors.softEmerald,
+      confirmColor: school.isActive ? const Color(0xFFDC2626) : AppColors.accentGreen,
+      isDestructive: school.isActive,
+      customBody: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: AppColors.subtleBackground,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: const Color(0xFFE2E8F0)),
         ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              '¿Confirmas el cambio de estado para la institución?',
-              style: const TextStyle(fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 8),
-            Text(actionDesc, style: const TextStyle(fontSize: 13, color: AppColors.textSecondary)),
-            const SizedBox(height: 12),
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: AppColors.backgroundLight,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Text(
-                'Colegio: ${school.nombre}\nRNC: ${school.rnc ?? "N/D"}\nEstado nuevo: ${nextStatus.toUpperCase()}',
-                style: const TextStyle(fontSize: 12, fontFamily: 'monospace'),
-              ),
-            ),
-          ],
+        child: Text(
+          'Colegio: ${school.nombre}\nRNC: ${school.rnc ?? "N/D"}\nEstado nuevo: ${nextStatus.toUpperCase()}',
+          style: const TextStyle(fontSize: 12, fontFamily: 'monospace', color: AppColors.navyDark),
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Cancelar'),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              final scaffoldMessenger = ScaffoldMessenger.of(context);
-              Navigator.of(context).pop();
-              await widget.schoolRepository.updateSubscriptionStatus(school.id, nextStatus);
-              _loadData();
-              if (mounted) {
-                scaffoldMessenger.showSnackBar(
-                  SnackBar(
-                    content: Text('Estado de "${school.nombre}" actualizado a: ${nextStatus.toUpperCase()}'),
-                    backgroundColor: AppColors.navyPrimary,
-                  ),
-                );
-              }
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: school.isActive ? Colors.red.shade700 : AppColors.accentGreen,
-              foregroundColor: Colors.white,
-            ),
-            child: Text(actionName),
-          ),
-        ],
       ),
     );
+
+    if (confirmed == true && mounted) {
+      await widget.schoolRepository.updateSubscriptionStatus(school.id, nextStatus);
+      _loadData();
+      if (mounted) {
+        AppToast.success(
+          context,
+          'Estado de "${school.nombre}" actualizado a: ${nextStatus.toUpperCase()}',
+          title: 'Suscripción Actualizada',
+        );
+      }
+    }
   }
 
   @override

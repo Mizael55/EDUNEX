@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../../theme/app_colors.dart';
+import '../../../core/widgets/app_toast.dart';
+import '../../../core/widgets/modern_dialog.dart';
 import '../../families/repositories/family_repository.dart';
 import '../../superadmin/models/school.dart';
 import '../../superadmin/repositories/school_repository.dart';
@@ -100,12 +102,11 @@ class _FinanceOverviewScreenState extends State<FinanceOverviewScreen> {
     if (!mounted) return;
     if (success) {
       await _loadFinances();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(approve ? 'Abono autorizado correctamente.' : 'Abono rechazado.'),
-          backgroundColor: approve ? AppColors.accentGreen : const Color(0xFFDC2626),
-        ),
-      );
+      if (approve) {
+        AppToast.success(context, 'Abono autorizado correctamente.', title: 'Cobro Actualizado');
+      } else {
+        AppToast.warning(context, 'Abono rechazado.', title: 'Abono Rechazado');
+      }
     }
   }
 
@@ -133,11 +134,10 @@ class _FinanceOverviewScreenState extends State<FinanceOverviewScreen> {
     final count = await widget.familyRepository.sendDelinquencyReminders();
     if (!mounted) return;
     _loadFinances();
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Recordatorios de cobro enviados a $count familia(s) con cuotas pendientes.'),
-        backgroundColor: AppColors.accentGreen,
-      ),
+    AppToast.success(
+      context,
+      'Recordatorios de cobro enviados a $count familia(s) con cuotas pendientes.',
+      title: 'Notificaciones Enviadas',
     );
   }
 
@@ -418,11 +418,10 @@ class _FinanceOverviewScreenState extends State<FinanceOverviewScreen> {
                         const Spacer(),
                         OutlinedButton.icon(
                           onPressed: () {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Generando reporte consolidado en PDF...'),
-                                backgroundColor: AppColors.navyPrimary,
-                              ),
+                            AppToast.info(
+                              context,
+                              'Generando reporte consolidado en PDF...',
+                              title: 'Reporte Financiero',
                             );
                           },
                           icon: const Icon(Icons.download_rounded, size: 16),
@@ -934,11 +933,10 @@ Le agradecemos regularizar su cuenta a través del Portal de Padres o contactand
                             Clipboard.setData(ClipboardData(text: msg));
                             widget.familyRepository.sendDelinquencyReminders(familyIds: [f.familiaId]);
                             _loadFinances();
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text('Mensaje de cobranza copiado para ${f.nombreFamilia}. Notificación registrada.'),
-                                backgroundColor: const Color(0xFF059669),
-                              ),
+                            AppToast.success(
+                              context,
+                              'Mensaje de cobranza copiado para ${f.nombreFamilia}. Notificación registrada.',
+                              title: 'Recordatorio Generado',
                             );
                           },
                         ),

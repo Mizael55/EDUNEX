@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../../core/services/file_upload_service.dart';
 import '../../../theme/app_colors.dart';
+import '../../../core/widgets/app_toast.dart';
 import '../../families/models/student_document.dart';
 import '../../families/widgets/document_preview_dialog.dart';
 import '../../families/repositories/family_repository.dart';
@@ -228,24 +229,10 @@ class _CreateSchoolDialogState extends State<CreateSchoolDialog> {
       }
     });
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        backgroundColor: AppColors.navyPrimary,
-        behavior: SnackBarBehavior.floating,
-        duration: Duration(seconds: 2),
-        content: Row(
-          children: [
-            Icon(Icons.my_location_rounded, color: AppColors.cyanLight),
-            SizedBox(width: 10),
-            Expanded(
-              child: Text(
-                '📍 Coordenadas GPS asociadas exitosamente: [18.4861, -69.9312]',
-                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
-              ),
-            ),
-          ],
-        ),
-      ),
+    AppToast.info(
+      context,
+      '📍 Coordenadas GPS asociadas exitosamente: [18.4861, -69.9312]',
+      title: 'Geolocalización',
     );
   }
 
@@ -265,12 +252,10 @@ class _CreateSchoolDialogState extends State<CreateSchoolDialog> {
         );
       });
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Documento "$defaultTipo" cargado exitosamente (${(picked.size / 1024).toStringAsFixed(1)} KB)'),
-            backgroundColor: AppColors.navyPrimary,
-            duration: const Duration(seconds: 2),
-          ),
+        AppToast.success(
+          context,
+          'Documento "$defaultTipo" cargado exitosamente (${(picked.size / 1024).toStringAsFixed(1)} KB)',
+          title: 'Documento Cargado',
         );
       }
     }
@@ -579,11 +564,10 @@ class _CreateSchoolDialogState extends State<CreateSchoolDialog> {
     } catch (e) {
       if (mounted) {
         setState(() => _isLoading = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            backgroundColor: Colors.red.shade800,
-            content: Text('Error al dar de alta el colegio y director: $e'),
-          ),
+        AppToast.error(
+          context,
+          'Error al dar de alta el colegio y director: $e',
+          title: 'Error de Alta',
         );
       }
     }
@@ -744,11 +728,10 @@ Correo: $email
 Contraseña: $password
 ''';
                   Clipboard.setData(ClipboardData(text: text));
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Credenciales copiadas al portapapeles.'),
-                      backgroundColor: AppColors.navyPrimary,
-                    ),
+                  AppToast.success(
+                    context,
+                    'Credenciales copiadas al portapapeles con éxito.',
+                    title: 'Copiado',
                   );
                 },
                 icon: const Icon(Icons.copy_rounded, size: 16),

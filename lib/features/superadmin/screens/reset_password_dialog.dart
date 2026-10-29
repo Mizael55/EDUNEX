@@ -2,6 +2,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../../theme/app_colors.dart';
+import '../../../core/widgets/app_toast.dart';
 import '../repositories/school_repository.dart';
 
 /// Diálogo para que el SuperAdmin resetee contraseñas de directores y personal escolar
@@ -103,11 +104,10 @@ class _ResetPasswordDialogState extends State<ResetPasswordDialog> {
     } catch (e) {
       if (mounted) {
         setState(() => _isSaving = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error al resetear contraseña: $e'),
-            backgroundColor: Colors.redAccent,
-          ),
+        AppToast.error(
+          context,
+          'Error al resetear contraseña: $e',
+          title: 'Error de Seguridad',
         );
       }
     }
@@ -117,7 +117,10 @@ class _ResetPasswordDialogState extends State<ResetPasswordDialog> {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(24),
+          side: const BorderSide(color: Color(0xFFE2E8F0)),
+        ),
         title: const Row(
           children: [
             Icon(Icons.check_circle_rounded, color: AppColors.accentGreen, size: 26),
@@ -135,7 +138,7 @@ class _ResetPasswordDialogState extends State<ResetPasswordDialog> {
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
                 color: const Color(0xFFF1F5F9),
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: BorderRadius.circular(12),
                 border: Border.all(color: const Color(0xFFCBD5E1)),
               ),
               child: Row(
@@ -158,12 +161,10 @@ class _ResetPasswordDialogState extends State<ResetPasswordDialog> {
                     tooltip: 'Copiar al portapapeles',
                     onPressed: () {
                       Clipboard.setData(ClipboardData(text: newPassword));
-                      ScaffoldMessenger.of(ctx).showSnackBar(
-                        const SnackBar(
-                          content: Text('¡Contraseña copiada al portapapeles!'),
-                          backgroundColor: AppColors.accentGreen,
-                          duration: Duration(seconds: 2),
-                        ),
+                      AppToast.success(
+                        ctx,
+                        '¡Contraseña copiada al portapapeles!',
+                        title: 'Copiado',
                       );
                     },
                   ),

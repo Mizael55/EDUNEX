@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../../theme/app_colors.dart';
+import '../../../core/widgets/app_toast.dart';
 import '../../superadmin/models/school.dart';
 import '../../superadmin/repositories/school_repository.dart';
 
@@ -153,9 +154,7 @@ class _SchoolPaymentMethodScreenState extends State<SchoolPaymentMethodScreen> {
     } catch (e) {
       if (mounted) {
         setState(() => _isSaving = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error registrando método de pago: $e'), backgroundColor: Colors.redAccent),
-        );
+        AppToast.error(context, 'Error registrando método de pago: $e', title: 'Error');
       }
     }
   }

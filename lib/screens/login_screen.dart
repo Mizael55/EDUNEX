@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../features/auth/models/user_role.dart';
 import '../features/auth/repositories/auth_repository.dart';
 import '../theme/app_colors.dart';
+import '../core/widgets/app_toast.dart';
 import 'main_shell.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -104,25 +105,10 @@ class _LoginScreenState extends State<LoginScreen> {
 
       if (!mounted) return;
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          backgroundColor: AppColors.navyPrimary,
-          behavior: SnackBarBehavior.floating,
-          duration: const Duration(seconds: 2),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          content: Row(
-            children: [
-              const Icon(Icons.check_circle_rounded, color: AppColors.accentGreen),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  '¡Bienvenido/a ${profile.nombreCompleto}! Acceso concedido como ${profile.rol.displayName}.',
-                  style: const TextStyle(fontWeight: FontWeight.w600),
-                ),
-              ),
-            ],
-          ),
-        ),
+      AppToast.success(
+        context,
+        '¡Bienvenido/a ${profile.nombreCompleto}! Acceso concedido como ${profile.rol.displayName}.',
+        title: 'Acceso Concedido',
       );
 
       // Navegar al shell principal del SaaS EDUNEX
@@ -133,24 +119,10 @@ class _LoginScreenState extends State<LoginScreen> {
       );
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          backgroundColor: Colors.red.shade800,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          content: Row(
-            children: [
-              const Icon(Icons.error_outline_rounded, color: Colors.white),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  e.toString().replaceAll('Exception: ', ''),
-                  style: const TextStyle(fontWeight: FontWeight.w600),
-                ),
-              ),
-            ],
-          ),
-        ),
+      AppToast.error(
+        context,
+        e.toString().replaceAll('Exception: ', ''),
+        title: 'Error de Autenticación',
       );
     } finally {
       if (mounted) {
@@ -697,12 +669,10 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
               TextButton(
                 onPressed: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text(
-                        'Por favor contacta al administrador de tu colegio para restablecer tu clave.',
-                      ),
-                    ),
+                  AppToast.info(
+                    context,
+                    'Por favor contacta al administrador de tu colegio para restablecer tu clave.',
+                    title: 'Restablecer Clave',
                   );
                 },
                 style: TextButton.styleFrom(

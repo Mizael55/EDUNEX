@@ -41,6 +41,8 @@ import '../features/teacher_portal/screens/teacher_portal_screen.dart';
 import '../features/guidance/repositories/guidance_repository.dart';
 import '../features/guidance/screens/guidance_management_screen.dart';
 import '../features/schools/screens/school_payment_method_screen.dart';
+import '../core/widgets/app_toast.dart';
+import '../core/widgets/modern_dialog.dart';
 import 'login_screen.dart';
 
 /// Shell principal responsivo de EDUNEX con navegación adaptativa
@@ -135,12 +137,7 @@ class _MainShellState extends State<MainShell> {
     );
     if (updatedLogo != null && mounted) {
       setState(() => _schoolLogoUrl = updatedLogo);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('¡Logo del centro educativo actualizado con éxito!'),
-          backgroundColor: AppColors.accentGreen,
-        ),
-      );
+      AppToast.success(context, '¡Logo del centro educativo actualizado con éxito!');
     }
   }
 
@@ -614,34 +611,23 @@ class _MainShellState extends State<MainShell> {
     );
   }
 
-  void _logout() {
-    showDialog(
+  void _logout() async {
+    final confirmed = await ModernConfirmDialog.show(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Cerrar Sesión'),
-        content: const Text('¿Estás seguro de que deseas salir de EDUNEX?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Cancelar'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.of(context).pop();
-              Navigator.of(context).pushAndRemoveUntil(
-                MaterialPageRoute(builder: (_) => const LoginScreen()),
-                (route) => false,
-              );
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red.shade700,
-              foregroundColor: Colors.white,
-            ),
-            child: const Text('Cerrar Sesión'),
-          ),
-        ],
-      ),
+      title: 'Cerrar Sesión',
+      message: '¿Estás seguro de que deseas salir de EDUNEX?',
+      confirmText: 'Cerrar Sesión',
+      cancelText: 'Cancelar',
+      icon: Icons.logout_rounded,
+      isDestructive: true,
     );
+
+    if (confirmed == true && mounted) {
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (_) => const LoginScreen()),
+        (route) => false,
+      );
+    }
   }
 
   @override

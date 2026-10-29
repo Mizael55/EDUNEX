@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../theme/app_colors.dart';
+import '../../../core/widgets/app_toast.dart';
 import '../models/school.dart';
 import '../repositories/school_repository.dart';
 
@@ -122,21 +123,19 @@ class _EditSchoolDialogState extends State<EditSchoolDialog> {
       if (mounted) {
         setState(() => _isSaving = false);
         Navigator.of(context).pop(updated);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('¡Información de registro de "${updated.nombre}" actualizada con éxito!'),
-            backgroundColor: AppColors.accentGreen,
-          ),
+        AppToast.success(
+          context,
+          '¡Información de registro de "${updated.nombre}" actualizada con éxito!',
+          title: 'Colegio Actualizado',
         );
       }
     } catch (e) {
       if (mounted) {
         setState(() => _isSaving = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error guardando cambios: $e'),
-            backgroundColor: Colors.redAccent,
-          ),
+        AppToast.error(
+          context,
+          'Error guardando cambios: $e',
+          title: 'Error al Guardar',
         );
       }
     }

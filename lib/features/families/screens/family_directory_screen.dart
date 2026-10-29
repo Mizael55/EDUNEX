@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../theme/app_colors.dart';
+import '../../../core/widgets/app_toast.dart';
+import '../../../core/widgets/modern_dialog.dart';
 import '../models/family.dart';
 import '../repositories/family_repository.dart';
 import 'family_detail_dialog.dart';
@@ -74,11 +76,10 @@ class _FamilyDirectoryScreenState extends State<FamilyDirectoryScreen> {
     }
     if (!mounted) return;
     if (targetColegioId == null || targetColegioId.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('No hay centros educativos registrados en el sistema. Registra un colegio primero.'),
-          backgroundColor: Colors.redAccent,
-        ),
+      AppToast.error(
+        context,
+        'No hay centros educativos registrados en el sistema. Registra un colegio primero.',
+        title: 'Colegio Requerido',
       );
       return;
     }
@@ -87,54 +88,34 @@ class _FamilyDirectoryScreenState extends State<FamilyDirectoryScreen> {
       final school = await SchoolRepository().getSchoolById(targetColegioId);
       if (school != null && !school.tieneMetodoPagoValido) {
         if (!mounted) return;
-        showDialog(
+        final setupPayment = await ModernConfirmDialog.show(
           context: context,
-          builder: (ctx) => AlertDialog(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-            title: const Row(
-              children: [
-                Icon(Icons.lock_clock_rounded, color: Color(0xFFDC2626), size: 24),
-                SizedBox(width: 10),
-                Text('Método de Pago Requerido', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-              ],
-            ),
-            content: const Text(
-              'Para habilitar el enrolamiento de alumnos y familias en tu centro educativo, debes registrar un método de pago en el menú lateral (Método de Pago & Suscripción).',
-              style: TextStyle(fontSize: 13),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(ctx).pop(),
-                child: const Text('Cerrar'),
-              ),
-              ElevatedButton.icon(
-                onPressed: () {
-                  Navigator.of(ctx).pop();
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => Scaffold(
-                        appBar: AppBar(
-                          title: const Text('Método de Pago & Suscripción'),
-                          backgroundColor: AppColors.navyPrimary,
-                          foregroundColor: Colors.white,
-                        ),
-                        body: SchoolPaymentMethodScreen(
-                          colegioId: targetColegioId,
-                        ),
-                      ),
-                    ),
-                  );
-                },
-                icon: const Icon(Icons.credit_card_rounded, size: 16),
-                label: const Text('Configurar Método de Pago'),
-                style: ElevatedButton.styleFrom(
+          title: 'Método de Pago Requerido',
+          message: 'Para habilitar el enrolamiento de alumnos y familias en tu centro educativo, debes registrar un método de pago en el menú lateral (Método de Pago & Suscripción).',
+          confirmText: 'Configurar Método de Pago',
+          cancelText: 'Cerrar',
+          icon: Icons.credit_card_rounded,
+          iconColor: const Color(0xFFDC2626),
+          iconBgColor: const Color(0xFFFEE2E2),
+          confirmColor: AppColors.navyPrimary,
+        );
+
+        if (setupPayment == true && mounted) {
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => Scaffold(
+                appBar: AppBar(
+                  title: const Text('Método de Pago & Suscripción'),
                   backgroundColor: AppColors.navyPrimary,
                   foregroundColor: Colors.white,
                 ),
+                body: SchoolPaymentMethodScreen(
+                  colegioId: targetColegioId,
+                ),
               ),
-            ],
-          ),
-        );
+            ),
+          );
+        }
         return;
       }
     } catch (_) {}
