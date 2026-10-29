@@ -5,6 +5,8 @@ import '../../../core/config/supabase_config.dart';
 import '../models/school.dart';
 import '../models/saas_invoice.dart';
 import '../models/system_announcement.dart';
+import '../models/saas_user.dart';
+import '../models/saas_company_config.dart';
 import '../../families/models/student_document.dart';
 import '../../auth/repositories/auth_repository.dart';
 import '../../auth/models/user_role.dart';
@@ -109,11 +111,35 @@ class SchoolRepository {
 
   static final List<SystemAnnouncement> _demoSystemAnnouncements = List.from(_seedSystemAnnouncements);
 
+  // Usuarios internos de la empresa SaaS dueña de EDUNEX
+  // Inicia únicamente con el usuario Superadmin actual sin data falsa
+  static final List<SaaSUser> _seedSaaSUsers = [
+    SaaSUser(
+      id: 'usr-saas-master',
+      nombre: 'Super',
+      apellido: 'Admin',
+      email: 'admin@edunex.edu',
+      telefono: '809-555-0100',
+      rol: SaaSRole.superadmin,
+      activo: true,
+      createdAt: DateTime(2026, 1, 1),
+      lastLogin: DateTime.now(),
+      notas: 'Cuenta principal del dueño de la plataforma EDUNEX',
+    ),
+  ];
+
+  static final List<SaaSUser> _demoSaaSUsers = List.from(_seedSaaSUsers);
+
+  // Configuración de la empresa matriz SaaS
+  static SaaSCompanyConfig _demoCompanyConfig = const SaaSCompanyConfig();
+
   /// Limpia todos los datos en memoria para pruebas de QA
   static void clearAllData() {
     _demoSchools.clear();
     _demoSaaSInvoices.clear();
     _demoSystemAnnouncements.clear();
+    _demoSaaSUsers.clear();
+    _demoSaaSUsers.addAll(_seedSaaSUsers);
   }
 
   /// Restaura los datos de prueba para pruebas y modo demo
@@ -124,6 +150,9 @@ class SchoolRepository {
     _demoSaaSInvoices.addAll(_seedSaaSInvoices);
     _demoSystemAnnouncements.clear();
     _demoSystemAnnouncements.addAll(_seedSystemAnnouncements);
+    _demoSaaSUsers.clear();
+    _demoSaaSUsers.addAll(_seedSaaSUsers);
+    _demoCompanyConfig = const SaaSCompanyConfig();
   }
 
   /// Obtiene la lista de colegios registrados
@@ -841,6 +870,9 @@ class SchoolRepository {
       // 1. Tablas en orden estricto de dependencias FK
       final tablesToClear = [
         'logs_auditoria',
+        'saas_usuarios',
+        'saas_facturas',
+        'saas_anuncios',
         'documentos_estudiante',
         'pagos_detalle',
         'recibos',
@@ -1347,5 +1379,259 @@ class SchoolRepository {
     }
 
     return buffer.toString();
+  }
+
+  // ==========================================
+  // GESTIÓN DE USUARIOS Y ROLES SAAS
+  // ==========================================
+
+  Future<void> _recordAudit({
+    required String accion,
+    required String colegioId,
+    required String colegioNombre,
+    required String detalles,
+  }) async {
+    AuditRepository().recordAuditLog(
+      AuditLog(
+        id: 'aud-${DateTime.now().millisecondsSinceEpoch}',
+        timestamp: DateTime.now(),
+        accion: accion,
+        descripcion: detalles,
+        usuario: 'admin@edunex.edu',
+        rol: 'SuperAdmin',
+        colegioId: colegioId,
+        colegioNombre: colegioNombre,
+        modulo: 'EQUIPO_SAAS',
+      ),
+    );
+  }
+
+  /// Obtiene los usuarios internos de la empresa dueña del software
+  Future<List<SaaSUser>> getSaaSUsers({
+    String? query,
+    SaaSRole? rolFilter,
+  }) async {
+    List<SaaSUser> users = [];
+
+    if (_supabaseClient != null && SupabaseConfig.isConfigured) {
+      try {
+        var req = _supabaseClient.from('saas_usuarios').select('*');
+        if (rolFilter != null) {
+          req = req.eq('rol', rolFilter.name);
+        }
+        final response = await req.order('created_at', ascending: false);
+        users = (response as List).map((row) => SaaSUser.fromJson(row)).toList();
+      } catch (e) {
+        debugPrint('Aviso: Error cargando saas_usuarios de Supabase: $e');
+        users = List.from(_demoSaaSUsers);
+      }
+    } else {
+      users = List.from(_demoSaaSUsers);
+    }
+
+    if (query != null && query.trim().isNotEmpty) {
+      final q = query.toLowerCase().trim();
+      users = users.where((u) {
+        final matchName = u.nombreCompleto.toLowerCase().contains(q);
+        final matchEmail = u.email.toLowerCase().contains(q);
+        final matchRol = u.rol.displayName.toLowerCase().contains(q);
+        return matchName || matchEmail || matchRol;
+      }).toList();
+    }
+
+    if (rolFilter != null) {
+      users = users.where((u) => u.rol == rolFilter).toList();
+    }
+
+    return users;
+  }
+
+  /// Crea un nuevo miembro del equipo de la empresa matriz SaaS
+  Future<SaaSUser> createSaaSUser({
+    required String nombre,
+    required String apellido,
+    required String email,
+    required SaaSRole rol,
+    String? telefono,
+    required String password,
+    String? notas,
+  }) async {
+    final newUser = SaaSUser(
+      id: 'usr-saas-${DateTime.now().millisecondsSinceEpoch}',
+      nombre: nombre.trim(),
+      apellido: apellido.trim(),
+      email: email.trim().toLowerCase(),
+      rol: rol,
+      telefono: telefono?.trim(),
+      activo: true,
+      createdAt: DateTime.now(),
+      lastLogin: null,
+      notas: notas?.trim(),
+    );
+
+    if (_supabaseClient != null && SupabaseConfig.isConfigured) {
+      try {
+        await _supabaseClient.from('saas_usuarios').insert(newUser.toJson());
+      } catch (e) {
+        debugPrint('Aviso: Guardando usuario SaaS localmente: $e');
+      }
+    }
+
+    _demoSaaSUsers.removeWhere((u) => u.id == newUser.id || u.email == newUser.email);
+    _demoSaaSUsers.insert(0, newUser);
+
+    await _recordAudit(
+      accion: 'CREAR_USUARIO_SAAS',
+      colegioId: 'HQ-EDUNEX',
+      colegioNombre: 'EDUNEX HQ',
+      detalles: 'Se dio de alta al usuario ${newUser.nombreCompleto} con rol ${newUser.rol.displayName} (${newUser.email}).',
+    );
+
+    return newUser;
+  }
+
+  /// Actualiza datos de un usuario SaaS
+  Future<void> updateSaaSUser(SaaSUser user) async {
+    final idx = _demoSaaSUsers.indexWhere((u) => u.id == user.id);
+    if (idx != -1) {
+      _demoSaaSUsers[idx] = user;
+    }
+
+    if (_supabaseClient != null && SupabaseConfig.isConfigured) {
+      try {
+        await _supabaseClient
+            .from('saas_usuarios')
+            .update(user.toJson())
+            .eq('id', user.id);
+      } catch (e) {
+        debugPrint('Aviso actualizando usuario SaaS en Supabase: $e');
+      }
+    }
+
+    await _recordAudit(
+      accion: 'ACTUALIZAR_USUARIO_SAAS',
+      colegioId: 'HQ-EDUNEX',
+      colegioNombre: 'EDUNEX HQ',
+      detalles: 'Se actualizaron los datos del usuario ${user.nombreCompleto} (Rol: ${user.rol.displayName}).',
+    );
+  }
+
+  /// Activa o suspende el acceso de un miembro del equipo SaaS
+  Future<void> toggleSaaSUserStatus(String userId) async {
+    final idx = _demoSaaSUsers.indexWhere((u) => u.id == userId);
+    if (idx != -1) {
+      final user = _demoSaaSUsers[idx];
+      final newStatus = !user.activo;
+      _demoSaaSUsers[idx] = user.copyWith(activo: newStatus);
+
+      if (_supabaseClient != null && SupabaseConfig.isConfigured) {
+        try {
+          await _supabaseClient
+              .from('saas_usuarios')
+              .update({'activo': newStatus})
+              .eq('id', userId);
+        } catch (e) {
+          debugPrint('Aviso alternando estado de usuario SaaS en Supabase: $e');
+        }
+      }
+
+      await _recordAudit(
+        accion: newStatus ? 'ACTIVAR_USUARIO_SAAS' : 'SUSPENDER_USUARIO_SAAS',
+        colegioId: 'HQ-EDUNEX',
+        colegioNombre: 'EDUNEX HQ',
+        detalles: 'Estado del usuario ${user.nombreCompleto} cambiado a ${newStatus ? "ACTIVO" : "SUSPENDIDO"}.',
+      );
+    }
+  }
+
+  /// Resetea la contraseña de un usuario interno de la empresa SaaS
+  Future<void> resetSaaSUserPassword(String userId, String newPassword) async {
+    final user = _demoSaaSUsers.firstWhere(
+      (u) => u.id == userId,
+      orElse: () => _demoSaaSUsers.first,
+    );
+
+    if (_supabaseClient != null && SupabaseConfig.isConfigured) {
+      try {
+        await _supabaseClient.from('saas_usuarios').update({
+          'password_hash': newPassword,
+          'updated_at': DateTime.now().toIso8601String(),
+        }).eq('id', userId);
+      } catch (e) {
+        debugPrint('Aviso reseteando clave de usuario SaaS: $e');
+      }
+    }
+
+    await _recordAudit(
+      accion: 'RESET_PASSWORD_SAAS',
+      colegioId: 'HQ-EDUNEX',
+      colegioNombre: 'EDUNEX HQ',
+      detalles: 'Se restableció la contraseña temporal del colaborador ${user.nombreCompleto} (${user.email}).',
+    );
+  }
+
+  /// Elimina un usuario del equipo SaaS
+  Future<void> deleteSaaSUser(String userId) async {
+    _demoSaaSUsers.removeWhere((u) => u.id == userId);
+
+    if (_supabaseClient != null && SupabaseConfig.isConfigured) {
+      try {
+        await _supabaseClient.from('saas_usuarios').delete().eq('id', userId);
+      } catch (e) {
+        debugPrint('Aviso eliminando usuario SaaS en Supabase: $e');
+      }
+    }
+
+    await _recordAudit(
+      accion: 'ELIMINAR_USUARIO_SAAS',
+      colegioId: 'HQ-EDUNEX',
+      colegioNombre: 'EDUNEX HQ',
+      detalles: 'Se removió el usuario ID $userId del equipo corporativo.',
+    );
+  }
+
+  // ==========================================
+  // CONFIGURACIÓN DE LA EMPRESA MATRIZ SAAS
+  // ==========================================
+
+  /// Obtiene la configuración de la empresa SaaS
+  Future<SaaSCompanyConfig> getCompanyConfig() async {
+    if (_supabaseClient != null && SupabaseConfig.isConfigured) {
+      try {
+        final response = await _supabaseClient
+            .from('saas_configuracion')
+            .select('*')
+            .limit(1)
+            .maybeSingle();
+        if (response != null) {
+          _demoCompanyConfig = SaaSCompanyConfig.fromJson(response);
+        }
+      } catch (e) {
+        debugPrint('Aviso cargando configuración SaaS de Supabase: $e');
+      }
+    }
+    return _demoCompanyConfig;
+  }
+
+  /// Guarda la configuración de la empresa SaaS
+  Future<void> saveCompanyConfig(SaaSCompanyConfig config) async {
+    _demoCompanyConfig = config;
+
+    if (_supabaseClient != null && SupabaseConfig.isConfigured) {
+      try {
+        await _supabaseClient
+            .from('saas_configuracion')
+            .upsert(config.toJson());
+      } catch (e) {
+        debugPrint('Aviso guardando configuración SaaS en Supabase: $e');
+      }
+    }
+
+    await _recordAudit(
+      accion: 'ACTUALIZAR_CONFIGURACION_SAAS',
+      colegioId: 'HQ-EDUNEX',
+      colegioNombre: 'EDUNEX HQ',
+      detalles: 'Se actualizaron los parámetros de la empresa matriz (RNC: ${config.rnc}, Razón Social: ${config.razonSocial}).',
+    );
   }
 }

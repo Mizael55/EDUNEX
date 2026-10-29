@@ -37,6 +37,8 @@ import '../features/superadmin/models/school.dart';
 import '../features/superadmin/models/system_announcement.dart';
 import '../features/superadmin/screens/saas_billing_screen.dart';
 import '../features/superadmin/screens/system_announcements_screen.dart';
+import '../features/superadmin/screens/saas_users_screen.dart';
+import '../features/superadmin/screens/saas_settings_screen.dart';
 import '../features/finances/screens/finance_overview_screen.dart';
 import '../features/services/screens/services_management_screen.dart';
 import '../features/teacher_portal/repositories/teacher_repository.dart';
@@ -218,8 +220,16 @@ class _MainShellState extends State<MainShell> {
           icon: Icons.receipt_long_rounded,
         ),
         const NavigationItem(
+          title: 'Equipo & Roles SaaS',
+          icon: Icons.badge_rounded,
+        ),
+        const NavigationItem(
           title: 'Anuncios del Sistema',
           icon: Icons.campaign_rounded,
+        ),
+        const NavigationItem(
+          title: 'Configuración del SaaS',
+          icon: Icons.settings_suggest_rounded,
         ),
         const NavigationItem(
           title: 'Finanzas Escolares',
@@ -421,16 +431,24 @@ class _MainShellState extends State<MainShell> {
             schoolRepository: _schoolRepository,
           );
         case 3:
-          return SystemAnnouncementsScreen(
+          return SaaSUsersScreen(
             schoolRepository: _schoolRepository,
           );
         case 4:
+          return SystemAnnouncementsScreen(
+            schoolRepository: _schoolRepository,
+          );
+        case 5:
+          return SaaSSettingsScreen(
+            schoolRepository: _schoolRepository,
+          );
+        case 6:
           return FinanceOverviewScreen(
             isSuperAdmin: true,
             familyRepository: _familyRepository,
             schoolRepository: _schoolRepository,
           );
-        case 5:
+        case 7:
           return SuperAdminAuditScreen(
             repository: _auditRepository,
           );
