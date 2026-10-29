@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/widgets/school_logo_avatar.dart';
 import '../../../theme/app_colors.dart';
 import '../../../core/widgets/app_toast.dart';
 import '../../../core/widgets/modern_dialog.dart';
@@ -758,22 +759,28 @@ class _SuperAdminDashboardScreenState extends State<SuperAdminDashboardScreen> {
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Identificador visual del Colegio
-                Container(
-                  width: 48,
-                  height: 48,
-                  decoration: BoxDecoration(
-                    color: school.isSuspended
-                        ? Colors.red.shade50
-                        : AppColors.navyPrimary.withValues(alpha: 0.08),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Icon(
-                    Icons.account_balance_rounded,
-                    color: school.isSuspended ? Colors.red.shade700 : AppColors.navyPrimary,
-                    size: 24,
-                  ),
-                ),
+                // Identificador visual del Colegio (Logo si existe, o icono distintivo)
+                school.logoUrl != null && school.logoUrl!.trim().isNotEmpty
+                    ? SchoolLogoAvatar(
+                        logoUrl: school.logoUrl,
+                        fallbackText: school.siglas ?? school.nombre,
+                        radius: 24,
+                      )
+                    : Container(
+                        width: 48,
+                        height: 48,
+                        decoration: BoxDecoration(
+                          color: school.isSuspended
+                              ? Colors.red.shade50
+                              : AppColors.navyPrimary.withValues(alpha: 0.08),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Icon(
+                          Icons.account_balance_rounded,
+                          color: school.isSuspended ? Colors.red.shade700 : AppColors.navyPrimary,
+                          size: 24,
+                        ),
+                      ),
                 const SizedBox(width: 14),
 
                 // Nombres, RNC y datos de contacto

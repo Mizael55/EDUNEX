@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/widgets/school_logo_avatar.dart';
 import '../../../theme/app_colors.dart';
 import '../models/school.dart';
 import '../repositories/school_repository.dart';
@@ -136,17 +137,10 @@ class _SchoolInspectionScreenState extends State<SchoolInspectionScreen> {
                   final infoSection = Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      CircleAvatar(
+                      SchoolLogoAvatar(
+                        logoUrl: _school.logoUrl,
+                        fallbackText: _school.siglas ?? _school.nombre,
                         radius: 36,
-                        backgroundColor: AppColors.navyPrimary.withValues(alpha: 0.1),
-                        child: Text(
-                          _school.siglas ?? _school.nombre.substring(0, 2).toUpperCase(),
-                          style: const TextStyle(
-                            fontSize: 22,
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.navyPrimary,
-                          ),
-                        ),
                       ),
                       const SizedBox(width: 18),
                       Flexible(
@@ -296,7 +290,8 @@ class _SchoolInspectionScreenState extends State<SchoolInspectionScreen> {
                       icon: Icons.badge_outlined,
                       headerAction: OutlinedButton.icon(
                         onPressed: () async {
-                          final directorEmail = _school.directorEmail ?? _school.emailContacto ?? 'admin@ceno.edu.do';
+                          final directorEmail = _school.directorEmail ??
+                              'director@${_school.siglas?.toLowerCase() ?? "edunex"}.edu.do';
                           final directorName = _school.directorNombre ?? 'Director(a) General';
                           final reset = await ResetPasswordDialog.show(
                             context,
@@ -320,10 +315,10 @@ class _SchoolInspectionScreenState extends State<SchoolInspectionScreen> {
                         ),
                       ),
                       rows: [
-                        _buildInfoRow('Director(a) General:', _school.directorNombre ?? 'Dirección Académica CENO'),
-                        _buildInfoRow('Cédula de Identidad:', _school.directorCedula ?? '001-0897654-3 (Validada)'),
-                        _buildInfoRow('Teléfono Directivo:', _school.directorTelefono ?? _school.telefono ?? 'No especificado'),
-                        _buildInfoRow('Email de Notificación:', _school.directorEmail ?? _school.emailContacto ?? 'admin@colegio.edu.do'),
+                        _buildInfoRow('Director(a) General:', _school.directorNombre ?? 'No asignado'),
+                        _buildInfoRow('Cédula de Identidad:', _school.directorCedula ?? 'No especificada'),
+                        _buildInfoRow('Teléfono Directivo:', _school.directorTelefono ?? 'No especificado'),
+                        _buildInfoRow('Email de Notificación:', _school.directorEmail ?? 'No especificado'),
                         _buildInfoRow('Sucursales Operativas:', '${_school.sucursalesCount} sedes asociadas'),
                         _buildInfoRow('Fecha de Enrolamiento:', 'Enero 2026 (Red EDUNEX SaaS)'),
                       ],

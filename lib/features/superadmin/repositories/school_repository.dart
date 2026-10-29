@@ -231,6 +231,9 @@ class SchoolRepository {
           'descuento_semestral_pct': descuentoProntoPagoSemestralPct,
           'descuento_trimestral_pct': descuentoProntoPagoTrimestralPct,
           'descuento_hermanos_pct': descuentoHermanosPct,
+          'director_nombre': '$directorNombres ${directorApellidos ?? ""}'.trim(),
+          'director_email': directorEmail.trim().toLowerCase(),
+          'director_telefono': telefono?.trim(),
           if (directorCedula != null) 'director_cedula': directorCedula,
         };
         if (documentos != null && documentos.isNotEmpty) {
@@ -248,6 +251,10 @@ class SchoolRepository {
           school = School.fromJson({
             ...colegioMap,
             if (logoUrl != null && logoUrl.trim().isNotEmpty) 'logo_url': logoUrl.trim(),
+            'director_nombre': '$directorNombres ${directorApellidos ?? ""}'.trim(),
+            'director_email': directorEmail.trim().toLowerCase(),
+            'director_telefono': telefono?.trim(),
+            'director_cedula': directorCedula,
             'configuracion': configUpdate,
           });
         } catch (e) {
@@ -615,6 +622,27 @@ class SchoolRepository {
     if (maxEstudiantes != null) updatePayload['max_estudiantes'] = maxEstudiantes;
     if (logoUrl != null) updatePayload['logo_url'] = logoUrl.trim();
 
+    Map<String, dynamic> configToUpdate = {};
+    if (_supabaseClient != null && SupabaseConfig.isConfigured) {
+      try {
+        final currentSchool = await _supabaseClient
+            .from('colegios')
+            .select('configuracion')
+            .eq('id', schoolId)
+            .maybeSingle();
+        if (currentSchool != null && currentSchool['configuracion'] is Map) {
+          configToUpdate = Map<String, dynamic>.from(currentSchool['configuracion']);
+        }
+      } catch (_) {}
+    }
+    if (directorNombre != null) configToUpdate['director_nombre'] = directorNombre.trim();
+    if (directorEmail != null) configToUpdate['director_email'] = directorEmail.trim().toLowerCase();
+    if (directorCedula != null) configToUpdate['director_cedula'] = directorCedula.trim();
+    if (directorTelefono != null) configToUpdate['director_telefono'] = directorTelefono.trim();
+    if (configToUpdate.isNotEmpty) {
+      updatePayload['configuracion'] = configToUpdate;
+    }
+
     if (_supabaseClient != null && SupabaseConfig.isConfigured) {
       try {
         await _supabaseClient
@@ -624,6 +652,30 @@ class SchoolRepository {
       } catch (e) {
         debugPrint('Aviso: Error actualizando colegio en Supabase: $e');
       }
+    }
+
+    if (directorEmail != null && directorEmail.trim().isNotEmpty) {
+      AuthRepository().registerUser(
+        email: directorEmail.trim(),
+        nombres: directorNombre ?? 'Director',
+        apellidos: nombre,
+        rol: UserRole.adminColegio,
+        colegioId: schoolId,
+        colegioNombre: nombre,
+        telefono: directorTelefono ?? telefono,
+        cedula: directorCedula,
+      );
+    }
+    if (emailContacto != null && emailContacto.trim().isNotEmpty) {
+      AuthRepository().registerUser(
+        email: emailContacto.trim(),
+        nombres: 'Administración',
+        apellidos: nombre,
+        rol: UserRole.adminColegio,
+        colegioId: schoolId,
+        colegioNombre: nombre,
+        telefono: telefono,
+      );
     }
 
     final index = _demoSchools.indexWhere((s) => s.id == schoolId);
