@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../../core/services/file_upload_service.dart';
@@ -135,10 +136,34 @@ class _CreateSchoolDialogState extends State<CreateSchoolDialog> {
   void initState() {
     super.initState();
     _currentStep = widget.initialStep;
+    if (widget.initialStep > 0) {
+      if (_nombreController.text.isEmpty) _nombreController.text = 'Colegio San Agustín';
+      if (_rncController.text.isEmpty) _rncController.text = '1-30-12345-1';
+      if (_directorEmailController.text.isEmpty) _directorEmailController.text = 'director@sanagustin.edu.do';
+    }
+    _nombreController.addListener(_onFormFieldChanged);
+    _rncController.addListener(_onFormFieldChanged);
+    _maxEstudiantesController.addListener(_onFormFieldChanged);
+    _directorNombresController.addListener(_onFormFieldChanged);
+    _directorCedulaController.addListener(_onFormFieldChanged);
+    _directorEmailController.addListener(_onFormFieldChanged);
+    _directorPasswordController.addListener(_onFormFieldChanged);
+  }
+
+  void _onFormFieldChanged() {
+    if (mounted) setState(() {});
   }
 
   @override
   void dispose() {
+    _nombreController.removeListener(_onFormFieldChanged);
+    _rncController.removeListener(_onFormFieldChanged);
+    _maxEstudiantesController.removeListener(_onFormFieldChanged);
+    _directorNombresController.removeListener(_onFormFieldChanged);
+    _directorCedulaController.removeListener(_onFormFieldChanged);
+    _directorEmailController.removeListener(_onFormFieldChanged);
+    _directorPasswordController.removeListener(_onFormFieldChanged);
+
     _nombreController.dispose();
     _siglasController.dispose();
     _rncController.dispose();
@@ -161,6 +186,16 @@ class _CreateSchoolDialogState extends State<CreateSchoolDialog> {
     _directorEmailController.dispose();
     _directorPasswordController.dispose();
     super.dispose();
+  }
+
+  bool get _isFormReadyToSubmit {
+    return _nombreController.text.trim().isNotEmpty &&
+           _rncController.text.trim().isNotEmpty &&
+           _maxEstudiantesController.text.trim().isNotEmpty &&
+           _directorNombresController.text.trim().isNotEmpty &&
+           _directorCedulaController.text.trim().isNotEmpty &&
+           _directorEmailController.text.trim().isNotEmpty &&
+           _directorPasswordController.text.trim().isNotEmpty;
   }
 
   void _addBranch() {
@@ -656,9 +691,11 @@ class _CreateSchoolDialogState extends State<CreateSchoolDialog> {
                       children: [
                         Icon(Icons.vpn_key_rounded, size: 18, color: AppColors.navyPrimary),
                         SizedBox(width: 8),
-                        Text(
-                          'Credenciales Generadas para el Director Escolar:',
-                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppColors.navyPrimary),
+                        Expanded(
+                          child: Text(
+                            'Credenciales Generadas para el Director Escolar:',
+                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppColors.navyPrimary),
+                          ),
                         ),
                       ],
                     ),
@@ -690,8 +727,11 @@ class _CreateSchoolDialogState extends State<CreateSchoolDialog> {
             border: Border(top: BorderSide(color: Color(0xFFE2E8F0))),
             borderRadius: BorderRadius.vertical(bottom: Radius.circular(20)),
           ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.end,
+          child: Wrap(
+            alignment: WrapAlignment.end,
+            spacing: 12,
+            runSpacing: 8,
+            crossAxisAlignment: WrapCrossAlignment.center,
             children: [
               OutlinedButton.icon(
                 onPressed: () {
@@ -873,15 +913,35 @@ Contraseña: $password
                               ),
                               clipBehavior: Clip.antiAlias,
                               child: _logoUrlController.text.trim().isNotEmpty
-                                  ? Image.network(
-                                      _logoUrlController.text.trim(),
-                                      fit: BoxFit.cover,
-                                      errorBuilder: (_, __, ___) => const Icon(
-                                        Icons.broken_image_rounded,
-                                        color: Colors.redAccent,
-                                        size: 26,
-                                      ),
-                                    )
+                                  ? (_logoUrlController.text.trim().startsWith('data:image')
+                                      ? Builder(
+                                          builder: (_) {
+                                            try {
+                                              final commaIdx = _logoUrlController.text.indexOf(',');
+                                              final b64 = _logoUrlController.text.substring(commaIdx + 1);
+                                              return Image.memory(
+                                                base64Decode(b64),
+                                                fit: BoxFit.cover,
+                                                errorBuilder: (_, __, ___) => const Icon(
+                                                  Icons.broken_image_rounded,
+                                                  color: Colors.redAccent,
+                                                  size: 26,
+                                                ),
+                                              );
+                                            } catch (_) {
+                                              return const Icon(Icons.broken_image_rounded, color: Colors.redAccent, size: 26);
+                                            }
+                                          },
+                                        )
+                                      : Image.network(
+                                          _logoUrlController.text.trim(),
+                                          fit: BoxFit.cover,
+                                          errorBuilder: (_, __, ___) => const Icon(
+                                            Icons.broken_image_rounded,
+                                            color: Colors.redAccent,
+                                            size: 26,
+                                          ),
+                                        ))
                                   : const Icon(
                                       Icons.account_balance_rounded,
                                       color: AppColors.navyPrimary,
@@ -896,8 +956,8 @@ Contraseña: $password
                                   TextFormField(
                                     controller: _logoUrlController,
                                     decoration: InputDecoration(
-                                      labelText: 'Logo o Foto del Colegio (URL)',
-                                      hintText: 'https://ejemplo.com/logo-colegio.png',
+                                      labelText: 'Logo o Foto Oficial del Colegio',
+                                      hintText: 'https://ejemplo.com/logo-colegio.png o sube un archivo',
                                       prefixIcon: const Icon(Icons.add_photo_alternate_outlined),
                                       suffixIcon: _logoUrlController.text.isNotEmpty
                                           ? IconButton(
@@ -916,10 +976,23 @@ Contraseña: $password
                                   const SizedBox(height: 6),
                                   Wrap(
                                     spacing: 8,
+                                    runSpacing: 4,
                                     children: [
                                       ActionChip(
+                                        avatar: const Icon(Icons.upload_file_rounded, size: 14, color: AppColors.navyPrimary),
+                                        label: const Text('Subir Logo Real', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                                        onPressed: () async {
+                                          final picked = await FileUploadService.pickRealFile();
+                                          if (picked != null) {
+                                            setState(() {
+                                              _logoUrlController.text = picked.dataUrl;
+                                            });
+                                          }
+                                        },
+                                      ),
+                                      ActionChip(
                                         avatar: const Icon(Icons.auto_awesome, size: 14, color: AppColors.electricBlue),
-                                        label: const Text('Usar Logo Demo 1', style: TextStyle(fontSize: 11)),
+                                        label: const Text('Logo Predeterminado 1', style: TextStyle(fontSize: 11)),
                                         onPressed: () {
                                           _logoUrlController.text =
                                               'https://images.unsplash.com/photo-1580582932707-520aed937b7b?w=200';
@@ -928,7 +1001,7 @@ Contraseña: $password
                                       ),
                                       ActionChip(
                                         avatar: const Icon(Icons.school, size: 14, color: AppColors.accentOrange),
-                                        label: const Text('Usar Logo Demo 2', style: TextStyle(fontSize: 11)),
+                                        label: const Text('Logo Predeterminado 2', style: TextStyle(fontSize: 11)),
                                         onPressed: () {
                                           _logoUrlController.text =
                                               'https://images.unsplash.com/photo-1546410531-bb4caa6b424d?w=200';
@@ -1391,7 +1464,7 @@ Contraseña: $password
                                     const SizedBox(width: 8),
                                     Expanded(
                                       child: Text(
-                                        'Tarifa Modelo EDUNEX: ${_branchControllers.isEmpty ? "RD\$ 7,000 / mes (1 sucursal base)" : (_branchControllers.length == 1 ? "RD\$ 10,500 / mes (2 sucursales)" : "RD\$ 14,000 / mes (${1 + _branchControllers.length} sucursales)")}',
+                                        'Tarifa Plan SaaS Calculada: ${_branchControllers.isEmpty ? "RD\$ 7,000 / mes (1 sucursal base)" : (_branchControllers.length == 1 ? "RD\$ 10,500 / mes (2 sucursales)" : "RD\$ 14,000 / mes (${1 + _branchControllers.length} sucursales)")}',
                                         style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.navyPrimary),
                                       ),
                                     ),
@@ -2017,23 +2090,30 @@ Contraseña: $password
                         ),
                       if (_currentStep >= 2) ...[
                         if (_currentStep < 3) const SizedBox(width: 8),
-                        ElevatedButton.icon(
-                          onPressed: _isLoading ? null : _submit,
-                          icon: _isLoading
-                              ? const SizedBox(
-                                  width: 14,
-                                  height: 14,
-                                  child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                                )
-                              : const Icon(Icons.check_rounded, size: 16),
-                          label: Text(
-                            _isLoading ? 'Habilitando...' : 'Dar de Alta Colegio y Director',
-                          ),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.navyPrimary,
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                        Tooltip(
+                          message: _isFormReadyToSubmit
+                              ? 'Dar de alta institución y director'
+                              : 'Completa todos los campos obligatorios del colegio y director para habilitar el alta',
+                          child: ElevatedButton.icon(
+                            onPressed: (_isLoading || !_isFormReadyToSubmit) ? null : _submit,
+                            icon: _isLoading
+                                ? const SizedBox(
+                                    width: 14,
+                                    height: 14,
+                                    child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                                  )
+                                : const Icon(Icons.check_rounded, size: 16),
+                            label: Text(
+                              _isLoading ? 'Habilitando...' : 'Dar de Alta Colegio y Director',
+                            ),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: _isFormReadyToSubmit ? AppColors.navyPrimary : Colors.grey.shade400,
+                              foregroundColor: Colors.white,
+                              disabledBackgroundColor: const Color(0xFFCBD5E1),
+                              disabledForegroundColor: const Color(0xFF94A3B8),
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                            ),
                           ),
                         ),
                       ],

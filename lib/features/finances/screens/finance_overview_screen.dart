@@ -201,31 +201,6 @@ class _FinanceOverviewScreenState extends State<FinanceOverviewScreen> {
                     ],
                   ),
                 ),
-                if (!widget.isSuperAdmin) ...[
-                  OutlinedButton.icon(
-                    onPressed: _openMonthlyBilling,
-                    icon: const Icon(Icons.autorenew_rounded, size: 18),
-                    label: const Text('Corte Mensual Recurrente'),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: AppColors.navyPrimary,
-                      side: const BorderSide(color: AppColors.navyPrimary),
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  ElevatedButton.icon(
-                    onPressed: _openRecordPayment,
-                    icon: const Icon(Icons.receipt_long_rounded, size: 18),
-                    label: const Text('Registrar Cobro en Caja'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.accentGreen,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    ),
-                  ),
-                ],
               ],
             ),
 

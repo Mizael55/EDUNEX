@@ -122,9 +122,19 @@ class SchoolRepository {
             .select('*')
             .order('created_at', ascending: false);
 
-        schools = (response as List)
-            .map((item) => School.fromJson(item as Map<String, dynamic>))
-            .toList();
+        schools = (response as List).map((item) {
+          final map = item as Map<String, dynamic>;
+          if (map['configuracion'] is Map) {
+            final cfg = map['configuracion'] as Map<String, dynamic>;
+            if (cfg['documentos'] is List) {
+              final docs = (cfg['documentos'] as List)
+                  .map((d) => StudentDocument.fromJson(d as Map<String, dynamic>))
+                  .toList();
+              _schoolDocumentsMap[map['id'].toString()] = docs;
+            }
+          }
+          return School.fromJson(map);
+        }).toList();
       } catch (e) {
         debugPrint('Aviso: Error consultando colegios en Supabase: $e');
         schools = _useDemoFallback ? List<School>.from(_demoSchools) : [];
@@ -211,23 +221,37 @@ class SchoolRepository {
           'descuento_hermanos_pct': descuentoHermanosPct,
         });
 
-        if (logoUrl != null && logoUrl.trim().isNotEmpty) {
-          try {
-            await _supabaseClient.from('colegios').update({'logo_url': logoUrl.trim()}).eq('id', school.id);
-            school = School.fromJson({
-              ...colegioMap,
-              'logo_url': logoUrl.trim(),
-              'precio_inicial': precioInicial,
-              'precio_primaria': precioPrimaria,
-              'precio_secundaria': precioSecundaria,
-              'precio_matricula': precioMatricula,
-              'sujeto_a_mejora_pago': sujetoAMejoraPago,
-              'descuento_anual_pct': descuentoProntoPagoAnualPct,
-              'descuento_semestral_pct': descuentoProntoPagoSemestralPct,
-              'descuento_trimestral_pct': descuentoProntoPagoTrimestralPct,
-              'descuento_hermanos_pct': descuentoHermanosPct,
-            });
-          } catch (_) {}
+        final configUpdate = <String, dynamic>{
+          'precio_inicial': precioInicial,
+          'precio_primaria': precioPrimaria,
+          'precio_secundaria': precioSecundaria,
+          'precio_matricula': precioMatricula,
+          'sujeto_a_mejora_pago': sujetoAMejoraPago,
+          'descuento_anual_pct': descuentoProntoPagoAnualPct,
+          'descuento_semestral_pct': descuentoProntoPagoSemestralPct,
+          'descuento_trimestral_pct': descuentoProntoPagoTrimestralPct,
+          'descuento_hermanos_pct': descuentoHermanosPct,
+          if (directorCedula != null) 'director_cedula': directorCedula,
+        };
+        if (documentos != null && documentos.isNotEmpty) {
+          configUpdate['documentos'] = documentos.map((d) => d.toJson()).toList();
+        }
+
+        try {
+          final Map<String, dynamic> updatePayload = {
+            'configuracion': configUpdate,
+          };
+          if (logoUrl != null && logoUrl.trim().isNotEmpty) {
+            updatePayload['logo_url'] = logoUrl.trim();
+          }
+          await _supabaseClient.from('colegios').update(updatePayload).eq('id', school.id);
+          school = School.fromJson({
+            ...colegioMap,
+            if (logoUrl != null && logoUrl.trim().isNotEmpty) 'logo_url': logoUrl.trim(),
+            'configuracion': configUpdate,
+          });
+        } catch (e) {
+          debugPrint('Aviso actualizando configuracion de colegio en Supabase: $e');
         }
 
         // Registrar director en AuthRepository

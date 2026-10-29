@@ -1164,9 +1164,9 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    // Verify header buttons
-    expect(find.text('Corte Mensual Recurrente'), findsOneWidget);
-    expect(find.text('Registrar Cobro en Caja'), findsOneWidget);
+    // Verify header buttons removed per user requirement
+    expect(find.text('Corte Mensual Recurrente'), findsNothing);
+    expect(find.text('Registrar Cobro en Caja'), findsNothing);
 
     // Verify tabs
     expect(find.text('Historial de Cobros & Recibos'), findsOneWidget);

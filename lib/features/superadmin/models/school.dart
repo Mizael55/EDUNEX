@@ -142,6 +142,8 @@ class School {
       } catch (_) {}
     }
 
+    final cfg = json['configuracion'] is Map ? json['configuracion'] as Map<String, dynamic> : null;
+
     double parseDouble(dynamic v, double defaultVal) {
       if (v is num) return v.toDouble();
       return double.tryParse(v?.toString() ?? '') ?? defaultVal;
@@ -167,19 +169,19 @@ class School {
       totalFamilias: json['total_familias'] is int
           ? json['total_familias'] as int
           : int.tryParse(json['total_familias']?.toString() ?? '0') ?? 0,
-      precioInicial: parseDouble(json['precio_inicial'], 6500.0),
-      precioPrimaria: parseDouble(json['precio_primaria'], 8000.0),
-      precioSecundaria: parseDouble(json['precio_secundaria'], 9500.0),
-      precioMatricula: parseDouble(json['precio_matricula'], 12000.0),
-      sujetoAMejoraPago: json['sujeto_a_mejora_pago'] as bool? ?? true,
-      descuentoProntoPagoAnualPct: parseDouble(json['descuento_anual_pct'], 10.0),
-      descuentoProntoPagoSemestralPct: parseDouble(json['descuento_semestral_pct'], 5.0),
-      descuentoProntoPagoTrimestralPct: parseDouble(json['descuento_trimestral_pct'], 3.0),
-      descuentoHermanosPct: parseDouble(json['descuento_hermanos_pct'], 10.0),
-      directorNombre: json['director_nombre']?.toString(),
-      directorEmail: json['director_email']?.toString(),
-      directorCedula: json['director_cedula']?.toString(),
-      directorTelefono: json['director_telefono']?.toString(),
+      precioInicial: parseDouble(json['precio_inicial'] ?? cfg?['precio_inicial'], 6500.0),
+      precioPrimaria: parseDouble(json['precio_primaria'] ?? cfg?['precio_primaria'], 8000.0),
+      precioSecundaria: parseDouble(json['precio_secundaria'] ?? cfg?['precio_secundaria'], 9500.0),
+      precioMatricula: parseDouble(json['precio_matricula'] ?? cfg?['precio_matricula'], 12000.0),
+      sujetoAMejoraPago: (json['sujeto_a_mejora_pago'] ?? cfg?['sujeto_a_mejora_pago']) as bool? ?? true,
+      descuentoProntoPagoAnualPct: parseDouble(json['descuento_anual_pct'] ?? cfg?['descuento_anual_pct'], 10.0),
+      descuentoProntoPagoSemestralPct: parseDouble(json['descuento_semestral_pct'] ?? cfg?['descuento_semestral_pct'], 5.0),
+      descuentoProntoPagoTrimestralPct: parseDouble(json['descuento_trimestral_pct'] ?? cfg?['descuento_trimestral_pct'], 3.0),
+      descuentoHermanosPct: parseDouble(json['descuento_hermanos_pct'] ?? cfg?['descuento_hermanos_pct'], 10.0),
+      directorNombre: json['director_nombre']?.toString() ?? cfg?['director_nombre']?.toString(),
+      directorEmail: json['director_email']?.toString() ?? cfg?['director_email']?.toString(),
+      directorCedula: json['director_cedula']?.toString() ?? cfg?['director_cedula']?.toString(),
+      directorTelefono: json['director_telefono']?.toString() ?? cfg?['director_telefono']?.toString(),
       sucursalesCount: json['sucursales_count'] is int
           ? json['sucursales_count'] as int
           : int.tryParse(json['sucursales_count']?.toString() ?? '0') ?? 0,
