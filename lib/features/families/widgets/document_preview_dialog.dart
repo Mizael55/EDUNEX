@@ -1,3 +1,4 @@
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import '../../../theme/app_colors.dart';
 import '../models/student_document.dart';
@@ -80,27 +81,16 @@ class DocumentPreviewDialog extends StatelessWidget {
               // Contenedor de Previsualización Real
               Container(
                 width: double.infinity,
-                constraints: const BoxConstraints(maxHeight: 280),
+                constraints: const BoxConstraints(maxHeight: 300),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF0F172A),
+                  color: isImage && (memoryBytes != null || (url != null && url.startsWith('http')))
+                      ? const Color(0xFF0F172A)
+                      : const Color(0xFFF1F5F9),
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: const Color(0xFF334155)),
+                  border: Border.all(color: const Color(0xFFCBD5E1)),
                 ),
                 clipBehavior: Clip.antiAlias,
-                child: isImage
-                    ? (memoryBytes != null
-                        ? Image.memory(
-                            memoryBytes,
-                            fit: BoxFit.contain,
-                          )
-                        : (url != null && url.startsWith('http')
-                            ? Image.network(
-                                url,
-                                fit: BoxFit.contain,
-                                errorBuilder: (_, __, ___) => _buildPlaceholderPreview(isImage),
-                              )
-                            : _buildPlaceholderPreview(isImage)))
-                    : _buildPlaceholderPreview(isImage),
+                child: _buildPreviewWidget(isImage, memoryBytes, url),
               ),
 
               const SizedBox(height: 16),
@@ -147,6 +137,26 @@ class DocumentPreviewDialog extends StatelessWidget {
     );
   }
 
+  Widget _buildPreviewWidget(bool isImage, Uint8List? memoryBytes, String? url) {
+    if (isImage) {
+      if (memoryBytes != null && memoryBytes.isNotEmpty) {
+        return Image.memory(
+          memoryBytes,
+          fit: BoxFit.contain,
+          errorBuilder: (_, __, ___) => _buildPlaceholderPreview(isImage),
+        );
+      }
+      if (url != null && url.startsWith('http')) {
+        return Image.network(
+          url,
+          fit: BoxFit.contain,
+          errorBuilder: (_, __, ___) => _buildPlaceholderPreview(isImage),
+        );
+      }
+    }
+    return _buildPlaceholderPreview(isImage);
+  }
+
   Widget _buildPlaceholderPreview(bool isImage) {
     return Center(
       child: Padding(
@@ -155,16 +165,23 @@ class DocumentPreviewDialog extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(
-              isImage ? Icons.image_outlined : Icons.picture_as_pdf_outlined,
-              size: 56,
-              color: Colors.white70,
+            Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: isImage ? const Color(0xFFE0F2FE) : const Color(0xFFFEF2F2),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                isImage ? Icons.image_rounded : Icons.picture_as_pdf_rounded,
+                size: 48,
+                color: isImage ? const Color(0xFF0284C7) : const Color(0xFFDC2626),
+              ),
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 12),
             Text(
               document.nombreArchivo,
               style: const TextStyle(
-                color: Colors.white,
+                color: AppColors.navyPrimary,
                 fontWeight: FontWeight.bold,
                 fontSize: 13,
               ),
@@ -174,8 +191,28 @@ class DocumentPreviewDialog extends StatelessWidget {
             ),
             const SizedBox(height: 4),
             Text(
-              '${document.tamanoFormateado} • Archivo Real Digitalizado',
-              style: const TextStyle(color: Colors.white60, fontSize: 11),
+              '${document.tamanoFormateado} • Archivo Digitalizado',
+              style: const TextStyle(color: AppColors.slateGray, fontSize: 11),
+            ),
+            const SizedBox(height: 6),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(
+                color: const Color(0xFFDCFCE7),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFF86EFAC)),
+              ),
+              child: const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.verified_rounded, size: 12, color: Color(0xFF166534)),
+                  SizedBox(width: 4),
+                  Text(
+                    'Expediente EDUNEX Verificado',
+                    style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF166534)),
+                  ),
+                ],
+              ),
             ),
           ],
         ),

@@ -256,6 +256,30 @@ class _SchoolInspectionScreenState extends State<SchoolInspectionScreen> {
                     _buildInfoCard(
                       title: 'Ficha Institucional & Capacidad',
                       icon: Icons.account_balance_rounded,
+                      headerAction: OutlinedButton.icon(
+                        onPressed: () async {
+                          final colegioEmail = _school.emailContacto ?? 'contacto@${_school.siglas?.toLowerCase() ?? "colegio"}.edu.do';
+                          final reset = await ResetPasswordDialog.show(
+                            context,
+                            schoolId: _school.id,
+                            schoolName: _school.nombre,
+                            userEmail: colegioEmail,
+                            userName: 'Cuenta Institucional (${_school.nombre})',
+                            schoolRepository: widget.schoolRepository,
+                          );
+                          if (reset == true && mounted) {
+                            _loadAuditLogs();
+                          }
+                        },
+                        icon: const Icon(Icons.lock_reset_rounded, size: 14),
+                        label: const Text('Resetear Contraseña Institucional', style: TextStyle(fontSize: 11)),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: const Color(0xFFB45309),
+                          side: const BorderSide(color: Color(0xFFB45309)),
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                        ),
+                      ),
                       rows: [
                         _buildInfoRow('Nombre Oficial:', _school.nombre),
                         _buildInfoRow('Siglas / Acrónimo:', _school.siglas ?? 'No registradas'),
@@ -513,32 +537,32 @@ class _SchoolInspectionScreenState extends State<SchoolInspectionScreen> {
   }
 
   Widget _buildDocumentsCard() {
-    final defaultDocs = [
-      StudentDocument(
-        id: 'doc-inst-1',
-        tipo: 'Registro Mercantil (Cámara de Comercio)',
-        nombreArchivo: 'registro_mercantil_${_school.nombre.toLowerCase().replaceAll(' ', '_')}.pdf',
-        url: 'https://supabase.edunex.edu/storage/docs/registro_mercantil.pdf',
-        fechaSubida: DateTime.now().subtract(const Duration(days: 30)),
-        tamanoBytes: 1048576,
-      ),
-      StudentDocument(
-        id: 'doc-inst-2',
-        tipo: 'Estatutos Constitutivos de la Institución',
-        nombreArchivo: 'estatutos_legales_colegio.pdf',
-        url: 'https://supabase.edunex.edu/storage/docs/estatutos.pdf',
-        fechaSubida: DateTime.now().subtract(const Duration(days: 30)),
-        tamanoBytes: 2097152,
-      ),
-      StudentDocument(
-        id: 'doc-inst-3',
-        tipo: 'Cédula de Identidad del Director(a)',
-        nombreArchivo: 'cedula_director_${_school.directorCedula ?? "identidad"}.jpg',
-        url: 'https://supabase.edunex.edu/storage/docs/cedula_director.jpg',
-        fechaSubida: DateTime.now().subtract(const Duration(days: 28)),
-        tamanoBytes: 524288,
-      ),
-    ];
+    final registeredDocs = widget.schoolRepository.getSchoolDocuments(_school.id);
+    final docs = registeredDocs.isNotEmpty
+        ? registeredDocs
+        : [
+            StudentDocument(
+              id: 'doc-inst-1',
+              tipo: 'Registro Mercantil (Cámara de Comercio)',
+              nombreArchivo: 'registro_mercantil_${_school.nombre.toLowerCase().replaceAll(' ', '_')}.pdf',
+              fechaSubida: DateTime.now().subtract(const Duration(days: 30)),
+              tamanoBytes: 1048576,
+            ),
+            StudentDocument(
+              id: 'doc-inst-2',
+              tipo: 'Estatutos Constitutivos de la Institución',
+              nombreArchivo: 'estatutos_legales_colegio.pdf',
+              fechaSubida: DateTime.now().subtract(const Duration(days: 30)),
+              tamanoBytes: 2097152,
+            ),
+            StudentDocument(
+              id: 'doc-inst-3',
+              tipo: 'Cédula de Identidad del Director(a)',
+              nombreArchivo: 'cedula_director_${_school.directorCedula ?? "identidad"}.jpg',
+              fechaSubida: DateTime.now().subtract(const Duration(days: 28)),
+              tamanoBytes: 524288,
+            ),
+          ];
 
     return Container(
       padding: const EdgeInsets.all(18),
@@ -563,10 +587,12 @@ class _SchoolInspectionScreenState extends State<SchoolInspectionScreen> {
           const SizedBox(height: 12),
           Expanded(
             child: ListView.separated(
-              itemCount: defaultDocs.length,
+              itemCount: docs.length,
               separatorBuilder: (_, __) => const SizedBox(height: 8),
               itemBuilder: (context, index) {
-                final doc = defaultDocs[index];
+                final doc = docs[index];
+                final isImg = doc.isImage;
+
                 return Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                   decoration: BoxDecoration(
@@ -576,7 +602,11 @@ class _SchoolInspectionScreenState extends State<SchoolInspectionScreen> {
                   ),
                   child: Row(
                     children: [
-                      const Icon(Icons.picture_as_pdf_rounded, color: Colors.redAccent, size: 18),
+                      Icon(
+                        isImg ? Icons.image_rounded : Icons.picture_as_pdf_rounded,
+                        color: isImg ? const Color(0xFF0284C7) : Colors.redAccent,
+                        size: 18,
+                      ),
                       const SizedBox(width: 8),
                       Expanded(
                         child: Column(

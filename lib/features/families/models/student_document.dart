@@ -12,6 +12,7 @@ class StudentDocument {
   final DateTime fechaSubida;
   final int tamanoBytes;
   final bool verificado;
+  final Uint8List? rawBytes;
 
   const StudentDocument({
     required this.id,
@@ -23,10 +24,12 @@ class StudentDocument {
     required this.fechaSubida,
     this.tamanoBytes = 1048576, // 1 MB default simulado
     this.verificado = true,
+    this.rawBytes,
   })  : nombre = nombre ?? tipo,
         urlArchivo = urlArchivo ?? url;
 
   String get tamanoFormateado {
+    if (tamanoBytes <= 0) return '0 B';
     if (tamanoBytes < 1024) return '$tamanoBytes B';
     if (tamanoBytes < 1024 * 1024) {
       return '${(tamanoBytes / 1024).toStringAsFixed(1)} KB';
@@ -34,12 +37,20 @@ class StudentDocument {
     return '${(tamanoBytes / (1024 * 1024)).toStringAsFixed(1)} MB';
   }
 
+  bool get hasUploadedFile =>
+      (rawBytes != null && rawBytes!.isNotEmpty) ||
+      (urlArchivo != null && urlArchivo!.isNotEmpty && !nombreArchivo.startsWith('Sin archivo')) ||
+      (tamanoBytes > 0 && !nombreArchivo.startsWith('Sin archivo'));
+
   bool get isImage =>
       nombreArchivo.toLowerCase().endsWith('.png') ||
       nombreArchivo.toLowerCase().endsWith('.jpg') ||
       nombreArchivo.toLowerCase().endsWith('.jpeg') ||
       nombreArchivo.toLowerCase().endsWith('.webp') ||
+      nombreArchivo.toLowerCase().endsWith('.gif') ||
       tipo.toLowerCase().contains('foto') ||
+      tipo.toLowerCase().contains('cédula') ||
+      tipo.toLowerCase().contains('cedula') ||
       (urlArchivo != null && urlArchivo!.startsWith('data:image'));
 
   bool get isPdf =>
@@ -47,6 +58,9 @@ class StudentDocument {
       (urlArchivo != null && urlArchivo!.startsWith('data:application/pdf'));
 
   Uint8List? get memoryBytes {
+    if (rawBytes != null && rawBytes!.isNotEmpty) {
+      return rawBytes;
+    }
     if (urlArchivo != null && urlArchivo!.startsWith('data:')) {
       try {
         final commaIdx = urlArchivo!.indexOf(',');
@@ -68,6 +82,7 @@ class StudentDocument {
     DateTime? fechaSubida,
     int? tamanoBytes,
     bool? verificado,
+    Uint8List? rawBytes,
   }) {
     return StudentDocument(
       id: id ?? this.id,
@@ -78,6 +93,7 @@ class StudentDocument {
       fechaSubida: fechaSubida ?? this.fechaSubida,
       tamanoBytes: tamanoBytes ?? this.tamanoBytes,
       verificado: verificado ?? this.verificado,
+      rawBytes: rawBytes ?? this.rawBytes,
     );
   }
 

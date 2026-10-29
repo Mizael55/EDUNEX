@@ -159,7 +159,7 @@ class AttendanceRepository {
 
     final existing = _records.where((r) {
       final rDate = DateTime(r.fecha.year, r.fecha.month, r.fecha.day);
-      final matchSchool = r.colegioId == colegioId || r.colegioId.startsWith('a0000000');
+      final matchSchool = r.colegioId == colegioId;
       return rDate == targetDate &&
           r.gradoNombre.toLowerCase() == gradoNombre.toLowerCase() &&
           r.seccionNombre.toLowerCase() == seccionNombre.toLowerCase() &&
@@ -294,8 +294,9 @@ class AttendanceRepository {
   ) async {
     if (_familyRepository != null) {
       final families = await _familyRepository!.getFamilies();
+      final schoolFamilies = families.where((f) => f.colegioId == colegioId).toList();
       final allStudents = <Student>[];
-      for (final f in families) {
+      for (final f in schoolFamilies) {
         allStudents.addAll(f.estudiantes);
       }
       final filtered = allStudents.where((s) =>
@@ -304,30 +305,35 @@ class AttendanceRepository {
       if (filtered.isNotEmpty) return filtered;
     }
 
-    // Default roster si no hay estudiantes disponibles
-    return [
-      Student(
-        id: 'f0000000-0000-0000-0000-000000000001',
-        colegioId: colegioId,
-        familiaId: 'e0000000-0000-0000-0000-000000000001',
-        matricula: 'EST-2026-01',
-        nombres: 'Mateo',
-        apellidos: 'Pérez González',
-        fechaNacimiento: DateTime(2019, 5, 14),
-        gradoNombre: gradoNombre,
-        seccionNombre: seccionNombre,
-      ),
-      Student(
-        id: 'f0000000-0000-0000-0000-000000000002',
-        colegioId: colegioId,
-        familiaId: 'e0000000-0000-0000-0000-000000000001',
-        matricula: 'EST-2026-02',
-        nombres: 'Sofía',
-        apellidos: 'Pérez González',
-        fechaNacimiento: DateTime(2021, 8, 20),
-        gradoNombre: gradoNombre,
-        seccionNombre: seccionNombre,
-      ),
-    ];
+    // Default roster ÚNICAMENTE para pruebas automáticas y colegio piloto demo
+    if (useDemoFallback && colegioId == 'a0000000-0000-0000-0000-000000000001') {
+      return [
+        Student(
+          id: 'f0000000-0000-0000-0000-000000000001',
+          colegioId: colegioId,
+          familiaId: 'e0000000-0000-0000-0000-000000000001',
+          matricula: 'EST-2026-01',
+          nombres: 'Mateo',
+          apellidos: 'Pérez González',
+          fechaNacimiento: DateTime(2019, 5, 14),
+          gradoNombre: gradoNombre,
+          seccionNombre: seccionNombre,
+        ),
+        Student(
+          id: 'f0000000-0000-0000-0000-000000000002',
+          colegioId: colegioId,
+          familiaId: 'e0000000-0000-0000-0000-000000000001',
+          matricula: 'EST-2026-02',
+          nombres: 'Sofía',
+          apellidos: 'Pérez González',
+          fechaNacimiento: DateTime(2021, 8, 20),
+          gradoNombre: gradoNombre,
+          seccionNombre: seccionNombre,
+        ),
+      ];
+    }
+
+    // Para cualquier colegio nuevo creado en la plataforma, la lista inicia 100% limpia/vacía
+    return [];
   }
 }

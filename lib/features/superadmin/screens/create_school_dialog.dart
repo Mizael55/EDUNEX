@@ -226,6 +226,7 @@ class _CreateSchoolDialogState extends State<CreateSchoolDialog> {
           fechaSubida: DateTime.now(),
           verificado: true,
           urlArchivo: picked.dataUrl,
+          rawBytes: picked.bytes,
         );
       });
       if (mounted) {
@@ -519,6 +520,7 @@ class _CreateSchoolDialogState extends State<CreateSchoolDialog> {
         descuentoProntoPagoSemestralPct: _descuentoSemestral,
         descuentoProntoPagoTrimestralPct: _descuentoTrimestral,
         descuentoHermanosPct: _descuentoHermanos,
+        documentos: _schoolDocuments.values.toList(),
       );
 
       final newSchool = result['school'] as School;
@@ -714,25 +716,6 @@ Contraseña: $password
                 style: OutlinedButton.styleFrom(
                   foregroundColor: AppColors.navyPrimary,
                   side: const BorderSide(color: AppColors.navyPrimary),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                ),
-              ),
-              const SizedBox(width: 12),
-              ElevatedButton.icon(
-                onPressed: () {
-                  Navigator.of(context).pop();
-                  CreateFamilyDialog.show(
-                    context,
-                    repository: FamilyRepository(),
-                    colegioId: school.id,
-                  );
-                },
-                icon: const Icon(Icons.person_add_alt_1_rounded, size: 16),
-                label: const Text('Enrolar Familia para este Colegio'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.electricBlue,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                 ),
               ),
@@ -1800,6 +1783,8 @@ Contraseña: $password
                             ..._schoolDocuments.entries.map((entry) {
                               final keyName = entry.key;
                               final doc = entry.value;
+                              final hasFile = doc.hasUploadedFile;
+                              final isBaseReq = ['Cédula del Director', 'Acreditación MINERD', 'Registro Mercantil / RNC'].contains(keyName);
 
                               return Container(
                                 margin: const EdgeInsets.only(bottom: 8),
@@ -1835,44 +1820,86 @@ Contraseña: $password
                                             style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: AppColors.navyPrimary),
                                           ),
                                           Text(
-                                            '${doc.nombreArchivo} • ${doc.tamanoFormateado} • Digital',
-                                            style: const TextStyle(fontSize: 10, color: AppColors.slateGray),
+                                            hasFile
+                                                ? '${doc.nombreArchivo} • ${doc.tamanoFormateado} • Digital'
+                                                : 'Sin archivo adjunto (Pendiente de cargar) • 0 B',
+                                            style: TextStyle(
+                                              fontSize: 10,
+                                              color: hasFile ? AppColors.slateGray : Colors.amber.shade900,
+                                              fontStyle: hasFile ? FontStyle.normal : FontStyle.italic,
+                                            ),
                                             overflow: TextOverflow.ellipsis,
                                           ),
                                         ],
                                       ),
                                     ),
                                     IconButton(
-                                      icon: const Icon(Icons.visibility_outlined, size: 18, color: AppColors.navyPrimary),
-                                      onPressed: () => _previewSchoolDoc(doc),
-                                      tooltip: 'Ver documento',
+                                      icon: Icon(
+                                        hasFile ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+                                        size: 18,
+                                        color: hasFile ? AppColors.navyPrimary : Colors.black26,
+                                      ),
+                                      onPressed: hasFile ? () => _previewSchoolDoc(doc) : null,
+                                      tooltip: hasFile ? 'Ver documento' : 'Sin archivo para visualizar',
                                     ),
                                     ElevatedButton.icon(
                                       onPressed: () => _pickRealSchoolDoc(keyName, doc.tipo),
                                       icon: const Icon(Icons.file_open_rounded, size: 13),
                                       label: const Text('Cargar Archivo Real', style: TextStyle(fontSize: 11)),
                                       style: ElevatedButton.styleFrom(
-                                        backgroundColor: AppColors.electricBlue,
+                                        backgroundColor: hasFile ? AppColors.navyPrimary : AppColors.electricBlue,
                                         foregroundColor: Colors.white,
                                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                                       ),
                                     ),
                                     IconButton(
-                                      icon: const Icon(Icons.delete_outline_rounded, size: 18, color: Colors.redAccent),
-                                      tooltip: 'Eliminar documento',
-                                      onPressed: () {
-                                        setState(() {
-                                          _schoolDocuments.remove(keyName);
-                                        });
-                                        ScaffoldMessenger.of(context).showSnackBar(
-                                          SnackBar(
-                                            content: Text('Documento "$keyName" eliminado.'),
-                                            backgroundColor: Colors.redAccent,
-                                            duration: const Duration(seconds: 2),
-                                          ),
-                                        );
-                                      },
+                                      icon: Icon(
+                                        Icons.delete_outline_rounded,
+                                        size: 18,
+                                        color: hasFile || !isBaseReq ? Colors.redAccent : Colors.black26,
+                                      ),
+                                      tooltip: hasFile
+                                          ? 'Borrar archivo cargado'
+                                          : (!isBaseReq ? 'Eliminar requisito' : 'Requisito institucional'),
+                                      onPressed: (hasFile || !isBaseReq)
+                                          ? () {
+                                              if (hasFile) {
+                                                // Limpiar el archivo para permitir volver a cargar sin borrar el requisito
+                                                setState(() {
+                                                  _schoolDocuments[keyName] = StudentDocument(
+                                                    id: doc.id,
+                                                    tipo: doc.tipo,
+                                                    nombreArchivo: 'Sin archivo adjunto',
+                                                    tamanoBytes: 0,
+                                                    fechaSubida: DateTime.now(),
+                                                    verificado: false,
+                                                    urlArchivo: null,
+                                                    rawBytes: null,
+                                                  );
+                                                });
+                                                ScaffoldMessenger.of(context).showSnackBar(
+                                                  SnackBar(
+                                                    content: Text('Archivo de "$keyName" removido. Puedes cargar una nueva imagen o PDF.'),
+                                                    backgroundColor: AppColors.navyPrimary,
+                                                    duration: const Duration(seconds: 2),
+                                                  ),
+                                                );
+                                              } else {
+                                                // Documento personalizado sin archivo: remover fila
+                                                setState(() {
+                                                  _schoolDocuments.remove(keyName);
+                                                });
+                                                ScaffoldMessenger.of(context).showSnackBar(
+                                                  SnackBar(
+                                                    content: Text('Requisito "$keyName" eliminado.'),
+                                                    backgroundColor: Colors.redAccent,
+                                                    duration: const Duration(seconds: 2),
+                                                  ),
+                                                );
+                                              }
+                                            }
+                                          : null,
                                     ),
                                   ],
                                 ),

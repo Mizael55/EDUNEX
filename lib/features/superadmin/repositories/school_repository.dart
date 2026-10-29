@@ -3,6 +3,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/config/supabase_config.dart';
 import '../models/school.dart';
+import '../../families/models/student_document.dart';
 import '../../auth/repositories/auth_repository.dart';
 import '../../auth/models/user_role.dart';
 import '../../families/repositories/family_repository.dart';
@@ -27,6 +28,19 @@ class SchoolRepository {
 
   final SupabaseClient? _supabaseClient;
   final bool _useDemoFallback;
+
+  static final Map<String, List<StudentDocument>> _schoolDocumentsMap = {};
+
+  List<StudentDocument> getSchoolDocuments(String schoolId) {
+    if (_schoolDocumentsMap.containsKey(schoolId)) {
+      return List<StudentDocument>.from(_schoolDocumentsMap[schoolId]!);
+    }
+    return [];
+  }
+
+  void setSchoolDocuments(String schoolId, List<StudentDocument> docs) {
+    _schoolDocumentsMap[schoolId] = List.from(docs);
+  }
 
   SchoolRepository({
     SupabaseClient? supabaseClient,
@@ -164,6 +178,7 @@ class SchoolRepository {
     double descuentoProntoPagoSemestralPct = 5.0,
     double descuentoProntoPagoTrimestralPct = 3.0,
     double descuentoHermanosPct = 10.0,
+    List<StudentDocument>? documentos,
   }) async {
     if (_supabaseClient != null && SupabaseConfig.isConfigured) {
       try {
@@ -244,6 +259,10 @@ class SchoolRepository {
           ),
         );
 
+        if (documentos != null && documentos.isNotEmpty) {
+          _schoolDocumentsMap[school.id] = List.from(documentos);
+        }
+
         return {
           'school': school,
           'director': {
@@ -284,6 +303,9 @@ class SchoolRepository {
       directorTelefono: telefono,
     );
     _demoSchools.insert(0, fallbackSchool);
+    if (documentos != null && documentos.isNotEmpty) {
+      _schoolDocumentsMap[fallbackSchool.id] = List.from(documentos);
+    }
 
     // Registrar director en AuthRepository para login local inmediato
     AuthRepository().registerUser(
