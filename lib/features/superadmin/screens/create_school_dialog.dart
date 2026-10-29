@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../../core/services/file_upload_service.dart';
+import '../../../core/services/location_service.dart';
 import '../../../theme/app_colors.dart';
 import '../../../core/widgets/app_toast.dart';
 import '../../families/models/student_document.dart';
@@ -90,12 +91,13 @@ class _CreateSchoolDialogState extends State<CreateSchoolDialog> {
   double _descuentoHermanos = 10.0;
 
   // Credenciales del Director / Administrador Escolar (Issue #18: Cédula requerida para enrolar colegio)
-  final _directorNombresController = TextEditingController(text: 'Carlos');
-  final _directorApellidosController = TextEditingController(text: 'Gómez');
-  final _directorCedulaController = TextEditingController(text: '001-1827364-5');
+  final _directorNombresController = TextEditingController();
+  final _directorApellidosController = TextEditingController();
+  final _directorCedulaController = TextEditingController();
   final _directorEmailController = TextEditingController();
-  final _directorPasswordController = TextEditingController(text: '123456');
+  final _directorPasswordController = TextEditingController();
   bool _obscurePassword = false;
+  bool _isLocating = false;
 
   // Issue #18: Documentos de registro del colegio y cédula del director
   final Map<String, StudentDocument> _schoolDocuments = {
@@ -140,12 +142,24 @@ class _CreateSchoolDialogState extends State<CreateSchoolDialog> {
     if (widget.initialStep > 0) {
       if (_nombreController.text.isEmpty) _nombreController.text = 'Colegio San Agustín';
       if (_rncController.text.isEmpty) _rncController.text = '1-30-12345-1';
+      if (_telefonoController.text.isEmpty) _telefonoController.text = '809-555-0101';
+      if (_emailContactoController.text.isEmpty) _emailContactoController.text = 'contacto@sanagustin.edu.do';
+      if (_direccionController.text.isEmpty) _direccionController.text = 'Av. 27 de Febrero #50, D.N.';
+      if (_directorNombresController.text.isEmpty) _directorNombresController.text = 'Carlos';
+      if (_directorApellidosController.text.isEmpty) _directorApellidosController.text = 'Gómez';
+      if (_directorCedulaController.text.isEmpty) _directorCedulaController.text = '001-1827364-5';
       if (_directorEmailController.text.isEmpty) _directorEmailController.text = 'director@sanagustin.edu.do';
+      if (_directorPasswordController.text.isEmpty) _directorPasswordController.text = '123456';
     }
     _nombreController.addListener(_onFormFieldChanged);
+    _siglasController.addListener(_onFormFieldChanged);
     _rncController.addListener(_onFormFieldChanged);
+    _telefonoController.addListener(_onFormFieldChanged);
+    _emailContactoController.addListener(_onFormFieldChanged);
+    _direccionController.addListener(_onFormFieldChanged);
     _maxEstudiantesController.addListener(_onFormFieldChanged);
     _directorNombresController.addListener(_onFormFieldChanged);
+    _directorApellidosController.addListener(_onFormFieldChanged);
     _directorCedulaController.addListener(_onFormFieldChanged);
     _directorEmailController.addListener(_onFormFieldChanged);
     _directorPasswordController.addListener(_onFormFieldChanged);
@@ -158,9 +172,14 @@ class _CreateSchoolDialogState extends State<CreateSchoolDialog> {
   @override
   void dispose() {
     _nombreController.removeListener(_onFormFieldChanged);
+    _siglasController.removeListener(_onFormFieldChanged);
     _rncController.removeListener(_onFormFieldChanged);
+    _telefonoController.removeListener(_onFormFieldChanged);
+    _emailContactoController.removeListener(_onFormFieldChanged);
+    _direccionController.removeListener(_onFormFieldChanged);
     _maxEstudiantesController.removeListener(_onFormFieldChanged);
     _directorNombresController.removeListener(_onFormFieldChanged);
+    _directorApellidosController.removeListener(_onFormFieldChanged);
     _directorCedulaController.removeListener(_onFormFieldChanged);
     _directorEmailController.removeListener(_onFormFieldChanged);
     _directorPasswordController.removeListener(_onFormFieldChanged);
@@ -192,8 +211,12 @@ class _CreateSchoolDialogState extends State<CreateSchoolDialog> {
   bool get _isFormReadyToSubmit {
     return _nombreController.text.trim().isNotEmpty &&
            _rncController.text.trim().isNotEmpty &&
+           _telefonoController.text.trim().isNotEmpty &&
+           _emailContactoController.text.trim().isNotEmpty &&
+           _direccionController.text.trim().isNotEmpty &&
            _maxEstudiantesController.text.trim().isNotEmpty &&
            _directorNombresController.text.trim().isNotEmpty &&
+           _directorApellidosController.text.trim().isNotEmpty &&
            _directorCedulaController.text.trim().isNotEmpty &&
            _directorEmailController.text.trim().isNotEmpty &&
            _directorPasswordController.text.trim().isNotEmpty;
@@ -216,24 +239,46 @@ class _CreateSchoolDialogState extends State<CreateSchoolDialog> {
     });
   }
 
-  void _geolocateAddress() {
-    const lat = 18.4861;
-    const lng = -69.9312;
-    setState(() {
-      _gpsCoordinates = '$lat, $lng';
-      final current = _direccionController.text.trim();
-      if (current.isEmpty) {
-        _direccionController.text = 'Av. Winston Churchill, Santo Domingo, D.N. (GPS: $lat, $lng)';
-      } else if (!current.contains('GPS:')) {
-        _direccionController.text = '$current (GPS: $lat, $lng)';
-      }
-    });
+  Future<void> _geolocateAddress() async {
+    setState(() => _isLocating = true);
+    try {
+      final res = await LocationService.getCurrentPosition();
+      if (!mounted) return;
+      setState(() {
+        _isLocating = false;
+        _gpsCoordinates = res.formattedCoordinates;
+        final current = _direccionController.text.trim();
+        if (current.isEmpty) {
+          _direccionController.text = res.isLiveGps
+              ? 'Ubicación actual del plantel (GPS: ${res.formattedCoordinates})'
+              : 'Av. Winston Churchill, Santo Domingo, D.N. (GPS: ${res.formattedCoordinates})';
+        } else if (!current.contains('GPS:')) {
+          _direccionController.text = '$current (GPS: ${res.formattedCoordinates})';
+        }
+      });
 
-    AppToast.info(
-      context,
-      '📍 Coordenadas GPS asociadas exitosamente: [18.4861, -69.9312]',
-      title: 'Geolocalización',
-    );
+      if (res.isLiveGps) {
+        AppToast.success(
+          context,
+          '📍 Ubicación GPS obtenida del navegador/dispositivo: [${res.formattedCoordinates}]',
+          title: 'Geolocalización Exitosa',
+        );
+      } else {
+        AppToast.info(
+          context,
+          'Coordenadas de referencia asignadas [${res.formattedCoordinates}] (${res.errorMessage ?? "Santo Domingo, D.N."}).',
+          title: 'Ubicación GPS',
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _isLocating = false);
+      AppToast.warning(
+        context,
+        'No se pudo consultar el sensor GPS: $e. Se asociaron coordenadas por defecto.',
+        title: 'Geolocalización',
+      );
+    }
   }
 
   Future<void> _pickRealSchoolDoc(String keyName, String defaultTipo) async {
@@ -320,6 +365,19 @@ class _CreateSchoolDialogState extends State<CreateSchoolDialog> {
         _showStepError('El RNC para Persona ${_rncType == "juridica" ? "Jurídica debe tener 9" : "Física debe tener 11"} dígitos (actual: ${rncDigits.length}).');
         return false;
       }
+      if (_telefonoController.text.trim().isEmpty) {
+        _showStepError('Ingresa el Teléfono Principal de contacto del colegio.');
+        return false;
+      }
+      final emailAdmin = _emailContactoController.text.trim();
+      if (emailAdmin.isEmpty || !emailAdmin.contains('@') || !emailAdmin.contains('.')) {
+        _showStepError('Ingresa un Email de Administración válido para contratos y alertas.');
+        return false;
+      }
+      if (_direccionController.text.trim().isEmpty) {
+        _showStepError('Ingresa o geolocaliza la Dirección Física del Plantel.');
+        return false;
+      }
       return true;
     }
 
@@ -337,6 +395,10 @@ class _CreateSchoolDialogState extends State<CreateSchoolDialog> {
         _showStepError('Ingresa los nombres del Director(a) General.');
         return false;
       }
+      if (_directorApellidosController.text.trim().isEmpty) {
+        _showStepError('Ingresa los apellidos del Director(a) General.');
+        return false;
+      }
       final cedulaDigits = _directorCedulaController.text.trim().replaceAll(RegExp(r'[^0-9]'), '');
       if (cedulaDigits.length != 11) {
         _showStepError('La cédula del director debe contener 11 dígitos numéricos dominicanos.');
@@ -344,7 +406,7 @@ class _CreateSchoolDialogState extends State<CreateSchoolDialog> {
       }
       final email = _directorEmailController.text.trim();
       if (email.isEmpty || !email.contains('@') || !email.contains('.')) {
-        _showStepError('Ingresa un correo electrónico válido para el Director.');
+        _showStepError('Ingresa un correo electrónico de acceso válido para el Director.');
         return false;
       }
       if (_directorPasswordController.text.trim().length < 6) {
@@ -358,19 +420,10 @@ class _CreateSchoolDialogState extends State<CreateSchoolDialog> {
   }
 
   void _showStepError(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Row(
-          children: [
-            const Icon(Icons.warning_amber_rounded, color: Colors.white, size: 20),
-            const SizedBox(width: 10),
-            Expanded(child: Text(message)),
-          ],
-        ),
-        backgroundColor: Colors.amber.shade900,
-        behavior: SnackBarBehavior.floating,
-        duration: const Duration(seconds: 4),
-      ),
+    AppToast.warning(
+      context,
+      message,
+      title: 'Campo Obligatorio Pendiente',
     );
   }
 
@@ -493,7 +546,14 @@ class _CreateSchoolDialogState extends State<CreateSchoolDialog> {
 
   Future<void> _submit() async {
     final formValid = _formKey.currentState?.validate() ?? false;
-    if (!formValid) return;
+    if (!formValid) {
+      AppToast.warning(
+        context,
+        'Por favor completa o corrige los campos obligatorios del formulario.',
+        title: 'Formulario Incompleto',
+      );
+      return;
+    }
 
     for (int s = 0; s <= 2; s++) {
       if (!_validateStep(s)) {
@@ -1114,26 +1174,40 @@ Contraseña: $password
                           Expanded(
                             child: TextFormField(
                               controller: _telefonoController,
+                              keyboardType: TextInputType.phone,
                               decoration: InputDecoration(
-                                labelText: 'Teléfono Principal',
+                                labelText: 'Teléfono Principal *',
                                 hintText: '809-555-0100',
                                 helperText: 'Central telefónica o WhatsApp',
                                 prefixIcon: const Icon(Icons.phone_outlined),
                                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
                               ),
+                              validator: (val) => (val == null || val.trim().isEmpty)
+                                  ? 'El teléfono es obligatorio'
+                                  : null,
                             ),
                           ),
                           const SizedBox(width: 14),
                           Expanded(
                             child: TextFormField(
                               controller: _emailContactoController,
+                              keyboardType: TextInputType.emailAddress,
                               decoration: InputDecoration(
-                                labelText: 'Email de Administración',
+                                labelText: 'Email de Administración *',
                                 hintText: 'contacto@colegio.edu.do',
                                 helperText: 'Para contratos y alertas SaaS',
                                 prefixIcon: const Icon(Icons.email_outlined),
                                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
                               ),
+                              validator: (val) {
+                                if (val == null || val.trim().isEmpty) {
+                                  return 'El email de administración es obligatorio';
+                                }
+                                if (!val.contains('@') || !val.contains('.')) {
+                                  return 'Ingresa un correo electrónico válido';
+                                }
+                                return null;
+                              },
                             ),
                           ),
                         ],
@@ -1147,17 +1221,26 @@ Contraseña: $password
                           TextFormField(
                             controller: _direccionController,
                             decoration: InputDecoration(
-                              labelText: 'Dirección Física del Plantel',
+                              labelText: 'Dirección Física del Plantel *',
                               hintText: 'Av. Winston Churchill #105, Santo Domingo, D.N.',
                               helperText: 'Sede principal o campus en República Dominicana',
                               prefixIcon: const Icon(Icons.location_on_outlined),
                               suffixIcon: IconButton(
                                 tooltip: 'Geolocalizar Dirección (GPS/Coordenadas)',
-                                icon: const Icon(Icons.my_location_rounded, color: AppColors.electricBlue),
-                                onPressed: _geolocateAddress,
+                                icon: _isLocating
+                                    ? const SizedBox(
+                                        width: 16,
+                                        height: 16,
+                                        child: CircularProgressIndicator(strokeWidth: 2),
+                                      )
+                                    : const Icon(Icons.my_location_rounded, color: AppColors.electricBlue),
+                                onPressed: _isLocating ? null : _geolocateAddress,
                               ),
                               border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
                             ),
+                            validator: (val) => (val == null || val.trim().isEmpty)
+                                ? 'La dirección del plantel es obligatoria'
+                                : null,
                           ),
                           const SizedBox(height: 6),
                           Wrap(
@@ -1166,9 +1249,18 @@ Contraseña: $password
                             crossAxisAlignment: WrapCrossAlignment.center,
                             children: [
                               OutlinedButton.icon(
-                                onPressed: _geolocateAddress,
-                                icon: const Icon(Icons.gps_fixed_rounded, size: 15, color: AppColors.electricBlue),
-                                label: const Text('Geolocalizar Dirección (GPS/Coordenadas)', style: TextStyle(fontSize: 12)),
+                                onPressed: _isLocating ? null : _geolocateAddress,
+                                icon: _isLocating
+                                    ? const SizedBox(
+                                        width: 14,
+                                        height: 14,
+                                        child: CircularProgressIndicator(strokeWidth: 2),
+                                      )
+                                    : const Icon(Icons.gps_fixed_rounded, size: 15, color: AppColors.electricBlue),
+                                label: Text(
+                                  _isLocating ? 'Obteniendo GPS del dispositivo...' : 'Geolocalizar Dirección (GPS/Coordenadas)',
+                                  style: const TextStyle(fontSize: 12),
+                                ),
                                 style: OutlinedButton.styleFrom(
                                   foregroundColor: AppColors.electricBlue,
                                   side: BorderSide(color: AppColors.electricBlue.withValues(alpha: 0.4)),
@@ -1728,11 +1820,12 @@ Contraseña: $password
                             child: TextFormField(
                               controller: _directorApellidosController,
                               decoration: InputDecoration(
-                                labelText: 'Apellidos del Director',
+                                labelText: 'Apellidos del Director *',
                                 hintText: 'Ej. Gómez',
                                 prefixIcon: const Icon(Icons.person_outline_rounded),
                                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
                               ),
+                              validator: (val) => (val == null || val.trim().isEmpty) ? 'Requerido' : null,
                             ),
                           ),
                         ],

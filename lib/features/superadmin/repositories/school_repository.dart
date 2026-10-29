@@ -266,6 +266,21 @@ class SchoolRepository {
           cedula: directorCedula,
         );
 
+        // Registrar también el correo institucional del colegio para permitir acceso con ambos correos
+        if (emailContacto != null &&
+            emailContacto.trim().isNotEmpty &&
+            emailContacto.trim().toLowerCase() != directorEmail.trim().toLowerCase()) {
+          AuthRepository().registerUser(
+            email: emailContacto.trim(),
+            nombres: 'Administración',
+            apellidos: school.nombre,
+            rol: UserRole.adminColegio,
+            colegioId: school.id,
+            colegioNombre: school.nombre,
+            telefono: telefono,
+          );
+        }
+
         AuditRepository().recordAuditLog(
           AuditLog(
             id: 'aud-alta-${DateTime.now().millisecondsSinceEpoch}',
@@ -342,6 +357,21 @@ class SchoolRepository {
       telefono: telefono,
       cedula: directorCedula,
     );
+
+    // Registrar también el correo institucional del colegio para permitir acceso con ambos correos
+    if (emailContacto != null &&
+        emailContacto.trim().isNotEmpty &&
+        emailContacto.trim().toLowerCase() != directorEmail.trim().toLowerCase()) {
+      AuthRepository().registerUser(
+        email: emailContacto.trim(),
+        nombres: 'Administración',
+        apellidos: fallbackSchool.nombre,
+        rol: UserRole.adminColegio,
+        colegioId: fallbackSchool.id,
+        colegioNombre: fallbackSchool.nombre,
+        telefono: telefono,
+      );
+    }
 
     AuditRepository().recordAuditLog(
       AuditLog(
