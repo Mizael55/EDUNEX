@@ -252,23 +252,24 @@ class _FinanceOverviewScreenState extends State<FinanceOverviewScreen> {
               Container(
                 decoration: BoxDecoration(
                   color: const Color(0xFFF1F5F9),
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: const Color(0xFFE2E8F0)),
                 ),
-                padding: const EdgeInsets.all(4),
+                padding: const EdgeInsets.all(5),
                 child: Row(
                   children: [
                     Expanded(
                       child: InkWell(
                         key: const Key('tab_historial_cobros'),
                         onTap: () => setState(() => _selectedTab = 0),
-                        borderRadius: BorderRadius.circular(10),
+                        borderRadius: BorderRadius.circular(12),
                         child: Container(
-                          padding: const EdgeInsets.symmetric(vertical: 10),
+                          padding: const EdgeInsets.symmetric(vertical: 11),
                           decoration: BoxDecoration(
                             color: _selectedTab == 0 ? AppColors.surfaceWhite : Colors.transparent,
-                            borderRadius: BorderRadius.circular(10),
+                            borderRadius: BorderRadius.circular(12),
                             boxShadow: _selectedTab == 0
-                                ? [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 4, offset: const Offset(0, 2))]
+                                ? [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 6, offset: const Offset(0, 2))]
                                 : null,
                           ),
                           alignment: Alignment.center,
@@ -287,14 +288,14 @@ class _FinanceOverviewScreenState extends State<FinanceOverviewScreen> {
                       child: InkWell(
                         key: const Key('tab_antiguedad_cartera'),
                         onTap: () => setState(() => _selectedTab = 1),
-                        borderRadius: BorderRadius.circular(10),
+                        borderRadius: BorderRadius.circular(12),
                         child: Container(
-                          padding: const EdgeInsets.symmetric(vertical: 10),
+                          padding: const EdgeInsets.symmetric(vertical: 11),
                           decoration: BoxDecoration(
                             color: _selectedTab == 1 ? AppColors.surfaceWhite : Colors.transparent,
-                            borderRadius: BorderRadius.circular(10),
+                            borderRadius: BorderRadius.circular(12),
                             boxShadow: _selectedTab == 1
-                                ? [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 4, offset: const Offset(0, 2))]
+                                ? [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 6, offset: const Offset(0, 2))]
                                 : null,
                           ),
                           alignment: Alignment.center,
@@ -392,13 +393,13 @@ class _FinanceOverviewScreenState extends State<FinanceOverviewScreen> {
             ] else ...[
               // Tabla de Movimientos / Recibos
               Container(
-                padding: const EdgeInsets.all(20),
+                padding: const EdgeInsets.all(24),
                 decoration: BoxDecoration(
                   color: AppColors.surfaceWhite,
-                  borderRadius: BorderRadius.circular(16),
+                  borderRadius: BorderRadius.circular(20),
                   border: Border.all(color: const Color(0xFFE2E8F0)),
                   boxShadow: [
-                    BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 10, offset: const Offset(0, 3)),
+                    BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 12, offset: const Offset(0, 4)),
                   ],
                 ),
                 child: Column(
@@ -1284,13 +1285,17 @@ Le agradecemos regularizar su cuenta a través del Portal de Padres o contactand
     required Color color,
   }) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
         color: AppColors.surfaceWhite,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(20),
         border: Border.all(color: const Color(0xFFE2E8F0)),
         boxShadow: [
-          BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 8, offset: const Offset(0, 2)),
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.02),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
+          ),
         ],
       ),
       child: Column(
@@ -1308,7 +1313,7 @@ Le agradecemos regularizar su cuenta a través del Portal de Padres o contactand
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
                   color: color.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(12),
                 ),
                 child: Icon(icon, color: color, size: 18),
               ),
@@ -1320,10 +1325,11 @@ Le agradecemos regularizar su cuenta a través del Portal de Padres o contactand
             style: TextStyle(
               fontSize: 22,
               fontWeight: FontWeight.w800,
+              letterSpacing: -0.5,
               color: color == const Color(0xFFB45309) ? color : AppColors.textPrimary,
             ),
           ),
-          const SizedBox(height: 2),
+          const SizedBox(height: 3),
           Text(subtitle, style: const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
         ],
       ),

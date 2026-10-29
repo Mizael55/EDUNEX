@@ -1162,7 +1162,7 @@ class _CreateFamilyDialogState extends State<CreateFamilyDialog> with SingleTick
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
         title: Row(
           children: [
             Container(
@@ -1320,7 +1320,7 @@ class _CreateFamilyDialogState extends State<CreateFamilyDialog> with SingleTick
   @override
   Widget build(BuildContext context) {
     return Dialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
       backgroundColor: AppColors.surfaceWhite,
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 820, maxHeight: 880),
@@ -1335,7 +1335,7 @@ class _CreateFamilyDialogState extends State<CreateFamilyDialog> with SingleTick
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),
-                borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
               ),
               child: Row(
                 children: [
@@ -1427,7 +1427,7 @@ class _CreateFamilyDialogState extends State<CreateFamilyDialog> with SingleTick
               decoration: const BoxDecoration(
                 color: Color(0xFFF8FAFC),
                 border: Border(top: BorderSide(color: Color(0xFFE2E8F0))),
-                borderRadius: BorderRadius.vertical(bottom: Radius.circular(20)),
+                borderRadius: BorderRadius.vertical(bottom: Radius.circular(24)),
               ),
               child: LayoutBuilder(
                 builder: (context, constraints) {

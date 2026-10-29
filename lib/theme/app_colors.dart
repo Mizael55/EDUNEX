@@ -21,12 +21,21 @@ class AppColors {
   static const Color amberLight = Color(0xFFFFB74D);
 
   // Fondos y neutros
-  static const Color backgroundLight = Color(0xFFF4F7FC);
+  static const Color backgroundLight = Color(0xFFF8FAFC);
   static const Color surfaceWhite = Color(0xFFFFFFFF);
   static const Color slateDark = Color(0xFF1E293B);
   static const Color slateGray = Color(0xFF64748B);
   static const Color slateLight = Color(0xFFE2E8F0);
-  static const Color borderLight = Color(0xFFCBD5E1);
+  static const Color borderLight = Color(0xFFE2E8F0);
+
+  // Paleta EdTech Pastel & Soft Tokens
+  static const Color cardBorder = Color(0xFFE2E8F0);
+  static const Color subtleBackground = Color(0xFFF1F5F9);
+  static const Color softIndigo = Color(0xFFEEF2FF);
+  static const Color softEmerald = Color(0xFFECFDF5);
+  static const Color softAmber = Color(0xFFFFFBEB);
+  static const Color softRose = Color(0xFFFFF1F2);
+  static const Color softCyan = Color(0xFFECFEFF);
 
   // Aliases semánticos para textos y acentos
   static const Color textPrimary = slateDark;

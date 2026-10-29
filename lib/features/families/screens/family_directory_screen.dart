@@ -204,8 +204,15 @@ class _FamilyDirectoryScreenState extends State<FamilyDirectoryScreen> {
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
                 color: AppColors.surfaceWhite,
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(20),
                 border: Border.all(color: const Color(0xFFE2E8F0)),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.02),
+                    blurRadius: 10,
+                    offset: const Offset(0, 3),
+                  ),
+                ],
               ),
               child: Row(
                 children: [
@@ -215,8 +222,8 @@ class _FamilyDirectoryScreenState extends State<FamilyDirectoryScreen> {
                       onChanged: (_) => _loadFamilies(),
                       decoration: InputDecoration(
                         hintText: 'Buscar por apellido familiar, código (FAM-...), tutor o estudiante...',
-                        hintStyle: const TextStyle(fontSize: 14, color: AppColors.textSecondary),
-                        prefixIcon: const Icon(Icons.search_rounded, color: AppColors.navyPrimary),
+                        hintStyle: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
+                        prefixIcon: const Icon(Icons.search_rounded, color: AppColors.navyPrimary, size: 20),
                         suffixIcon: _searchController.text.isNotEmpty
                             ? IconButton(
                                 icon: const Icon(Icons.clear_rounded, size: 18),
@@ -226,19 +233,7 @@ class _FamilyDirectoryScreenState extends State<FamilyDirectoryScreen> {
                                 },
                               )
                             : null,
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(10),
-                          borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
-                        ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(10),
-                          borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(10),
-                          borderSide: const BorderSide(color: AppColors.electricBlue, width: 2),
-                        ),
-                        contentPadding: const EdgeInsets.symmetric(vertical: 12),
+                        contentPadding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
                       ),
                     ),
                   ),
@@ -252,11 +247,18 @@ class _FamilyDirectoryScreenState extends State<FamilyDirectoryScreen> {
                         _loadFamilies();
                       }
                     },
-                    selectedColor: AppColors.navyPrimary.withValues(alpha: 0.12),
+                    selectedColor: AppColors.softIndigo,
                     checkmarkColor: AppColors.navyPrimary,
                     labelStyle: TextStyle(
-                      fontWeight: !_onlyWithDebt ? FontWeight.bold : FontWeight.normal,
+                      fontWeight: !_onlyWithDebt ? FontWeight.bold : FontWeight.w500,
                       color: !_onlyWithDebt ? AppColors.navyPrimary : AppColors.textSecondary,
+                      fontSize: 12,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(100),
+                      side: BorderSide(
+                        color: !_onlyWithDebt ? AppColors.navyPrimary.withValues(alpha: 0.3) : const Color(0xFFE2E8F0),
+                      ),
                     ),
                   ),
                   const SizedBox(width: 8),
@@ -267,11 +269,18 @@ class _FamilyDirectoryScreenState extends State<FamilyDirectoryScreen> {
                       setState(() => _onlyWithDebt = selected);
                       _loadFamilies();
                     },
-                    selectedColor: const Color(0xFFFEF3C7),
+                    selectedColor: AppColors.softAmber,
                     checkmarkColor: const Color(0xFFB45309),
                     labelStyle: TextStyle(
-                      fontWeight: _onlyWithDebt ? FontWeight.bold : FontWeight.normal,
+                      fontWeight: _onlyWithDebt ? FontWeight.bold : FontWeight.w500,
                       color: _onlyWithDebt ? const Color(0xFFB45309) : AppColors.textSecondary,
+                      fontSize: 12,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(100),
+                      side: BorderSide(
+                        color: _onlyWithDebt ? const Color(0xFFB45309).withValues(alpha: 0.3) : const Color(0xFFE2E8F0),
+                      ),
                     ),
                   ),
                 ],
@@ -334,21 +343,21 @@ class _FamilyDirectoryScreenState extends State<FamilyDirectoryScreen> {
     return Container(
       decoration: BoxDecoration(
         color: AppColors.surfaceWhite,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(20),
         border: Border.all(color: const Color(0xFFE2E8F0)),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.02),
-            blurRadius: 10,
-            offset: const Offset(0, 3),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
           ),
         ],
       ),
       child: Material(
         color: Colors.transparent,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(20),
         child: InkWell(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(20),
           onTap: () => FamilyDetailDialog.show(context, family, repository: widget.repository).then((_) => _loadFamilies()),
           child: Padding(
             padding: const EdgeInsets.all(20),
@@ -359,13 +368,13 @@ class _FamilyDirectoryScreenState extends State<FamilyDirectoryScreen> {
                   width: 52,
                   height: 52,
                   decoration: BoxDecoration(
-                    color: AppColors.navyPrimary.withValues(alpha: 0.08),
-                    borderRadius: BorderRadius.circular(14),
+                    color: AppColors.softIndigo,
+                    borderRadius: BorderRadius.circular(16),
                   ),
                   child: const Icon(
                     Icons.family_restroom_rounded,
                     color: AppColors.navyPrimary,
-                    size: 28,
+                    size: 26,
                   ),
                 ),
                 const SizedBox(width: 16),
@@ -379,10 +388,10 @@ class _FamilyDirectoryScreenState extends State<FamilyDirectoryScreen> {
                       Row(
                         children: [
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
                             decoration: BoxDecoration(
                               color: const Color(0xFFF1F5F9),
-                              borderRadius: BorderRadius.circular(6),
+                              borderRadius: BorderRadius.circular(100),
                             ),
                             child: Text(
                               family.codigoFamilia,
@@ -399,7 +408,7 @@ class _FamilyDirectoryScreenState extends State<FamilyDirectoryScreen> {
                               family.nombreFamilia,
                               overflow: TextOverflow.ellipsis,
                               style: const TextStyle(
-                                fontSize: 17,
+                                fontSize: 16,
                                 fontWeight: FontWeight.bold,
                                 color: AppColors.textPrimary,
                               ),
@@ -424,8 +433,16 @@ class _FamilyDirectoryScreenState extends State<FamilyDirectoryScreen> {
                   flex: 2,
                   child: Row(
                     children: [
-                      const Icon(Icons.school_outlined, size: 18, color: AppColors.textSecondary),
-                      const SizedBox(width: 6),
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF8FAFC),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: const Color(0xFFE2E8F0)),
+                        ),
+                        child: const Icon(Icons.school_outlined, size: 16, color: AppColors.navyPrimary),
+                      ),
+                      const SizedBox(width: 10),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -461,9 +478,9 @@ class _FamilyDirectoryScreenState extends State<FamilyDirectoryScreen> {
                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                       decoration: BoxDecoration(
                         color: family.estaAlDia
-                            ? const Color(0xFFDCFCE7)
-                            : const Color(0xFFFEF3C7),
-                        borderRadius: BorderRadius.circular(10),
+                            ? AppColors.softEmerald
+                            : AppColors.softAmber,
+                        borderRadius: BorderRadius.circular(100),
                       ),
                       child: Text(
                         family.estaAlDia ? 'AL DÍA' : 'PENDIENTE',
@@ -471,7 +488,7 @@ class _FamilyDirectoryScreenState extends State<FamilyDirectoryScreen> {
                           fontSize: 11,
                           fontWeight: FontWeight.bold,
                           color: family.estaAlDia
-                              ? const Color(0xFF166534)
+                              ? const Color(0xFF065F46)
                               : const Color(0xFFB45309),
                         ),
                       ),
@@ -485,14 +502,14 @@ class _FamilyDirectoryScreenState extends State<FamilyDirectoryScreen> {
                         fontSize: 15,
                         fontWeight: FontWeight.w800,
                         color: family.estaAlDia
-                            ? const Color(0xFF15803D)
+                            ? const Color(0xFF059669)
                             : const Color(0xFFB45309),
                       ),
                     ),
                   ],
                 ),
 
-                const SizedBox(width: 8),
+                const SizedBox(width: 12),
                 OutlinedButton.icon(
                   key: Key('btn_ver_expediente_${family.id}'),
                   onPressed: () async {
@@ -507,9 +524,9 @@ class _FamilyDirectoryScreenState extends State<FamilyDirectoryScreen> {
                   label: const Text('Expediente & Tutores', style: TextStyle(fontSize: 12)),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: AppColors.navyPrimary,
-                    side: const BorderSide(color: AppColors.navyPrimary),
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    side: const BorderSide(color: Color(0xFFCBD5E1)),
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     visualDensity: VisualDensity.compact,
                   ),
                 ),
@@ -528,8 +545,8 @@ class _FamilyDirectoryScreenState extends State<FamilyDirectoryScreen> {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.accentGreen,
                     foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     visualDensity: VisualDensity.compact,
                   ),
                 ),

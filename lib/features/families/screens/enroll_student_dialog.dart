@@ -403,7 +403,7 @@ class _EnrollStudentDialogState extends State<EnrollStudentDialog> {
           padding: const EdgeInsets.all(22),
           decoration: const BoxDecoration(
             color: Color(0xFF166534),
-            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
           ),
           child: Row(
             children: [
@@ -506,7 +506,7 @@ class _EnrollStudentDialogState extends State<EnrollStudentDialog> {
           decoration: const BoxDecoration(
             color: Color(0xFFF8FAFC),
             border: Border(top: BorderSide(color: Color(0xFFE2E8F0))),
-            borderRadius: BorderRadius.vertical(bottom: Radius.circular(20)),
+            borderRadius: BorderRadius.vertical(bottom: Radius.circular(24)),
           ),
           child: Wrap(
             alignment: WrapAlignment.end,
@@ -581,7 +581,7 @@ Documentos en expediente: ${s.documentosExpediente.length}
   @override
   Widget build(BuildContext context) {
     return Dialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
       backgroundColor: AppColors.surfaceWhite,
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 650, maxHeight: 800),
@@ -598,7 +598,7 @@ Documentos en expediente: ${s.documentosExpediente.length}
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
                       ),
-                      borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+                      borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
                     ),
                     child: Row(
                       children: [
@@ -1036,7 +1036,7 @@ Documentos en expediente: ${s.documentosExpediente.length}
                     decoration: const BoxDecoration(
                       color: Color(0xFFF8FAFC),
                       border: Border(top: BorderSide(color: Color(0xFFE2E8F0))),
-                      borderRadius: BorderRadius.vertical(bottom: Radius.circular(20)),
+                      borderRadius: BorderRadius.vertical(bottom: Radius.circular(24)),
                     ),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.end,

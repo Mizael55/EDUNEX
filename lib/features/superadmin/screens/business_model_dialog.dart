@@ -28,7 +28,7 @@ class _BusinessModelDialogState extends State<BusinessModelDialog> {
     final marketShare = (_simulatedSchools / 650.0) * 100.0;
 
     return Dialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
       backgroundColor: AppColors.surfaceWhite,
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 900, maxHeight: 850),
@@ -43,7 +43,7 @@ class _BusinessModelDialogState extends State<BusinessModelDialog> {
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),
-                borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
               ),
               child: Row(
                 children: [
@@ -519,7 +519,7 @@ class _BusinessModelDialogState extends State<BusinessModelDialog> {
               decoration: const BoxDecoration(
                 color: Color(0xFFF8FAFC),
                 border: Border(top: BorderSide(color: Color(0xFFE2E8F0))),
-                borderRadius: BorderRadius.vertical(bottom: Radius.circular(20)),
+                borderRadius: BorderRadius.vertical(bottom: Radius.circular(24)),
               ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.end,

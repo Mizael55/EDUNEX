@@ -991,7 +991,7 @@ class _FamilyDetailDialogState extends State<FamilyDetailDialog> {
     final isDesktop = size.width >= 768;
 
     return Dialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
       backgroundColor: AppColors.surfaceWhite,
       insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
       child: ConstrainedBox(
@@ -1010,7 +1010,7 @@ class _FamilyDetailDialogState extends State<FamilyDetailDialog> {
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),
-                borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
               ),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -1378,7 +1378,7 @@ class _FamilyDetailDialogState extends State<FamilyDetailDialog> {
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
               decoration: const BoxDecoration(
                 color: Color(0xFFF8FAFC),
-                borderRadius: BorderRadius.vertical(bottom: Radius.circular(20)),
+                borderRadius: BorderRadius.vertical(bottom: Radius.circular(24)),
                 border: Border(top: BorderSide(color: Color(0xFFE2E8F0))),
               ),
               child: Row(

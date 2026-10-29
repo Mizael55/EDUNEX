@@ -499,7 +499,7 @@ class _LoginScreenState extends State<LoginScreen> {
             padding: const EdgeInsets.all(4),
             decoration: BoxDecoration(
               color: AppColors.slateLight.withValues(alpha: 0.6),
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(14),
             ),
             child: Row(
               children: List.generate(_roles.length, (index) {
@@ -508,12 +508,12 @@ class _LoginScreenState extends State<LoginScreen> {
                 return Expanded(
                   child: InkWell(
                     onTap: () => _onRoleChanged(index),
-                    borderRadius: BorderRadius.circular(10),
+                    borderRadius: BorderRadius.circular(12),
                     child: Container(
                       padding: const EdgeInsets.symmetric(vertical: 8),
                       decoration: BoxDecoration(
                         color: isSelected ? AppColors.surfaceWhite : Colors.transparent,
-                        borderRadius: BorderRadius.circular(10),
+                        borderRadius: BorderRadius.circular(12),
                         boxShadow: isSelected
                             ? [
                                 BoxShadow(
@@ -587,16 +587,16 @@ class _LoginScreenState extends State<LoginScreen> {
               fillColor: AppColors.surfaceWhite,
               contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
               border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: AppColors.borderLight),
+                borderRadius: BorderRadius.circular(14),
+                borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
               ),
               enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: AppColors.borderLight),
+                borderRadius: BorderRadius.circular(14),
+                borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
               ),
               focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: AppColors.electricBlue, width: 2),
+                borderRadius: BorderRadius.circular(14),
+                borderSide: const BorderSide(color: AppColors.navyPrimary, width: 1.5),
               ),
             ),
           ),
@@ -644,16 +644,16 @@ class _LoginScreenState extends State<LoginScreen> {
               fillColor: AppColors.surfaceWhite,
               contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
               border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: AppColors.borderLight),
+                borderRadius: BorderRadius.circular(14),
+                borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
               ),
               enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: AppColors.borderLight),
+                borderRadius: BorderRadius.circular(14),
+                borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
               ),
               focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: AppColors.electricBlue, width: 2),
+                borderRadius: BorderRadius.circular(14),
+                borderSide: const BorderSide(color: AppColors.navyPrimary, width: 1.5),
               ),
             ),
           ),
@@ -729,7 +729,7 @@ class _LoginScreenState extends State<LoginScreen> {
             height: 52,
             decoration: BoxDecoration(
               gradient: AppColors.buttonGradient,
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(14),
               boxShadow: [
                 BoxShadow(
                   color: AppColors.electricBlue.withValues(alpha: 0.35),
@@ -744,7 +744,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 backgroundColor: Colors.transparent,
                 shadowColor: Colors.transparent,
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(14),
                 ),
               ),
               child: _isLoading

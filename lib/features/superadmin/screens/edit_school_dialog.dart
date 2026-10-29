@@ -145,7 +145,8 @@ class _EditSchoolDialogState extends State<EditSchoolDialog> {
   @override
   Widget build(BuildContext context) {
     return Dialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+      backgroundColor: AppColors.surfaceWhite,
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 720, maxHeight: 760),
         child: Padding(
