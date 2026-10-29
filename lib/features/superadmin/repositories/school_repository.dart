@@ -99,63 +99,13 @@ class SchoolRepository {
   /// Lista de colegios en memoria para pruebas y modo desconectado
   static final List<School> _demoSchools = List.from(_seedSchools);
 
-  // Semillas y estado de facturación SaaS
-  static final List<SaaSInvoice> _seedSaaSInvoices = [
-    SaaSInvoice(
-      id: 'inv-saas-001',
-      colegioId: 'a0000000-0000-0000-0000-000000000001',
-      colegioNombre: 'Colegio Bilingüe EDUNEX Piloto',
-      rncColegio: '1-31-00000-1',
-      monto: 7000.0,
-      periodo: 'Octubre 2026',
-      fechaEmision: DateTime(2026, 10, 1),
-      fechaVencimiento: DateTime(2026, 10, 15),
-      estado: SaaSInvoiceStatus.pagada,
-      ncf: 'B0100000214',
-      tipoNCF: 'B01',
-      fechaPago: DateTime(2026, 10, 5),
-      metodoPago: 'Transferencia Bancaria BHD',
-      notas: 'Pago mensual regular de suscripción SaaS',
-    ),
-    SaaSInvoice(
-      id: 'inv-saas-002',
-      colegioId: 'a0000000-0000-0000-0000-000000000002',
-      colegioNombre: 'Instituto Educativo San Judas Tadeo',
-      rncColegio: '1-30-55443-2',
-      monto: 8050.0,
-      periodo: 'Octubre 2026',
-      fechaEmision: DateTime(2026, 10, 1),
-      fechaVencimiento: DateTime(2026, 10, 15),
-      estado: SaaSInvoiceStatus.pendiente,
-      ncf: 'B0100000215',
-      tipoNCF: 'B01',
-      notas: 'Facturación SaaS mensual ordinaria',
-    ),
-  ];
+  // Semillas y estado de facturación SaaS (inicialmente vacías sin data simulada)
+  static final List<SaaSInvoice> _seedSaaSInvoices = [];
 
   static final List<SaaSInvoice> _demoSaaSInvoices = List.from(_seedSaaSInvoices);
 
-  // Semillas y estado de anuncios globales del sistema
-  static final List<SystemAnnouncement> _seedSystemAnnouncements = [
-    SystemAnnouncement(
-      id: 'ann-001',
-      titulo: 'Mantenimiento Programado del Servidor',
-      mensaje: 'El domingo 1 de noviembre entre 2:00 AM y 4:00 AM se realizará una actualización de la infraestructura en la nube.',
-      tipo: AnnouncementType.mantenimiento,
-      activo: true,
-      fecha: DateTime(2026, 10, 25),
-      creadoPor: 'SuperAdmin',
-    ),
-    SystemAnnouncement(
-      id: 'ann-002',
-      titulo: 'Nueva funcionalidad: Módulo DGII y NCF B01 / B02',
-      mensaje: 'Ya se encuentra disponible la emisión y reporte de comprobantes fiscales autorizados por la DGII.',
-      tipo: AnnouncementType.actualizacion,
-      activo: true,
-      fecha: DateTime(2026, 10, 28),
-      creadoPor: 'SuperAdmin',
-    ),
-  ];
+  // Semillas y estado de anuncios globales del sistema (inicialmente vacíos sin data simulada)
+  static final List<SystemAnnouncement> _seedSystemAnnouncements = [];
 
   static final List<SystemAnnouncement> _demoSystemAnnouncements = List.from(_seedSystemAnnouncements);
 

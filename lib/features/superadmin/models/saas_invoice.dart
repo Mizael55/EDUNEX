@@ -49,6 +49,7 @@ class SaaSInvoice {
   });
 
   bool get isPaid => estado == SaaSInvoiceStatus.pagada;
+  bool get isPending => estado == SaaSInvoiceStatus.pendiente;
   bool get isOverdue =>
       !isPaid && DateTime.now().isAfter(fechaVencimiento);
 

@@ -35,6 +35,8 @@ import '../features/superadmin/repositories/audit_repository.dart';
 import '../features/superadmin/widgets/edit_school_logo_dialog.dart';
 import '../features/superadmin/models/school.dart';
 import '../features/superadmin/models/system_announcement.dart';
+import '../features/superadmin/screens/saas_billing_screen.dart';
+import '../features/superadmin/screens/system_announcements_screen.dart';
 import '../features/finances/screens/finance_overview_screen.dart';
 import '../features/services/screens/services_management_screen.dart';
 import '../features/teacher_portal/repositories/teacher_repository.dart';
@@ -212,7 +214,15 @@ class _MainShellState extends State<MainShell> {
           icon: Icons.domain_rounded,
         ),
         const NavigationItem(
-          title: 'Finanzas & Facturación SaaS',
+          title: 'Cobranza & Facturación SaaS',
+          icon: Icons.receipt_long_rounded,
+        ),
+        const NavigationItem(
+          title: 'Anuncios del Sistema',
+          icon: Icons.campaign_rounded,
+        ),
+        const NavigationItem(
+          title: 'Finanzas Escolares',
           icon: Icons.account_balance_wallet_rounded,
         ),
         const NavigationItem(
@@ -407,12 +417,20 @@ class _MainShellState extends State<MainShell> {
             },
           );
         case 2:
+          return SaasBillingScreen(
+            schoolRepository: _schoolRepository,
+          );
+        case 3:
+          return SystemAnnouncementsScreen(
+            schoolRepository: _schoolRepository,
+          );
+        case 4:
           return FinanceOverviewScreen(
             isSuperAdmin: true,
             familyRepository: _familyRepository,
             schoolRepository: _schoolRepository,
           );
-        case 3:
+        case 5:
           return SuperAdminAuditScreen(
             repository: _auditRepository,
           );
