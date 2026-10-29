@@ -199,6 +199,7 @@ class _CreateSchoolDialogState extends State<CreateSchoolDialog> {
     for (final branch in _branchControllers) {
       branch['nombre']?.dispose();
       branch['direccion']?.dispose();
+      branch['estudiantes']?.dispose();
     }
     _directorNombresController.dispose();
     _directorApellidosController.dispose();
@@ -223,10 +224,20 @@ class _CreateSchoolDialogState extends State<CreateSchoolDialog> {
   }
 
   void _addBranch() {
+    final newIndex = _branchControllers.length + 1;
+    final ctrlNombre = TextEditingController(text: 'Sucursal $newIndex');
+    final ctrlDireccion = TextEditingController();
+    final ctrlEstudiantes = TextEditingController(text: '100');
+
+    ctrlNombre.addListener(_onFormFieldChanged);
+    ctrlDireccion.addListener(_onFormFieldChanged);
+    ctrlEstudiantes.addListener(_onFormFieldChanged);
+
     setState(() {
       _branchControllers.add({
-        'nombre': TextEditingController(text: 'Sucursal ${_branchControllers.length + 1}'),
-        'direccion': TextEditingController(),
+        'nombre': ctrlNombre,
+        'direccion': ctrlDireccion,
+        'estudiantes': ctrlEstudiantes,
       });
     });
   }
@@ -234,8 +245,12 @@ class _CreateSchoolDialogState extends State<CreateSchoolDialog> {
   void _removeBranch(int index) {
     setState(() {
       final removed = _branchControllers.removeAt(index);
+      removed['nombre']?.removeListener(_onFormFieldChanged);
+      removed['direccion']?.removeListener(_onFormFieldChanged);
+      removed['estudiantes']?.removeListener(_onFormFieldChanged);
       removed['nombre']?.dispose();
       removed['direccion']?.dispose();
+      removed['estudiantes']?.dispose();
     });
   }
 
@@ -333,15 +348,30 @@ class _CreateSchoolDialogState extends State<CreateSchoolDialog> {
     return null;
   }
 
+  int get _totalBranchStudents {
+    if (!_hasBranches) return 0;
+    return _branchControllers.fold<int>(
+      0,
+      (sum, b) => sum + (int.tryParse(b['estudiantes']?.text.trim() ?? '') ?? 0),
+    );
+  }
+
+  int get _grandTotalStudents {
+    final mainCampus = int.tryParse(_maxEstudiantesController.text.trim()) ?? _selectedMaxEstudiantes;
+    return mainCampus + _totalBranchStudents;
+  }
+
   double _calculateSaaSFee() {
-    final count = int.tryParse(_maxEstudiantesController.text.trim()) ?? _selectedMaxEstudiantes;
+    final total = _grandTotalStudents;
     double base;
-    if (count <= 250) {
+    if (total <= 250) {
       base = 4000.0;
-    } else if (count <= 400) {
+    } else if (total <= 400) {
       base = 5500.0;
-    } else {
+    } else if (total <= 700) {
       base = 7000.0;
+    } else {
+      base = 8500.0;
     }
     if (_hasBranches && _branchControllers.isNotEmpty) {
       base += base * 0.15 * _branchControllers.length;
@@ -565,11 +595,11 @@ class _CreateSchoolDialogState extends State<CreateSchoolDialog> {
     setState(() => _isLoading = true);
 
     try {
-      final capacity = int.tryParse(_maxEstudiantesController.text.trim()) ?? _selectedMaxEstudiantes;
+      final capacity = _grandTotalStudents;
       String direccionFinal = _direccionController.text.trim();
       if (_hasBranches && _branchControllers.isNotEmpty) {
         final branchesInfo = _branchControllers
-            .map((b) => '${b['nombre']?.text.trim() ?? "Sucursal"}: ${b['direccion']?.text.trim() ?? ""}')
+            .map((b) => '${b['nombre']?.text.trim() ?? "Sucursal"}: ${b['direccion']?.text.trim() ?? ""} (${b['estudiantes']?.text.trim() ?? "0"} alumnos)')
             .join(' | ');
         direccionFinal = direccionFinal.isNotEmpty
             ? '$direccionFinal [Sucursales: $branchesInfo]'
@@ -1527,21 +1557,31 @@ Contraseña: $password
                               const Divider(height: 16),
                               Container(
                                 margin: const EdgeInsets.only(bottom: 12),
-                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                                 decoration: BoxDecoration(
                                   color: AppColors.electricBlue.withValues(alpha: 0.08),
-                                  borderRadius: BorderRadius.circular(8),
-                                  border: Border.all(color: AppColors.electricBlue.withValues(alpha: 0.2)),
+                                  borderRadius: BorderRadius.circular(10),
+                                  border: Border.all(color: AppColors.electricBlue.withValues(alpha: 0.25)),
                                 ),
-                                child: Row(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    const Icon(Icons.monetization_on_outlined, size: 16, color: AppColors.electricBlue),
-                                    const SizedBox(width: 8),
-                                    Expanded(
-                                      child: Text(
-                                        'Tarifa Plan SaaS Calculada: ${_branchControllers.isEmpty ? "RD\$ 7,000 / mes (1 sucursal base)" : (_branchControllers.length == 1 ? "RD\$ 10,500 / mes (2 sucursales)" : "RD\$ 14,000 / mes (${1 + _branchControllers.length} sucursales)")}',
-                                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.navyPrimary),
-                                      ),
+                                    Row(
+                                      children: [
+                                        const Icon(Icons.monetization_on_rounded, size: 18, color: AppColors.electricBlue),
+                                        const SizedBox(width: 8),
+                                        Expanded(
+                                          child: Text(
+                                            'Tarifa Plan SaaS Calculada: RD\$ ${_calculateSaaSFee().toStringAsFixed(2)} / mes (${1 + _branchControllers.length} sedes)',
+                                            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppColors.navyPrimary),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      'Cálculo preciso: Sede Central (${_maxEstudiantesController.text.trim().isEmpty ? 0 : _maxEstudiantesController.text.trim()} alumnos) + ${_branchControllers.length} sucursales ($_totalBranchStudents alumnos) = $_grandTotalStudents alumnos en total.',
+                                      style: const TextStyle(fontSize: 11, color: Color(0xFF475569), fontWeight: FontWeight.w500),
                                     ),
                                   ],
                                 ),
@@ -1570,12 +1610,19 @@ Contraseña: $password
                               ...List.generate(_branchControllers.length, (idx) {
                                 final branch = _branchControllers[idx];
                                 return Container(
-                                  margin: const EdgeInsets.only(bottom: 10),
-                                  padding: const EdgeInsets.all(12),
+                                  margin: const EdgeInsets.only(bottom: 12),
+                                  padding: const EdgeInsets.all(14),
                                   decoration: BoxDecoration(
                                     color: Colors.white,
-                                    borderRadius: BorderRadius.circular(10),
+                                    borderRadius: BorderRadius.circular(12),
                                     border: Border.all(color: const Color(0xFFE2E8F0)),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.black.withValues(alpha: 0.02),
+                                        blurRadius: 4,
+                                        offset: const Offset(0, 2),
+                                      ),
+                                    ],
                                   ),
                                   child: Column(
                                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -1583,43 +1630,123 @@ Contraseña: $password
                                       Row(
                                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                         children: [
-                                          Text(
-                                            'Sucursal / Campus #${idx + 1}',
-                                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: AppColors.navyPrimary),
+                                          Row(
+                                            children: [
+                                              Container(
+                                                padding: const EdgeInsets.all(4),
+                                                decoration: BoxDecoration(
+                                                  color: AppColors.navyPrimary.withValues(alpha: 0.08),
+                                                  borderRadius: BorderRadius.circular(6),
+                                                ),
+                                                child: const Icon(Icons.apartment_rounded, size: 14, color: AppColors.navyPrimary),
+                                              ),
+                                              const SizedBox(width: 8),
+                                              Text(
+                                                'Sucursal / Campus #${idx + 1}',
+                                                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppColors.navyPrimary),
+                                              ),
+                                            ],
                                           ),
                                           if (_branchControllers.length > 1)
                                             IconButton(
                                               icon: const Icon(Icons.delete_outline_rounded, color: Colors.redAccent, size: 18),
+                                              tooltip: 'Eliminar esta sucursal',
                                               onPressed: () => _removeBranch(idx),
                                             ),
                                         ],
                                       ),
-                                      const SizedBox(height: 6),
+                                      const SizedBox(height: 10),
                                       Row(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
                                         children: [
                                           Expanded(
+                                            flex: 3,
                                             child: TextFormField(
                                               controller: branch['nombre'],
                                               decoration: InputDecoration(
                                                 labelText: 'Nombre de la Sucursal',
                                                 hintText: 'Ej. Campus Piantini / Recinto Este',
                                                 isDense: true,
+                                                prefixIcon: const Icon(Icons.business_rounded, size: 18),
                                                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
                                               ),
                                             ),
                                           ),
                                           const SizedBox(width: 10),
                                           Expanded(
+                                            flex: 3,
                                             child: TextFormField(
                                               controller: branch['direccion'],
                                               decoration: InputDecoration(
                                                 labelText: 'Dirección de la Sucursal',
                                                 hintText: 'Ej. Calle Federico Geraldino #45',
                                                 isDense: true,
+                                                prefixIcon: const Icon(Icons.location_on_outlined, size: 18),
                                                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
                                               ),
                                             ),
                                           ),
+                                          const SizedBox(width: 10),
+                                          Expanded(
+                                            flex: 2,
+                                            child: TextFormField(
+                                              controller: branch['estudiantes'],
+                                              keyboardType: TextInputType.number,
+                                              decoration: InputDecoration(
+                                                labelText: 'Estudiantes',
+                                                hintText: '100',
+                                                helperText: 'Cupo de sede',
+                                                isDense: true,
+                                                prefixIcon: const Icon(Icons.groups_outlined, size: 18),
+                                                border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 8),
+                                      Wrap(
+                                        spacing: 6,
+                                        runSpacing: 4,
+                                        crossAxisAlignment: WrapCrossAlignment.center,
+                                        children: [
+                                          const Text(
+                                            'Cupo rápido:',
+                                            style: TextStyle(fontSize: 10.5, color: Color(0xFF64748B), fontWeight: FontWeight.w600),
+                                          ),
+                                          for (final preset in [50, 100, 150, 200, 300])
+                                            InkWell(
+                                              onTap: () {
+                                                branch['estudiantes']?.text = preset.toString();
+                                              },
+                                              borderRadius: BorderRadius.circular(6),
+                                              child: Container(
+                                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                                decoration: BoxDecoration(
+                                                  color: (branch['estudiantes']?.text.trim() == preset.toString())
+                                                      ? AppColors.electricBlue.withValues(alpha: 0.15)
+                                                      : const Color(0xFFF1F5F9),
+                                                  borderRadius: BorderRadius.circular(6),
+                                                  border: Border.all(
+                                                    color: (branch['estudiantes']?.text.trim() == preset.toString())
+                                                        ? AppColors.electricBlue
+                                                        : const Color(0xFFCBD5E1),
+                                                  ),
+                                                ),
+                                                child: Text(
+                                                  '$preset alumnos',
+                                                  style: TextStyle(
+                                                    fontSize: 10,
+                                                    fontWeight: (branch['estudiantes']?.text.trim() == preset.toString())
+                                                        ? FontWeight.bold
+                                                        : FontWeight.w500,
+                                                    color: (branch['estudiantes']?.text.trim() == preset.toString())
+                                                        ? AppColors.navyPrimary
+                                                        : const Color(0xFF475569),
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
                                         ],
                                       ),
                                     ],
