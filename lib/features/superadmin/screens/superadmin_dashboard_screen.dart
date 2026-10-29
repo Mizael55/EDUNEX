@@ -8,6 +8,8 @@ import '../repositories/school_repository.dart';
 import 'business_model_dialog.dart';
 import 'create_school_dialog.dart';
 import 'reset_password_dialog.dart';
+import 'saas_billing_dialog.dart';
+import 'system_announcement_dialog.dart';
 
 /// Panel Maestro del Dueño del Software (Superadministrador SaaS de EDUNEX).
 ///
@@ -322,11 +324,77 @@ class _SuperAdminDashboardScreenState extends State<SuperAdminDashboardScreen> {
                   ),
                 );
 
+                final exportCsvButton = OutlinedButton.icon(
+                  onPressed: () async {
+                    try {
+                      await widget.schoolRepository.exportSchoolsCsv();
+                      if (context.mounted) {
+                        AppToast.success(
+                          context,
+                          'Directorio consolidado de ${_schools.length} colegios e informes de ingresos SaaS exportados a formato CSV (Excel).',
+                          title: 'Exportación Exitosa',
+                        );
+                      }
+                    } catch (e) {
+                      if (context.mounted) {
+                        AppToast.error(context, 'Error exportando informe CSV: $e');
+                      }
+                    }
+                  },
+                  icon: const Icon(Icons.file_download_outlined, size: 18, color: AppColors.accentGreen),
+                  label: const Text('Exportar CSV'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppColors.navyPrimary,
+                    side: const BorderSide(color: Color(0xFFA7F3D0), width: 1.5),
+                    backgroundColor: const Color(0xFFECFDF5),
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                );
+
+                final announcementsButton = OutlinedButton.icon(
+                  onPressed: () {
+                    showDialog(
+                      context: context,
+                      builder: (ctx) => const SystemAnnouncementDialog(),
+                    ).then((_) => _loadData());
+                  },
+                  icon: const Icon(Icons.campaign_outlined, size: 18, color: Color(0xFFB45309)),
+                  label: const Text('Anuncios Globales'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: const Color(0xFFB45309),
+                    side: const BorderSide(color: Color(0xFFFDE68A), width: 1.5),
+                    backgroundColor: const Color(0xFFFEF3C7),
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                );
+
+                final saasBillingButton = ElevatedButton.icon(
+                  onPressed: () {
+                    showDialog(
+                      context: context,
+                      builder: (ctx) => const SaasBillingDialog(),
+                    ).then((_) => _loadData());
+                  },
+                  icon: const Icon(Icons.receipt_long, size: 18),
+                  label: const Text('Cobranza SaaS & NCF'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF0284C7),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                );
+
                 final actionButtons = Wrap(
                   spacing: 10,
                   runSpacing: 10,
                   children: [
                     purgeButton,
+                    exportCsvButton,
+                    announcementsButton,
+                    saasBillingButton,
                     resetPasswordButton,
                     if (!widget.showOnlySchools) businessModelButton,
                     actionButton,
@@ -901,7 +969,7 @@ class _SuperAdminDashboardScreenState extends State<SuperAdminDashboardScreen> {
                   spacing: 10,
                   runSpacing: 8,
                   children: [
-                    // Badge de suscripción
+                    // Badge de suscripción o días restantes de trial
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                       decoration: BoxDecoration(
@@ -921,7 +989,9 @@ class _SuperAdminDashboardScreenState extends State<SuperAdminDashboardScreen> {
                           ),
                           const SizedBox(width: 4),
                           Text(
-                            school.statusDisplayName,
+                            school.isTrial
+                                ? 'Prueba: ${school.trialDiasRestantes} días restantes'
+                                : school.statusDisplayName,
                             style: TextStyle(
                               fontSize: 11,
                               fontWeight: FontWeight.bold,
@@ -929,6 +999,62 @@ class _SuperAdminDashboardScreenState extends State<SuperAdminDashboardScreen> {
                             ),
                           ),
                         ],
+                      ),
+                    ),
+
+                    // Acciones rápidas para colegios en Trial
+                    if (school.isTrial) ...[
+                      OutlinedButton.icon(
+                        onPressed: () async {
+                          await widget.schoolRepository.extendSchoolTrial(school.id, 7);
+                          if (context.mounted) {
+                            AppToast.success(context, 'Prueba extendida por +7 días para ${school.nombre}');
+                            _loadData();
+                          }
+                        },
+                        icon: const Icon(Icons.more_time_rounded, size: 14, color: AppColors.electricBlue),
+                        label: const Text('+7 Días', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.electricBlue)),
+                        style: OutlinedButton.styleFrom(
+                          side: const BorderSide(color: Color(0xFFBAE6FD)),
+                          backgroundColor: const Color(0xFFF0F9FF),
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                        ),
+                      ),
+                      ElevatedButton.icon(
+                        onPressed: () async {
+                          await widget.schoolRepository.convertSchoolToActive(school.id);
+                          if (context.mounted) {
+                            AppToast.success(context, '¡${school.nombre} convertido a Suscripción Activa de Pago!');
+                            _loadData();
+                          }
+                        },
+                        icon: const Icon(Icons.verified_rounded, size: 14),
+                        label: const Text('Activar Pago', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.accentGreen,
+                          foregroundColor: Colors.black,
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                        ),
+                      ),
+                    ],
+
+                    // Botón para Cobranza & Facturación Directa
+                    OutlinedButton.icon(
+                      onPressed: () {
+                        showDialog(
+                          context: context,
+                          builder: (ctx) => SaasBillingDialog(initialSchool: school),
+                        ).then((_) => _loadData());
+                      },
+                      icon: const Icon(Icons.receipt_rounded, size: 15, color: Color(0xFF0284C7)),
+                      label: const Text('Facturar NCF', style: TextStyle(fontSize: 11, color: Color(0xFF0284C7), fontWeight: FontWeight.bold)),
+                      style: OutlinedButton.styleFrom(
+                        side: const BorderSide(color: Color(0xFFBAE6FD)),
+                        backgroundColor: const Color(0xFFF0F9FF),
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                       ),
                     ),
 

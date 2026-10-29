@@ -35,6 +35,9 @@ class School {
   final int sucursalesCount;
   final String? metodoPago;
   final bool metodoPagoRegistrado;
+  // Facturación SaaS y Control de Periodo de Prueba (Trial)
+  final int diaCorte;
+  final DateTime? trialFin;
 
   const School({
     required this.id,
@@ -66,7 +69,20 @@ class School {
     this.sucursalesCount = 0,
     this.metodoPago,
     this.metodoPagoRegistrado = false,
+    this.diaCorte = 1,
+    this.trialFin,
   });
+
+  /// Determina si la institución está en periodo de prueba
+  bool get isTrial => estadoSuscripcion == 'trial';
+
+  /// Retorna los días restantes de prueba (por defecto 15 días tras registro)
+  int get trialDiasRestantes {
+    if (!isTrial) return 0;
+    final end = trialFin ?? (createdAt?.add(const Duration(days: 15)) ?? DateTime.now().add(const Duration(days: 15)));
+    final diff = end.difference(DateTime.now()).inDays;
+    return diff < 0 ? 0 : diff;
+  }
 
   /// Cuota mensual SaaS según rango de alumnos y sucursales (Issue #22)
   /// - 100 a 250 alumnos: RD$ 4,000 / mes
@@ -95,7 +111,6 @@ class School {
   bool get tieneMetodoPagoValido => metodoPagoRegistrado || (metodoPago != null && metodoPago!.isNotEmpty) || estadoSuscripcion == 'active';
 
   bool get isActive => estadoSuscripcion == 'active';
-  bool get isTrial => estadoSuscripcion == 'trial';
   bool get isSuspended => estadoSuscripcion == 'suspended';
 
   String get statusDisplayName {
@@ -149,6 +164,13 @@ class School {
       return double.tryParse(v?.toString() ?? '') ?? defaultVal;
     }
 
+    DateTime? parsedTrialFin;
+    if (json['trial_fin'] != null || cfg?['trial_fin'] != null) {
+      try {
+        parsedTrialFin = DateTime.parse((json['trial_fin'] ?? cfg?['trial_fin']).toString());
+      } catch (_) {}
+    }
+
     return School(
       id: json['id']?.toString() ?? '',
       nombre: json['nombre']?.toString() ?? '',
@@ -188,6 +210,10 @@ class School {
       metodoPago: json['metodo_pago']?.toString(),
       metodoPagoRegistrado: json['metodo_pago_registrado'] as bool? ??
           (json['metodo_pago'] != null && json['metodo_pago'].toString().isNotEmpty),
+      diaCorte: (json['dia_corte'] ?? cfg?['dia_corte']) is int
+          ? (json['dia_corte'] ?? cfg?['dia_corte']) as int
+          : int.tryParse((json['dia_corte'] ?? cfg?['dia_corte'])?.toString() ?? '1') ?? 1,
+      trialFin: parsedTrialFin,
     );
   }
 
@@ -221,6 +247,8 @@ class School {
     int? sucursalesCount,
     String? metodoPago,
     bool? metodoPagoRegistrado,
+    int? diaCorte,
+    DateTime? trialFin,
   }) {
     return School(
       id: id ?? this.id,
@@ -252,6 +280,8 @@ class School {
       sucursalesCount: sucursalesCount ?? this.sucursalesCount,
       metodoPago: metodoPago ?? this.metodoPago,
       metodoPagoRegistrado: metodoPagoRegistrado ?? this.metodoPagoRegistrado,
+      diaCorte: diaCorte ?? this.diaCorte,
+      trialFin: trialFin ?? this.trialFin,
     );
   }
 
@@ -283,6 +313,8 @@ class School {
       'sucursales_count': sucursalesCount,
       'metodo_pago': metodoPago,
       'metodo_pago_registrado': metodoPagoRegistrado,
+      'dia_corte': diaCorte,
+      'trial_fin': trialFin?.toIso8601String(),
     };
   }
 }

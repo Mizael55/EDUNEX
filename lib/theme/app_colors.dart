@@ -40,10 +40,14 @@ class AppColors {
   // Aliases semánticos para textos y acentos
   static const Color textPrimary = slateDark;
   static const Color textSecondary = slateGray;
+  static const Color textMuted = Color(0xFF94A3B8);
   static const Color textLight = Color(0xFFE2E8F0);
   static const Color navySecondary = navyLight;
   static const Color amberAccent = accentOrange;
   static const Color crimsonAlert = Color(0xFFDC2626);
+  static const Color borderSubtle = Color(0xFFE2E8F0);
+  static const Color backgroundSecondary = Color(0xFFF8FAFC);
+  static const Color cardBackground = Color(0xFFFFFFFF);
 
   // Degradados corporativos
   static const LinearGradient primaryGradient = LinearGradient(

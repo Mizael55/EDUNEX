@@ -34,6 +34,7 @@ import '../features/superadmin/screens/superadmin_audit_screen.dart';
 import '../features/superadmin/repositories/audit_repository.dart';
 import '../features/superadmin/widgets/edit_school_logo_dialog.dart';
 import '../features/superadmin/models/school.dart';
+import '../features/superadmin/models/system_announcement.dart';
 import '../features/finances/screens/finance_overview_screen.dart';
 import '../features/services/screens/services_management_screen.dart';
 import '../features/teacher_portal/repositories/teacher_repository.dart';
@@ -86,6 +87,8 @@ class _MainShellState extends State<MainShell> {
   String _schoolName = 'Colegio Cliente EDUNEX';
   String? _schoolLogoUrl;
   School? _inspectedSchool;
+  List<SystemAnnouncement> _activeAnnouncements = [];
+  final Set<String> _dismissedAnnouncementIds = {};
 
   @override
   void initState() {
@@ -102,6 +105,19 @@ class _MainShellState extends State<MainShell> {
     _guidanceRepository = widget.guidanceRepository ?? GuidanceRepository(useDemoFallback: false);
     _auditRepository = AuditRepository();
     _loadSchoolName();
+    _loadAnnouncements();
+  }
+
+  Future<void> _loadAnnouncements() async {
+    final list = await _schoolRepository.getSystemAnnouncements(
+      onlyActive: true,
+      schoolId: widget.userProfile.colegioId,
+    );
+    if (mounted) {
+      setState(() {
+        _activeAnnouncements = list;
+      });
+    }
   }
 
   Future<void> _loadSchoolName() async {
@@ -726,6 +742,7 @@ class _MainShellState extends State<MainShell> {
         body: Column(
           children: [
             Container(height: 3, color: role.activeItemColor),
+            _buildSystemAnnouncementBanner(),
             Expanded(child: _buildBody()),
           ],
         ),
@@ -1072,6 +1089,7 @@ class _MainShellState extends State<MainShell> {
                       ),
                     ),
                   ),
+                  _buildSystemAnnouncementBanner(),
                   Expanded(child: _buildBody()),
                 ],
               ),
@@ -1082,6 +1100,56 @@ class _MainShellState extends State<MainShell> {
     ),
   ),
 );
+  }
+
+  Widget _buildSystemAnnouncementBanner() {
+    final visible = _activeAnnouncements.where((a) => !_dismissedAnnouncementIds.contains(a.id)).toList();
+    if (visible.isEmpty) return const SizedBox.shrink();
+
+    final ann = visible.first;
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      decoration: BoxDecoration(
+        color: ann.color.withValues(alpha: 0.10),
+        border: Border(
+          bottom: BorderSide(color: ann.color.withValues(alpha: 0.25)),
+        ),
+      ),
+      child: Row(
+        children: [
+          Icon(ann.icon, color: ann.color, size: 20),
+          const SizedBox(width: 12),
+          Expanded(
+            child: RichText(
+              text: TextSpan(
+                style: const TextStyle(fontSize: 13, color: AppColors.textPrimary),
+                children: [
+                  TextSpan(
+                    text: '${ann.titulo}: ',
+                    style: TextStyle(fontWeight: FontWeight.bold, color: ann.color),
+                  ),
+                  TextSpan(text: ann.mensaje),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          InkWell(
+            onTap: () {
+              setState(() {
+                _dismissedAnnouncementIds.add(ann.id);
+              });
+            },
+            borderRadius: BorderRadius.circular(12),
+            child: Padding(
+              padding: const EdgeInsets.all(4),
+              child: Icon(Icons.close, size: 16, color: ann.color),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 
