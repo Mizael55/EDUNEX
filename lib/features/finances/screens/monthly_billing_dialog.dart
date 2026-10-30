@@ -6,17 +6,20 @@ import '../models/billing_models.dart';
 class MonthlyBillingDialog extends StatefulWidget {
   final FamilyRepository repository;
   final VoidCallback onBillingCompleted;
+  final String? colegioId;
 
   const MonthlyBillingDialog({
     super.key,
     required this.repository,
     required this.onBillingCompleted,
+    this.colegioId,
   });
 
   static Future<void> show(
     BuildContext context, {
     required FamilyRepository repository,
     required VoidCallback onBillingCompleted,
+    String? colegioId,
   }) {
     return showDialog(
       context: context,
@@ -24,6 +27,7 @@ class MonthlyBillingDialog extends StatefulWidget {
       builder: (_) => MonthlyBillingDialog(
         repository: repository,
         onBillingCompleted: onBillingCompleted,
+        colegioId: colegioId,
       ),
     );
   }
@@ -65,6 +69,7 @@ class _MonthlyBillingDialogState extends State<MonthlyBillingDialog> {
         mesConcepto: _selectedMonth,
         cuotaColegiaturaBase: cuota,
         incluirServicios: _incluirServicios,
+        colegioId: widget.colegioId,
       );
 
       if (!mounted) return;

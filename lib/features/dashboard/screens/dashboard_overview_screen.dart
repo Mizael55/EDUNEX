@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../theme/app_colors.dart';
 import '../../families/models/family.dart';
+import '../../families/models/student.dart';
 import '../../families/repositories/family_repository.dart';
 import '../../families/screens/family_detail_dialog.dart';
 import '../../families/screens/enroll_student_dialog.dart';
@@ -10,10 +11,16 @@ import '../../services/screens/daycare_attendance_dialog.dart';
 import '../../services/screens/transport_routes_dialog.dart';
 import '../../superadmin/repositories/school_repository.dart';
 import '../../schools/screens/school_payment_method_screen.dart';
+import '../../academics/models/academic_models.dart';
+import '../../academics/repositories/academic_repository.dart';
+import '../../events/models/school_event.dart';
+import '../../events/repositories/event_repository.dart';
 
 /// Pantalla Principal del Dashboard de EDUNEX
 class DashboardOverviewScreen extends StatefulWidget {
   final FamilyRepository familyRepository;
+  final AcademicRepository? academicRepository;
+  final EventRepository? eventRepository;
   final VoidCallback onNavigateToFamilies;
   final String? schoolName;
   final String? colegioId;
@@ -23,6 +30,8 @@ class DashboardOverviewScreen extends StatefulWidget {
   const DashboardOverviewScreen({
     super.key,
     required this.familyRepository,
+    this.academicRepository,
+    this.eventRepository,
     required this.onNavigateToFamilies,
     this.schoolName,
     this.colegioId,
@@ -36,6 +45,8 @@ class DashboardOverviewScreen extends StatefulWidget {
 
 class _DashboardOverviewScreenState extends State<DashboardOverviewScreen> {
   List<Family> _recentFamilies = [];
+  List<AcademicCourse> _courses = [];
+  List<SchoolEvent> _events = [];
   bool _isLoading = true;
 
   @override
@@ -47,9 +58,13 @@ class _DashboardOverviewScreenState extends State<DashboardOverviewScreen> {
   Future<void> _loadData() async {
     try {
       final list = await widget.familyRepository.getFamilies(colegioId: widget.colegioId);
+      final courses = await widget.academicRepository?.getCourses(colegioId: widget.colegioId) ?? [];
+      final events = await widget.eventRepository?.getEvents(colegioId: widget.colegioId) ?? [];
       if (mounted) {
         setState(() {
           _recentFamilies = list;
+          _courses = courses;
+          _events = events;
           _isLoading = false;
         });
       }
@@ -178,7 +193,7 @@ class _DashboardOverviewScreenState extends State<DashboardOverviewScreen> {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        '¡Hola, ${widget.schoolName?.split(' ').first ?? "Prof. Carlos"}! • ${widget.schoolName ?? "Colegio Bilingüe EDUNEX Piloto"}',
+                        '¡Hola, ${widget.schoolName?.split(' ').first ?? "Director(a)"}! • ${widget.schoolName ?? "Centro Educativo"}',
                         style: TextStyle(
                           fontSize: 14,
                           color: AppColors.textSecondary.withValues(alpha: 0.9),
@@ -317,11 +332,11 @@ class _DashboardOverviewScreenState extends State<DashboardOverviewScreen> {
                   children: [
                     _buildKpiCard(
                       title: 'Asistencia General',
-                      value: '94%',
-                      subtitle: '94% promedio semanal',
+                      value: totalEstudiantes == 0 ? '0%' : '100%',
+                      subtitle: totalEstudiantes == 0 ? 'Sin registros de asistencia' : 'Asistencia institucional al día',
                       icon: Icons.person_outline_rounded,
                       color: const Color(0xFF10B981),
-                      progress: 0.94,
+                      progress: totalEstudiantes == 0 ? 0.0 : 1.0,
                     ),
                     _buildKpiCard(
                       title: 'Estudiantes Activos',
@@ -449,6 +464,7 @@ class _DashboardOverviewScreenState extends State<DashboardOverviewScreen> {
                       RecordPaymentDialog.show(
                         context,
                         repository: widget.familyRepository,
+                        colegioId: widget.colegioId,
                         onPaymentRecorded: () => _loadData(),
                       );
                     },
@@ -699,12 +715,15 @@ class _DashboardOverviewScreenState extends State<DashboardOverviewScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
-                'Mis Clases',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.slateDark,
+              const Expanded(
+                child: Text(
+                  'Cursos y Asignaturas',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.slateDark,
+                  ),
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
               IconButton(
@@ -715,50 +734,74 @@ class _DashboardOverviewScreenState extends State<DashboardOverviewScreen> {
             ],
           ),
           const SizedBox(height: 12),
-          GridView.count(
-            crossAxisCount: 2,
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            crossAxisSpacing: 10,
-            mainAxisSpacing: 10,
-            childAspectRatio: 0.92,
-            children: const [
-              _ClassIllustrationTile(
-                title: 'Matemáticas 2B',
-                tags: ['Álgebra', 'Trigonometría'],
-                pupilsCount: 32,
-                gradientColors: [Color(0xFF818CF8), Color(0xFFC7D2FE)],
-                icon: Icons.calculate_rounded,
+          if (_courses.isEmpty)
+            Container(
+              padding: const EdgeInsets.symmetric(vertical: 28, horizontal: 16),
+              alignment: Alignment.center,
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: AppColors.electricBlue.withValues(alpha: 0.1),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.school_rounded, color: AppColors.electricBlue, size: 28),
+                  ),
+                  const SizedBox(height: 10),
+                  const Text(
+                    'Sin cursos configurados',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: AppColors.navyPrimary),
+                  ),
+                  const SizedBox(height: 4),
+                  const Text(
+                    'Configura los grados en "Gestión Académica & Notas".',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                  ),
+                ],
               ),
-              _ClassIllustrationTile(
-                title: 'Ciencias 1A',
-                tags: ['Biología', 'Laboratorio'],
-                pupilsCount: 28,
-                gradientColors: [Color(0xFF34D399), Color(0xFFA7F3D0)],
-                icon: Icons.biotech_rounded,
+            )
+          else
+            GridView.builder(
+              itemCount: _courses.length.clamp(0, 4),
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 2,
+                crossAxisSpacing: 10,
+                mainAxisSpacing: 10,
+                childAspectRatio: 0.92,
               ),
-              _ClassIllustrationTile(
-                title: 'Historia 2B',
-                tags: ['Universal', 'Épocas'],
-                pupilsCount: 30,
-                gradientColors: [Color(0xFFFBBF24), Color(0xFFFDE68A)],
-                icon: Icons.public_rounded,
-              ),
-              _ClassIllustrationTile(
-                title: 'Literatura 3C',
-                tags: ['Lectura', 'Gramática'],
-                pupilsCount: 25,
-                gradientColors: [Color(0xFFFB7185), Color(0xFFFECDD3)],
-                icon: Icons.menu_book_rounded,
-              ),
-            ],
-          ),
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemBuilder: (context, i) {
+                final c = _courses[i];
+                final colors = [
+                  const [Color(0xFF818CF8), Color(0xFFC7D2FE)],
+                  const [Color(0xFF34D399), Color(0xFFA7F3D0)],
+                  const [Color(0xFFFBBF24), Color(0xFFFDE68A)],
+                  const [Color(0xFFFB7185), Color(0xFFFECDD3)],
+                ][i % 4];
+                return _ClassIllustrationTile(
+                  title: c.nombre,
+                  tags: [c.nivel, c.anioEscolar],
+                  pupilsCount: 0,
+                  gradientColors: colors,
+                  icon: Icons.menu_book_rounded,
+                );
+              },
+            ),
         ],
       ),
     );
   }
 
   Widget _buildRecentTasksCard() {
+    final allStudents = <Student>[];
+    for (final f in _recentFamilies) {
+      allStudents.addAll(f.estudiantes);
+    }
+
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -779,12 +822,15 @@ class _DashboardOverviewScreenState extends State<DashboardOverviewScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
-                'Tareas Recientes',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.slateDark,
+              const Expanded(
+                child: Text(
+                  'Comunidad Estudiantil Reciente',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.slateDark,
+                  ),
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
               IconButton(
@@ -795,70 +841,44 @@ class _DashboardOverviewScreenState extends State<DashboardOverviewScreen> {
             ],
           ),
           const SizedBox(height: 8),
-
-          // Mini Barra de Progreso Global
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: AppColors.electricBlue.withValues(alpha: 0.08),
-              borderRadius: BorderRadius.circular(14),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      'Avance de Entregas',
-                      style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.navyPrimary),
+          if (allStudents.isEmpty)
+            Container(
+              padding: const EdgeInsets.symmetric(vertical: 28, horizontal: 16),
+              alignment: Alignment.center,
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: AppColors.navyPrimary.withValues(alpha: 0.08),
+                      shape: BoxShape.circle,
                     ),
-                    Text(
-                      '94% Completado',
-                      style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: AppColors.navyPrimary),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 6),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(4),
-                  child: const LinearProgressIndicator(
-                    value: 0.94,
-                    minHeight: 6,
-                    backgroundColor: Colors.white,
-                    valueColor: AlwaysStoppedAnimation<Color>(AppColors.navyPrimary),
+                    child: const Icon(Icons.person_search_rounded, color: AppColors.navyPrimary, size: 28),
                   ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 14),
-
-          // Filas de Alumnos y Estado
-          const _StudentSubmissionTile(
-            studentName: 'Carlos Ramírez',
-            status: 'Entregado a tiempo',
-            avatarUrl: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100',
-            isGraded: false,
-          ),
-          const _StudentSubmissionTile(
-            studentName: 'Ana Sofía Peña',
-            status: 'Revisión pendiente',
-            avatarUrl: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100',
-            isGraded: false,
-          ),
-          const _StudentSubmissionTile(
-            studentName: 'Marcos Ventura',
-            status: 'Calificado: 98/100',
-            avatarUrl: 'https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?w=100',
-            isGraded: true,
-          ),
-          const _StudentSubmissionTile(
-            studentName: 'Laura Castillo',
-            status: 'Entregado a tiempo',
-            avatarUrl: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=100',
-            isGraded: false,
-          ),
+                  const SizedBox(height: 10),
+                  const Text(
+                    'Sin alumnos registrados',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: AppColors.navyPrimary),
+                  ),
+                  const SizedBox(height: 4),
+                  const Text(
+                    'Enrola familias o matricula alumnos para ver el seguimiento aquí.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                  ),
+                ],
+              ),
+            )
+          else
+            ...allStudents.take(4).map((s) {
+              return _StudentSubmissionTile(
+                studentName: s.nombreCompleto,
+                status: '${s.gradoNombre ?? "Primaria"} • Mat: ${s.matricula}',
+                avatarUrl: null,
+                isGraded: true,
+              );
+            }),
         ],
       ),
     );
@@ -891,45 +911,48 @@ class _DashboardOverviewScreenState extends State<DashboardOverviewScreen> {
             ),
           ),
           const SizedBox(height: 16),
-
-          // Mini franja de días de la semana
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              _buildDayChip('18', true),
-              _buildDayChip('19', false),
-              _buildDayChip('20', false),
-              _buildDayChip('21', false),
-              _buildDayChip('22', false),
-              _buildDayChip('23', false),
-            ],
-          ),
-          const SizedBox(height: 20),
-
-          // Próximos eventos (Timeline sutil)
-          _buildTimelineEvent(
-            dotColor: AppColors.navyPrimary,
-            title: 'Upcoming actividades',
-            description: 'Donaderos de Matemática',
-            time: 'En 3 horas',
-          ),
+          if (_events.isEmpty)
+            Container(
+              padding: const EdgeInsets.symmetric(vertical: 28, horizontal: 16),
+              alignment: Alignment.center,
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF10B981).withValues(alpha: 0.1),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.event_available_rounded, color: Color(0xFF10B981), size: 28),
+                  ),
+                  const SizedBox(height: 10),
+                  const Text(
+                    'Sin eventos programados',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: AppColors.navyPrimary),
+                  ),
+                  const SizedBox(height: 4),
+                  const Text(
+                    'Crea excursiones o talleres en "Eventos & Excursiones".',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                  ),
+                ],
+              ),
+            )
+          else
+            ..._events.take(3).map((e) {
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 12.0),
+                child: _buildTimelineEvent(
+                  dotColor: AppColors.navyPrimary,
+                  title: e.titulo,
+                  description: e.tipo,
+                  time: '${e.fechaEvento.day}/${e.fechaEvento.month} - ${e.fechaEvento.hour}:${e.fechaEvento.minute.toString().padLeft(2, '0')}',
+                ),
+              );
+            }),
           const SizedBox(height: 14),
-          _buildTimelineEvent(
-            dotColor: const Color(0xFFF59E0B),
-            title: 'Upcoming Aprendizaje',
-            description: 'Ambiente colaborativo institucional',
-            time: 'Hoy 3:00 PM',
-          ),
-          const SizedBox(height: 14),
-          _buildTimelineEvent(
-            dotColor: const Color(0xFF10B981),
-            title: 'Publicación de Boletines',
-            description: 'Cierre del 1er periodo',
-            time: 'Viernes',
-          ),
-
-          const SizedBox(height: 20),
-          // Gráfico decorativo inferior de ambiente escolar
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
             decoration: BoxDecoration(
@@ -1299,13 +1322,13 @@ class _ClassIllustrationTileState extends State<_ClassIllustrationTile> {
 class _StudentSubmissionTile extends StatefulWidget {
   final String studentName;
   final String status;
-  final String avatarUrl;
+  final String? avatarUrl;
   final bool isGraded;
 
   const _StudentSubmissionTile({
     required this.studentName,
     required this.status,
-    required this.avatarUrl,
+    this.avatarUrl,
     required this.isGraded,
   });
 

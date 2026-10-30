@@ -31,13 +31,13 @@ class _SchoolPaymentMethodScreenState extends State<SchoolPaymentMethodScreen> {
   int _selectedPaymentType = 0; // 0: Tarjeta de Crédito/Débito, 1: Transferencia Bancaria
 
   // Formulario Tarjeta
-  final _cardHolderController = TextEditingController(text: 'Director del Centro');
-  final _cardNumberController = TextEditingController(text: '4242 •••• •••• 4242');
-  final _cardExpiryController = TextEditingController(text: '12/28');
-  final _cardCvcController = TextEditingController(text: '888');
+  final _cardHolderController = TextEditingController();
+  final _cardNumberController = TextEditingController();
+  final _cardExpiryController = TextEditingController();
+  final _cardCvcController = TextEditingController();
 
   // Formulario Transferencia
-  final _bankTransferReferenceController = TextEditingController(text: 'TRANS-2026-');
+  final _bankTransferReferenceController = TextEditingController();
   String _selectedBank = 'Banco Popular Dominicano';
 
   @override
@@ -87,8 +87,10 @@ class _SchoolPaymentMethodScreenState extends State<SchoolPaymentMethodScreen> {
     setState(() => _isSaving = true);
 
     try {
+      final cleanDigits = _cardNumberController.text.trim().replaceAll(RegExp(r'[^0-9]'), '');
+      final last4 = cleanDigits.length >= 4 ? cleanDigits.substring(cleanDigits.length - 4) : cleanDigits.padLeft(4, '0');
       final methodDesc = _selectedPaymentType == 0
-          ? 'Tarjeta Visa/MasterCard terminada en ${_cardNumberController.text.trim().replaceAll(RegExp(r'[^0-9]'), '').padLeft(4, '0').substring(0)} (Titular: ${_cardHolderController.text.trim()})'
+          ? 'Tarjeta Visa/MasterCard terminada en $last4 (Titular: ${_cardHolderController.text.trim()})'
           : 'Transferencia Bancaria $_selectedBank (Ref: ${_bankTransferReferenceController.text.trim()})';
 
       // Actualizar colegio con método de pago registrado y suscripción activa
@@ -404,6 +406,7 @@ class _SchoolPaymentMethodScreenState extends State<SchoolPaymentMethodScreen> {
                       controller: _cardHolderController,
                       decoration: const InputDecoration(
                         labelText: 'Nombre del Titular de la Tarjeta *',
+                        hintText: 'Ej. Juan Pérez',
                         prefixIcon: Icon(Icons.person_outline_rounded),
                         border: OutlineInputBorder(),
                         isDense: true,
@@ -415,6 +418,7 @@ class _SchoolPaymentMethodScreenState extends State<SchoolPaymentMethodScreen> {
                       keyboardType: TextInputType.number,
                       decoration: const InputDecoration(
                         labelText: 'Número de Tarjeta *',
+                        hintText: '4242 0000 0000 4242',
                         prefixIcon: Icon(Icons.credit_card_rounded),
                         border: OutlineInputBorder(),
                         isDense: true,
@@ -428,6 +432,7 @@ class _SchoolPaymentMethodScreenState extends State<SchoolPaymentMethodScreen> {
                             controller: _cardExpiryController,
                             decoration: const InputDecoration(
                               labelText: 'Vencimiento (MM/AA) *',
+                              hintText: '12/28',
                               prefixIcon: Icon(Icons.calendar_today_rounded),
                               border: OutlineInputBorder(),
                               isDense: true,
@@ -441,6 +446,7 @@ class _SchoolPaymentMethodScreenState extends State<SchoolPaymentMethodScreen> {
                             obscureText: true,
                             decoration: const InputDecoration(
                               labelText: 'CVC / CVV *',
+                              hintText: '888',
                               prefixIcon: Icon(Icons.lock_outline_rounded),
                               border: OutlineInputBorder(),
                               isDense: true,

@@ -19,12 +19,14 @@ class FinanceOverviewScreen extends StatefulWidget {
   final bool isSuperAdmin;
   final FamilyRepository familyRepository;
   final SchoolRepository? schoolRepository;
+  final String? colegioId;
 
   const FinanceOverviewScreen({
     super.key,
     required this.isSuperAdmin,
     required this.familyRepository,
     this.schoolRepository,
+    this.colegioId,
   });
 
   @override
@@ -73,13 +75,13 @@ class _FinanceOverviewScreenState extends State<FinanceOverviewScreen> {
         return;
       }
 
-      final families = await widget.familyRepository.getFamilies();
+      final families = await widget.familyRepository.getFamilies(colegioId: widget.colegioId);
       double pending = 0;
       for (final f in families) {
         pending += f.balancePendiente;
       }
-      final aging = await widget.familyRepository.getDebtAgingReport();
-      final abonos = await widget.familyRepository.getAbonoApprovalRequests();
+      final aging = await widget.familyRepository.getDebtAgingReport(colegioId: widget.colegioId);
+      final abonos = await widget.familyRepository.getAbonoApprovalRequests(colegioId: widget.colegioId);
       if (mounted) {
         setState(() {
           _totalPorCobrar = pending;
@@ -114,6 +116,7 @@ class _FinanceOverviewScreenState extends State<FinanceOverviewScreen> {
     RecordPaymentDialog.show(
       context,
       repository: widget.familyRepository,
+      colegioId: widget.colegioId,
       onPaymentRecorded: () {
         _loadFinances();
       },
@@ -124,6 +127,7 @@ class _FinanceOverviewScreenState extends State<FinanceOverviewScreen> {
     MonthlyBillingDialog.show(
       context,
       repository: widget.familyRepository,
+      colegioId: widget.colegioId,
       onBillingCompleted: () {
         _loadFinances();
       },
@@ -409,13 +413,16 @@ class _FinanceOverviewScreenState extends State<FinanceOverviewScreen> {
                       children: [
                         const Icon(Icons.history_rounded, color: AppColors.navyPrimary, size: 20),
                         const SizedBox(width: 8),
-                        Text(
-                          widget.isSuperAdmin
-                              ? 'Registro de Pagos de Licencias por Colegios'
-                              : 'Historial Reciente de Cobros & Recibos Emitidos',
-                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: AppColors.navyPrimary),
+                        Expanded(
+                          child: Text(
+                            widget.isSuperAdmin
+                                ? 'Registro de Pagos de Licencias por Colegios'
+                                : 'Historial Reciente de Cobros & Recibos Emitidos',
+                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: AppColors.navyPrimary),
+                            overflow: TextOverflow.ellipsis,
+                          ),
                         ),
-                        const Spacer(),
+                        const SizedBox(width: 12),
                         OutlinedButton.icon(
                           onPressed: () {
                             AppToast.info(

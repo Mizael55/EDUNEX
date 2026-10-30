@@ -178,8 +178,7 @@ class StoreRepository {
     if (colegioId == null) return List.unmodifiable(_products);
     return List.unmodifiable(_products.where((p) =>
         p.colegioId == colegioId ||
-        p.colegioId == 'school-001' ||
-        p.colegioId == 'a0000000-0000-0000-0000-000000000001'));
+        ((colegioId == 'a0000000-0000-0000-0000-000000000001' || colegioId == 'col-1') && p.colegioId == 'school-001')));
   }
 
   /// Añadir un nuevo producto al catálogo
@@ -211,13 +210,10 @@ class StoreRepository {
     if (colegioId != null) {
       list = list.where((o) =>
           o.colegioId == colegioId ||
-          o.colegioId == 'school-001' ||
-          o.colegioId == 'a0000000-0000-0000-0000-000000000001').toList();
+          ((colegioId == 'school-001' || colegioId == 'col-1') && o.colegioId == 'a0000000-0000-0000-0000-000000000001')).toList();
     }
     if (familiaId != null) {
-      list = list.where((o) =>
-          o.familiaId == familiaId ||
-          (familiaId == 'e0000000-0000-0000-0000-000000000001' && (o.familiaId == 'fam-001' || o.familiaId == 'e0000000-0000-0000-0000-000000000001'))).toList();
+      list = list.where((o) => o.familiaId == familiaId).toList();
     }
     // Orden descendente por fecha
     return List.unmodifiable(list..sort((a, b) => b.fecha.compareTo(a.fecha)));

@@ -80,11 +80,7 @@ class CircularRepository {
 
   /// Obtiene la lista completa de circulares oficiales del centro educativo
   Future<List<CircularItem>> getCirculars({required String colegioId}) async {
-    final list = _circulars.where((c) {
-      return c.colegioId == colegioId ||
-          c.colegioId.startsWith('a0000000') ||
-          colegioId == 'col-1';
-    }).toList();
+    final list = _circulars.where((c) => c.colegioId == colegioId).toList();
     list.sort((a, b) => b.fechaPublicacion.compareTo(a.fechaPublicacion));
     return List<CircularItem>.from(list);
   }

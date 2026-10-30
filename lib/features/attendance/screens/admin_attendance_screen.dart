@@ -414,14 +414,18 @@ class _AdminAttendanceScreenState extends State<AdminAttendanceScreen> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text(
-                        'Roster de Asistencia • $_selectedGrade ($_selectedSection)',
-                        style: const TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.textPrimary,
+                      Expanded(
+                        child: Text(
+                          'Roster de Asistencia • $_selectedGrade ($_selectedSection)',
+                          style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.textPrimary,
+                          ),
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
+                      const SizedBox(width: 8),
                       Text(
                         '${_records.length} alumnos matriculados',
                         style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),

@@ -259,7 +259,7 @@ class AttendanceRepository {
     final target = fecha != null ? DateTime(fecha.year, fecha.month, fecha.day) : null;
 
     final filtered = _records.where((r) {
-      final matchSchool = r.colegioId == colegioId || r.colegioId.startsWith('a0000000');
+      final matchSchool = r.colegioId == colegioId;
       if (!matchSchool) return false;
       if (target != null) {
         final rDate = DateTime(r.fecha.year, r.fecha.month, r.fecha.day);

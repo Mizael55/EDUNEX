@@ -100,6 +100,18 @@ class SchoolRepository {
 
   /// Lista de colegios en memoria para pruebas y modo desconectado
   static final List<School> _demoSchools = List.from(_seedSchools);
+  static final List<School> _createdSchools = [];
+
+  static void _updateSchoolInMemory(String schoolId, School Function(School old) updater) {
+    final idxDemo = _demoSchools.indexWhere((s) => s.id == schoolId);
+    if (idxDemo != -1) {
+      _demoSchools[idxDemo] = updater(_demoSchools[idxDemo]);
+    }
+    final idxCreated = _createdSchools.indexWhere((s) => s.id == schoolId);
+    if (idxCreated != -1) {
+      _createdSchools[idxCreated] = updater(_createdSchools[idxCreated]);
+    }
+  }
 
   // Semillas y estado de facturación SaaS (inicialmente vacías sin data simulada)
   static final List<SaaSInvoice> _seedSaaSInvoices = [];
@@ -136,6 +148,7 @@ class SchoolRepository {
   /// Limpia todos los datos en memoria para pruebas de QA
   static void clearAllData() {
     _demoSchools.clear();
+    _createdSchools.clear();
     _demoSaaSInvoices.clear();
     _demoSystemAnnouncements.clear();
     _demoSaaSUsers.clear();
@@ -146,6 +159,7 @@ class SchoolRepository {
   static void restoreSeedData() {
     _demoSchools.clear();
     _demoSchools.addAll(_seedSchools);
+    _createdSchools.clear();
     _demoSaaSInvoices.clear();
     _demoSaaSInvoices.addAll(_seedSaaSInvoices);
     _demoSystemAnnouncements.clear();
@@ -184,11 +198,11 @@ class SchoolRepository {
         }).toList();
       } catch (e) {
         debugPrint('Aviso: Error consultando colegios en Supabase: $e');
-        schools = _useDemoFallback ? List<School>.from(_demoSchools) : [];
+        schools = _useDemoFallback ? List<School>.from(_demoSchools) : List<School>.from(_createdSchools);
       }
     } else {
       // Modo desconectado o pruebas unitarias sin Supabase configurado
-      schools = _useDemoFallback ? List<School>.from(_demoSchools) : [];
+      schools = _useDemoFallback ? List<School>.from(_demoSchools) : List<School>.from(_createdSchools);
     }
 
     // Filtrar por término de búsqueda
@@ -356,6 +370,11 @@ class SchoolRepository {
           _schoolDocumentsMap[school.id] = List.from(documentos);
         }
 
+        _createdSchools.removeWhere((s) => s.id == school.id);
+        _createdSchools.insert(0, school);
+        _demoSchools.removeWhere((s) => s.id == school.id);
+        _demoSchools.insert(0, school);
+
         return {
           'school': school,
           'director': {
@@ -395,6 +414,9 @@ class SchoolRepository {
       directorCedula: directorCedula,
       directorTelefono: telefono,
     );
+    _createdSchools.removeWhere((s) => s.id == fallbackSchool.id);
+    _createdSchools.insert(0, fallbackSchool);
+    _demoSchools.removeWhere((s) => s.id == fallbackSchool.id);
     _demoSchools.insert(0, fallbackSchool);
     if (documentos != null && documentos.isNotEmpty) {
       _schoolDocumentsMap[fallbackSchool.id] = List.from(documentos);
@@ -470,8 +492,12 @@ class SchoolRepository {
         }
       } catch (_) {}
     }
-    final match = _demoSchools.where((s) => s.id == id).toList();
-    if (match.isNotEmpty) return match.first.nombre;
+    final createdMatch = _createdSchools.where((s) => s.id == id).toList();
+    if (createdMatch.isNotEmpty) return createdMatch.first.nombre;
+    if (_useDemoFallback) {
+      final match = _demoSchools.where((s) => s.id == id).toList();
+      if (match.isNotEmpty) return match.first.nombre;
+    }
     return null;
   }
 
@@ -481,7 +507,16 @@ class SchoolRepository {
     try {
       return list.firstWhere((s) => s.id == id);
     } catch (_) {
-      return null;
+      try {
+        return _createdSchools.firstWhere((s) => s.id == id);
+      } catch (_) {
+        if (_useDemoFallback) {
+          try {
+            return _demoSchools.firstWhere((s) => s.id == id);
+          } catch (_) {}
+        }
+        return null;
+      }
     }
   }
 
@@ -536,15 +571,14 @@ class SchoolRepository {
       }
     }
 
-    final index = _demoSchools.indexWhere((s) => s.id == schoolId);
-    if (index != -1) {
-      final old = _demoSchools[index];
-      _demoSchools[index] = old.copyWith(
+    _updateSchoolInMemory(
+      schoolId,
+      (old) => old.copyWith(
         estadoSuscripcion: newStatus,
         metodoPago: metodoPago ?? old.metodoPago,
         metodoPagoRegistrado: metodoPago != null || old.metodoPagoRegistrado,
-      );
-    }
+      ),
+    );
   }
 
   /// Actualiza el estado de la suscripción (Activar, Suspender, etc.)
@@ -560,25 +594,10 @@ class SchoolRepository {
       }
     }
 
-    final index = _demoSchools.indexWhere((s) => s.id == schoolId);
-    if (index != -1) {
-      final old = _demoSchools[index];
-      _demoSchools[index] = School(
-        id: old.id,
-        nombre: old.nombre,
-        rnc: old.rnc,
-        siglas: old.siglas,
-        telefono: old.telefono,
-        emailContacto: old.emailContacto,
-        direccion: old.direccion,
-        logoUrl: old.logoUrl,
-        estadoSuscripcion: newStatus,
-        maxEstudiantes: old.maxEstudiantes,
-        createdAt: old.createdAt,
-        totalEstudiantes: old.totalEstudiantes,
-        totalFamilias: old.totalFamilias,
-      );
-    }
+    _updateSchoolInMemory(
+      schoolId,
+      (old) => old.copyWith(estadoSuscripcion: newStatus),
+    );
 
     final schoolName = await getSchoolNameById(schoolId) ?? 'Colegio';
     final oldStatus = newStatus == 'suspended' ? 'active' : 'suspended';
@@ -743,6 +762,11 @@ class SchoolRepository {
         logoUrl: logoUrl?.trim() ?? old.logoUrl,
       );
       _demoSchools[index] = updated;
+
+      final createdIdx = _createdSchools.indexWhere((s) => s.id == schoolId);
+      if (createdIdx != -1) {
+        _createdSchools[createdIdx] = updated;
+      }
 
       AuditRepository().recordAuditLog(
         AuditLog(
@@ -1119,15 +1143,17 @@ class SchoolRepository {
 
   /// Extiende el período de prueba (trial) de un colegio por una cantidad determinada de días
   Future<void> extendSchoolTrial(String schoolId, int days) async {
-    final index = _demoSchools.indexWhere((s) => s.id == schoolId);
-    if (index != -1) {
-      final old = _demoSchools[index];
-      final currentEnd = old.trialFin ?? (old.createdAt?.add(const Duration(days: 15)) ?? DateTime.now());
+    final schoolBefore = await getSchoolById(schoolId);
+    if (schoolBefore != null) {
+      final currentEnd = schoolBefore.trialFin ?? (schoolBefore.createdAt?.add(const Duration(days: 15)) ?? DateTime.now());
       final newEnd = (currentEnd.isAfter(DateTime.now()) ? currentEnd : DateTime.now()).add(Duration(days: days));
 
-      _demoSchools[index] = old.copyWith(
-        trialFin: newEnd,
-        estadoSuscripcion: 'trial',
+      _updateSchoolInMemory(
+        schoolId,
+        (old) => old.copyWith(
+          trialFin: newEnd,
+          estadoSuscripcion: 'trial',
+        ),
       );
 
       AuditRepository().recordAuditLog(
@@ -1135,11 +1161,11 @@ class SchoolRepository {
           id: 'aud-trial-${DateTime.now().millisecondsSinceEpoch}',
           timestamp: DateTime.now(),
           accion: 'EXTENSION_TRIAL',
-          descripcion: 'Ampliación de período de prueba por +$days días para "${old.nombre}"',
+          descripcion: 'Ampliación de período de prueba por +$days días para "${schoolBefore.nombre}"',
           usuario: 'superadmin@edunex.edu',
           rol: 'SuperAdmin',
           colegioId: schoolId,
-          colegioNombre: old.nombre,
+          colegioNombre: schoolBefore.nombre,
           modulo: 'Suscripciones',
           nivel: 'INFO',
           estadoAnterior: 'Vencimiento previo: ${currentEnd.day}/${currentEnd.month}/${currentEnd.year}',
@@ -1165,14 +1191,16 @@ class SchoolRepository {
 
   /// Convierte formalmente un colegio en periodo de prueba a cliente con suscripción activa de pago
   Future<void> convertSchoolToActive(String schoolId, {int diaCorte = 1, String? metodoPago}) async {
-    final index = _demoSchools.indexWhere((s) => s.id == schoolId);
-    if (index != -1) {
-      final old = _demoSchools[index];
-      _demoSchools[index] = old.copyWith(
-        estadoSuscripcion: 'active',
-        diaCorte: diaCorte,
-        metodoPago: metodoPago ?? old.metodoPago ?? 'Transferencia Bancaria',
-        metodoPagoRegistrado: true,
+    final schoolBefore = await getSchoolById(schoolId);
+    if (schoolBefore != null) {
+      _updateSchoolInMemory(
+        schoolId,
+        (old) => old.copyWith(
+          estadoSuscripcion: 'active',
+          diaCorte: diaCorte,
+          metodoPago: metodoPago ?? old.metodoPago ?? 'Transferencia Bancaria',
+          metodoPagoRegistrado: true,
+        ),
       );
 
       AuditRepository().recordAuditLog(
@@ -1180,15 +1208,15 @@ class SchoolRepository {
           id: 'aud-conv-${DateTime.now().millisecondsSinceEpoch}',
           timestamp: DateTime.now(),
           accion: 'CONVERSION_TRIAL_ACTIVO',
-          descripcion: 'Conversión exitosa de prueba gratuita a suscripción activa de pago para "${old.nombre}"',
+          descripcion: 'Conversión exitosa de prueba gratuita a suscripción activa de pago para "${schoolBefore.nombre}"',
           usuario: 'superadmin@edunex.edu',
           rol: 'SuperAdmin',
           colegioId: schoolId,
-          colegioNombre: old.nombre,
+          colegioNombre: schoolBefore.nombre,
           modulo: 'Suscripciones',
           nivel: 'SUCCESS',
           estadoAnterior: 'Estado: Período de Prueba (Trial)',
-          nuevoEstado: 'Estado: Suscripción Activa (Corte día $diaCorte, Cuota RD\$ ${old.cuotaMensualSaaS.toStringAsFixed(2)})',
+          nuevoEstado: 'Estado: Suscripción Activa (Corte día $diaCorte, Cuota RD\$ ${schoolBefore.cuotaMensualSaaS.toStringAsFixed(2)})',
         ),
       );
     }

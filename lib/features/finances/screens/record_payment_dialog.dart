@@ -10,12 +10,14 @@ class RecordPaymentDialog extends StatefulWidget {
   final FamilyRepository repository;
   final Family? initialFamily;
   final VoidCallback? onPaymentRecorded;
+  final String? colegioId;
 
   const RecordPaymentDialog({
     super.key,
     required this.repository,
     this.initialFamily,
     this.onPaymentRecorded,
+    this.colegioId,
   });
 
   static Future<void> show(
@@ -23,6 +25,7 @@ class RecordPaymentDialog extends StatefulWidget {
     required FamilyRepository repository,
     Family? initialFamily,
     VoidCallback? onPaymentRecorded,
+    String? colegioId,
   }) {
     return showDialog(
       context: context,
@@ -31,6 +34,7 @@ class RecordPaymentDialog extends StatefulWidget {
         repository: repository,
         initialFamily: initialFamily,
         onPaymentRecorded: onPaymentRecorded,
+        colegioId: colegioId,
       ),
     );
   }
@@ -116,7 +120,7 @@ class _RecordPaymentDialogState extends State<RecordPaymentDialog> {
 
   Future<void> _loadFamilies() async {
     try {
-      final list = await widget.repository.getFamilies();
+      final list = await widget.repository.getFamilies(colegioId: widget.colegioId);
       if (mounted) {
         Family? initial;
         if (widget.initialFamily != null) {

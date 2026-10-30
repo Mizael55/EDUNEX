@@ -114,8 +114,8 @@ class EventRepository {
 
   /// Obtiene los eventos escolares activos
   Future<List<SchoolEvent>> getEvents({String? colegioId}) async {
-    if (colegioId != null) {
-      return _events.where((e) => e.colegioId == colegioId || e.colegioId.startsWith('a0000000')).toList();
+    if (colegioId != null && colegioId.isNotEmpty) {
+      return _events.where((e) => e.colegioId == colegioId || (colegioId == 'col-1' && e.colegioId == 'a0000000-0000-0000-0000-000000000001')).toList();
     }
     return List<SchoolEvent>.from(_events);
   }

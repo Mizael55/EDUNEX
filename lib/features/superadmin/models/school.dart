@@ -107,8 +107,8 @@ class School {
   /// Facturación anual del colegio (cuota mensual * 12)
   double get cuotaAnualSaaS => cuotaMensualSaaS * 12;
 
-  /// Retorna si el colegio tiene método de pago registrado o suscripción activa
-  bool get tieneMetodoPagoValido => metodoPagoRegistrado || (metodoPago != null && metodoPago!.isNotEmpty) || estadoSuscripcion == 'active';
+  /// Retorna si el colegio tiene método de pago registrado o suscripción activa (o período de prueba)
+  bool get tieneMetodoPagoValido => metodoPagoRegistrado || (metodoPago != null && metodoPago!.isNotEmpty) || estadoSuscripcion == 'active' || isTrial;
 
   bool get isActive => estadoSuscripcion == 'active';
   bool get isSuspended => estadoSuscripcion == 'suspended';

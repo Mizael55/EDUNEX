@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../theme/app_colors.dart';
+import '../../families/repositories/family_repository.dart';
 import 'daycare_attendance_dialog.dart';
 import 'transport_routes_dialog.dart';
 
@@ -9,10 +10,14 @@ enum ServiceModuleType { cuido, transporte, tienda }
 /// Pantalla operativa para Cuido, Transporte y Tienda Escolar
 class ServicesManagementScreen extends StatelessWidget {
   final ServiceModuleType moduleType;
+  final String? colegioId;
+  final FamilyRepository? familyRepository;
 
   const ServicesManagementScreen({
     super.key,
     required this.moduleType,
+    this.colegioId,
+    this.familyRepository,
   });
 
   @override

@@ -204,11 +204,7 @@ class TransportRepository {
 
   /// Obtiene la lista de rutas escolares activas del colegio
   Future<List<BusRoute>> getRoutes({required String colegioId}) async {
-    final list = _routes.where((r) {
-      return r.colegioId == colegioId ||
-          r.colegioId.startsWith('a0000000') ||
-          colegioId == 'col-1';
-    }).toList();
+    final list = _routes.where((r) => r.colegioId == colegioId).toList();
     return List<BusRoute>.from(list);
   }
 

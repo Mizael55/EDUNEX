@@ -2283,9 +2283,19 @@ class _AdminGradesScreenState extends State<AdminGradesScreen> with SingleTicker
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Text(title, style: const TextStyle(fontSize: 12, color: AppColors.textSecondary, fontWeight: FontWeight.w500)),
+                Text(
+                  title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontSize: 12, color: AppColors.textSecondary, fontWeight: FontWeight.w500),
+                ),
                 const SizedBox(height: 2),
-                Text(amount, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.navyPrimary)),
+                Text(
+                  amount,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.navyPrimary),
+                ),
                 const SizedBox(height: 2),
                 Text(subtitle, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 10, color: color, fontWeight: FontWeight.w600)),
               ],
@@ -2307,21 +2317,28 @@ class _AdminGradesScreenState extends State<AdminGradesScreen> with SingleTicker
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          GridView.count(
-            crossAxisCount: 6,
-            crossAxisSpacing: 12,
-            mainAxisSpacing: 12,
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            childAspectRatio: 1.6,
-            children: [
-              _buildKpiCard('Cursos Habilitados', metrics.totalCursos.toString(), Icons.school_rounded, const Color(0xFF2563EB)),
-              _buildKpiCard('Secciones / Aulas', metrics.totalSecciones.toString(), Icons.meeting_room_rounded, const Color(0xFF0D9488)),
-              _buildKpiCard('Matrícula Activa', metrics.totalEstudiantesMatriculados.toString(), Icons.people_rounded, const Color(0xFF10B981)),
-              _buildKpiCard('Planta Docente', metrics.totalProfesores.toString(), Icons.badge_rounded, const Color(0xFF8B5CF6)),
-              _buildKpiCard('Materias Curriculares', metrics.totalMaterias.toString(), Icons.menu_book_rounded, const Color(0xFFF59E0B)),
-              _buildKpiCard('Promedio Alumnos/Aula', '${metrics.promedioEstudiantesPorAula}', Icons.groups_rounded, const Color(0xFFEC4899)),
-            ],
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final isDesktop = constraints.maxWidth >= 1050;
+              final isTablet = constraints.maxWidth >= 650;
+              final count = isDesktop ? 6 : (isTablet ? 3 : 2);
+              return GridView.count(
+                crossAxisCount: count,
+                crossAxisSpacing: 12,
+                mainAxisSpacing: 12,
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                childAspectRatio: count == 6 ? 1.8 : 2.2,
+                children: [
+                  _buildKpiCard('Cursos Habilitados', metrics.totalCursos.toString(), Icons.school_rounded, const Color(0xFF2563EB)),
+                  _buildKpiCard('Secciones / Aulas', metrics.totalSecciones.toString(), Icons.meeting_room_rounded, const Color(0xFF0D9488)),
+                  _buildKpiCard('Matrícula Activa', metrics.totalEstudiantesMatriculados.toString(), Icons.people_rounded, const Color(0xFF10B981)),
+                  _buildKpiCard('Planta Docente', metrics.totalProfesores.toString(), Icons.badge_rounded, const Color(0xFF8B5CF6)),
+                  _buildKpiCard('Materias Curriculares', metrics.totalMaterias.toString(), Icons.menu_book_rounded, const Color(0xFFF59E0B)),
+                  _buildKpiCard('Promedio Alumnos/Aula', '${metrics.promedioEstudiantesPorAula}', Icons.groups_rounded, const Color(0xFFEC4899)),
+                ],
+              );
+            },
           ),
           const SizedBox(height: 24),
           Card(
@@ -2356,7 +2373,10 @@ class _AdminGradesScreenState extends State<AdminGradesScreen> with SingleTicker
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              Text(cursoNombre, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                              Expanded(
+                                child: Text(cursoNombre, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13), overflow: TextOverflow.ellipsis),
+                              ),
+                              const SizedBox(width: 8),
                               Text(
                                 '$inscritos / $cap estudiantes (${(pct * 100).toStringAsFixed(0)}% cupo)',
                                 style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),

@@ -552,27 +552,27 @@ class _AdminTransportScreenState extends State<AdminTransportScreen> {
             const SizedBox(height: 24),
 
             // Filtros de Estado
-            Row(
+            Wrap(
+              crossAxisAlignment: WrapCrossAlignment.center,
+              spacing: 8,
+              runSpacing: 8,
               children: [
                 const Text('Filtrar Rutas:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                const SizedBox(width: 12),
-                Wrap(
-                  spacing: 8,
-                  children: ['Todas', 'En Tránsito', 'En Espera', 'Completada'].map((f) {
-                    final isSelected = _selectedFilter == f;
-                    return ChoiceChip(
-                      label: Text(f),
-                      selected: isSelected,
-                      onSelected: (_) => setState(() => _selectedFilter = f),
-                      selectedColor: AppColors.navyPrimary,
-                      backgroundColor: AppColors.surfaceWhite,
-                      labelStyle: TextStyle(
-                        color: isSelected ? AppColors.surfaceWhite : AppColors.textPrimary,
-                        fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                      ),
-                    );
-                  }).toList(),
-                ),
+                const SizedBox(width: 4),
+                ...['Todas', 'En Tránsito', 'En Espera', 'Completada'].map((f) {
+                  final isSelected = _selectedFilter == f;
+                  return ChoiceChip(
+                    label: Text(f),
+                    selected: isSelected,
+                    onSelected: (_) => setState(() => _selectedFilter = f),
+                    selectedColor: AppColors.navyPrimary,
+                    backgroundColor: AppColors.surfaceWhite,
+                    labelStyle: TextStyle(
+                      color: isSelected ? AppColors.surfaceWhite : AppColors.textPrimary,
+                      fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                    ),
+                  );
+                }),
               ],
             ),
 

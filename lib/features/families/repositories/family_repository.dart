@@ -1328,7 +1328,12 @@ class FamilyRepository {
 
   /// Obtiene todas las preguntas y consultas formuladas por familias al centro escolar
   Future<List<ParentQuestion>> getAllQuestions({String? colegioId}) async {
-    final list = _useDemoFallback ? _questions : _questions.where((q) => !q.id.startsWith('qst-00')).toList();
+    var list = _useDemoFallback ? _questions : _questions.where((q) => !q.id.startsWith('qst-00')).toList();
+    if (colegioId != null && colegioId.isNotEmpty) {
+      final schoolFamilies = await getFamilies(colegioId: colegioId);
+      final validFamilyIds = schoolFamilies.map((f) => f.id).toSet();
+      list = list.where((q) => validFamilyIds.contains(q.familiaId)).toList();
+    }
     return List<ParentQuestion>.from(list);
   }
 
@@ -1368,7 +1373,13 @@ class FamilyRepository {
 
   /// Obtiene todos los acuerdos o convenios de pago para revisión administrativa
   Future<List<PaymentAgreementRequest>> getAllAgreements({String? colegioId}) async {
-    return List<PaymentAgreementRequest>.from(_agreements);
+    var list = _agreements;
+    if (colegioId != null && colegioId.isNotEmpty) {
+      final schoolFamilies = await getFamilies(colegioId: colegioId);
+      final validFamilyIds = schoolFamilies.map((f) => f.id).toSet();
+      list = list.where((a) => validFamilyIds.contains(a.familiaId)).toList();
+    }
+    return List<PaymentAgreementRequest>.from(list);
   }
 
   /// Revisa, aprueba o rechaza una solicitud de acuerdo de pago
@@ -1603,8 +1614,9 @@ class FamilyRepository {
     required String mesConcepto,
     double cuotaColegiaturaBase = 8500.0,
     bool incluirServicios = true,
+    String? colegioId,
   }) async {
-    final families = await getFamilies();
+    final families = await getFamilies(colegioId: colegioId);
     final List<BillingItemDetail> detalles = [];
 
     int totalEstudiantes = 0;
@@ -1696,8 +1708,8 @@ class FamilyRepository {
   }
 
   /// Genera el reporte de antigüedad de saldos / Cartera Vencida (Aging Report)
-  Future<DebtAgingSummary> getDebtAgingReport() async {
-    final families = await getFamilies();
+  Future<DebtAgingSummary> getDebtAgingReport({String? colegioId}) async {
+    final families = await getFamilies(colegioId: colegioId);
     final List<DelinquentFamily> enMora = [];
 
     double corriente = 0.0;
@@ -1818,10 +1830,16 @@ class FamilyRepository {
   Future<List<PaymentApprovalRequest>> getAbonoApprovalRequests({
     String? familiaId,
     PaymentApprovalStatus? status,
+    String? colegioId,
   }) async {
     var list = _useDemoFallback
         ? List<PaymentApprovalRequest>.from(_abonoApprovalRequests)
         : _abonoApprovalRequests.where((r) => !r.id.startsWith('apr-00')).toList();
+    if (colegioId != null && colegioId.isNotEmpty) {
+      final families = await getFamilies(colegioId: colegioId);
+      final familyIds = families.map((f) => f.id).toSet();
+      list = list.where((r) => familyIds.contains(r.familiaId)).toList();
+    }
     if (familiaId != null) {
       list = list.where((r) => r.familiaId == familiaId).toList();
     }

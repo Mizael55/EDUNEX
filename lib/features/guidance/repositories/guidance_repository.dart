@@ -4,6 +4,7 @@ import '../../teacher_portal/models/student_behavior_log.dart';
 /// Repositorio para la Gestión de Psicología, Orientación Escolar y Convivencia
 class GuidanceRepository {
   final bool _useDemoFallback;
+  static final List<GuidanceCase> _createdCases = [];
 
   GuidanceRepository({bool useDemoFallback = false}) : _useDemoFallback = useDemoFallback;
 
@@ -134,6 +135,7 @@ class GuidanceRepository {
   /// Limpia todos los registros para pruebas de QA Clean Slate
   static void clearAllData() {
     _demoCases.clear();
+    _createdCases.clear();
   }
 
   /// Restaura los datos semilla para QA y testing
@@ -141,7 +143,10 @@ class GuidanceRepository {
     _demoCases
       ..clear()
       ..addAll(_seedCases);
+    _createdCases.clear();
   }
+
+  List<GuidanceCase> get _activeList => _useDemoFallback ? _demoCases : _createdCases;
 
   /// Consulta casos psicopedagógicos con filtros opcionales
   Future<List<GuidanceCase>> getCases({
@@ -150,9 +155,8 @@ class GuidanceRepository {
     String? urgencia,
     String? searchQuery,
   }) async {
-    if (!_useDemoFallback) return [];
-    return _demoCases.where((c) {
-      if (colegioId != null && c.colegioId != colegioId) return false;
+    return _activeList.where((c) {
+      if (colegioId != null && c.colegioId != colegioId && !(colegioId == 'col-1' && c.colegioId == 'a0000000-0000-0000-0000-000000000001')) return false;
       if (estado != null && estado != 'Todos' && c.estado != estado) return false;
       if (urgencia != null && urgencia != 'Todas' && c.nivelUrgencia != urgencia) return false;
       if (searchQuery != null && searchQuery.trim().isNotEmpty) {
@@ -170,7 +174,7 @@ class GuidanceRepository {
   /// Obtiene un caso por su ID
   Future<GuidanceCase?> getCaseById(String id) async {
     try {
-      return _demoCases.firstWhere((c) => c.id == id);
+      return _activeList.firstWhere((c) => c.id == id);
     } catch (_) {
       return null;
     }
@@ -205,7 +209,7 @@ class GuidanceRepository {
       diagnosticoSugerido: diagnosticoSugerido,
     );
 
-    _demoCases.insert(0, newCase);
+    _activeList.insert(0, newCase);
     return newCase;
   }
 
@@ -218,14 +222,14 @@ class GuidanceRepository {
     String nivelUrgencia = 'Alta',
   }) async {
     // Si ya existe un caso activo para este estudiante, lo reutilizamos
-    final existingIdx = _demoCases.indexWhere((c) => c.studentId == log.studentId && c.esActivo);
+    final existingIdx = _activeList.indexWhere((c) => c.studentId == log.studentId && c.esActivo);
     if (existingIdx != -1) {
-      final existing = _demoCases[existingIdx];
+      final existing = _activeList[existingIdx];
       final updated = existing.copyWith(
         motivoRemision: '${existing.motivoRemision}\n[Remisión Adicional]: ${log.descripcion}',
         nivelUrgencia: nivelUrgencia == 'Alta' ? 'Alta' : existing.nivelUrgencia,
       );
-      _demoCases[existingIdx] = updated;
+      _activeList[existingIdx] = updated;
       return updated;
     }
 
@@ -244,31 +248,31 @@ class GuidanceRepository {
 
   /// Registra una sesión confidencial en el expediente
   Future<GuidanceCase> addSession(String caseId, GuidanceSession session) async {
-    final idx = _demoCases.indexWhere((c) => c.id == caseId);
+    final idx = _activeList.indexWhere((c) => c.id == caseId);
     if (idx == -1) throw Exception('Caso de orientación no encontrado');
 
-    final current = _demoCases[idx];
+    final current = _activeList[idx];
     final updated = current.copyWith(
       sesiones: [session, ...current.sesiones],
       estado: current.estado == 'En Evaluación' ? 'En Intervención' : current.estado,
     );
 
-    _demoCases[idx] = updated;
+    _activeList[idx] = updated;
     return updated;
   }
 
   /// Agenda una entrevista / cita con los tutores
   Future<GuidanceCase> scheduleParentInterview(String caseId, ParentInterview interview) async {
-    final idx = _demoCases.indexWhere((c) => c.id == caseId);
+    final idx = _activeList.indexWhere((c) => c.id == caseId);
     if (idx == -1) throw Exception('Caso de orientación no encontrado');
 
-    final current = _demoCases[idx];
+    final current = _activeList[idx];
     final updated = current.copyWith(
       citasPadres: [interview, ...current.citasPadres],
       estado: 'Citación a Tutores',
     );
 
-    _demoCases[idx] = updated;
+    _activeList[idx] = updated;
     return updated;
   }
 
@@ -279,10 +283,10 @@ class GuidanceRepository {
     String newStatus, {
     String? conclusiones,
   }) async {
-    final idx = _demoCases.indexWhere((c) => c.id == caseId);
+    final idx = _activeList.indexWhere((c) => c.id == caseId);
     if (idx == -1) throw Exception('Caso no encontrado');
 
-    final current = _demoCases[idx];
+    final current = _activeList[idx];
     final updatedCitas = current.citasPadres.map((cita) {
       if (cita.id == interviewId) {
         return cita.copyWith(
@@ -294,30 +298,30 @@ class GuidanceRepository {
     }).toList();
 
     final updated = current.copyWith(citasPadres: updatedCitas);
-    _demoCases[idx] = updated;
+    _activeList[idx] = updated;
     return updated;
   }
 
   /// Agrega un compromiso al plan de convivencia
   Future<GuidanceCase> addAgreement(String caseId, ConvivenciaAgreement agreement) async {
-    final idx = _demoCases.indexWhere((c) => c.id == caseId);
+    final idx = _activeList.indexWhere((c) => c.id == caseId);
     if (idx == -1) throw Exception('Caso no encontrado');
 
-    final current = _demoCases[idx];
+    final current = _activeList[idx];
     final updated = current.copyWith(
       compromisos: [...current.compromisos, agreement],
     );
 
-    _demoCases[idx] = updated;
+    _activeList[idx] = updated;
     return updated;
   }
 
   /// Alterna el estado de cumplimiento de un acuerdo
   Future<GuidanceCase> toggleAgreementStatus(String caseId, String agreementId) async {
-    final idx = _demoCases.indexWhere((c) => c.id == caseId);
+    final idx = _activeList.indexWhere((c) => c.id == caseId);
     if (idx == -1) throw Exception('Caso no encontrado');
 
-    final current = _demoCases[idx];
+    final current = _activeList[idx];
     final updatedAgreements = current.compromisos.map((a) {
       if (a.id == agreementId) {
         return a.copyWith(cumplido: !a.cumplido);
@@ -326,18 +330,18 @@ class GuidanceRepository {
     }).toList();
 
     final updated = current.copyWith(compromisos: updatedAgreements);
-    _demoCases[idx] = updated;
+    _activeList[idx] = updated;
     return updated;
   }
 
   /// Modifica el estado global del caso
   Future<GuidanceCase> updateCaseStatus(String caseId, String nuevoEstado) async {
-    final idx = _demoCases.indexWhere((c) => c.id == caseId);
+    final idx = _activeList.indexWhere((c) => c.id == caseId);
     if (idx == -1) throw Exception('Caso no encontrado');
 
-    final current = _demoCases[idx];
+    final current = _activeList[idx];
     final updated = current.copyWith(estado: nuevoEstado);
-    _demoCases[idx] = updated;
+    _activeList[idx] = updated;
     return updated;
   }
 

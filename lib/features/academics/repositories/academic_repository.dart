@@ -1545,7 +1545,7 @@ class AcademicRepository {
   // ==========================================
   Future<List<StudentGradeReport>> getReports({String? grado, String? seccion, String? colegioId}) async {
     return _reports.where((r) {
-      if (colegioId != null && colegioId.isNotEmpty && r.colegioId != null && r.colegioId != colegioId) {
+      if (colegioId != null && colegioId.isNotEmpty && r.colegioId != colegioId) {
         return false;
       }
       if (grado != null && grado.isNotEmpty && r.grado != grado) return false;
@@ -1593,7 +1593,7 @@ class AcademicRepository {
 
   Map<String, dynamic> getAcademicMetrics({String? colegioId}) {
     final filtered = _reports.where((r) {
-      if (colegioId != null && colegioId.isNotEmpty && r.colegioId != null && r.colegioId != colegioId) {
+      if (colegioId != null && colegioId.isNotEmpty && r.colegioId != colegioId) {
         return false;
       }
       return true;

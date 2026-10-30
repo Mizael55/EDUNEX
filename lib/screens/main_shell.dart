@@ -59,6 +59,10 @@ class MainShell extends StatefulWidget {
   final StoreRepository? storeRepository;
   final TeacherRepository? teacherRepository;
   final GuidanceRepository? guidanceRepository;
+  final EventRepository? eventRepository;
+  final AttendanceRepository? attendanceRepository;
+  final TransportRepository? transportRepository;
+  final CircularRepository? circularRepository;
 
   const MainShell({
     super.key,
@@ -69,6 +73,10 @@ class MainShell extends StatefulWidget {
     this.storeRepository,
     this.teacherRepository,
     this.guidanceRepository,
+    this.eventRepository,
+    this.attendanceRepository,
+    this.transportRepository,
+    this.circularRepository,
   });
 
   @override
@@ -99,10 +107,10 @@ class _MainShellState extends State<MainShell> {
     super.initState();
     _familyRepository = widget.familyRepository ?? FamilyRepository(useDemoFallback: false);
     _schoolRepository = widget.schoolRepository ?? SchoolRepository(useDemoFallback: false);
-    _eventRepository = EventRepository(familyRepository: _familyRepository, useDemoFallback: false);
-    _attendanceRepository = AttendanceRepository(familyRepository: _familyRepository, useDemoFallback: false);
-    _transportRepository = TransportRepository(familyRepository: _familyRepository, useDemoFallback: false);
-    _circularRepository = CircularRepository(familyRepository: _familyRepository, useDemoFallback: false);
+    _eventRepository = widget.eventRepository ?? EventRepository(familyRepository: _familyRepository, useDemoFallback: false);
+    _attendanceRepository = widget.attendanceRepository ?? AttendanceRepository(familyRepository: _familyRepository, useDemoFallback: false);
+    _transportRepository = widget.transportRepository ?? TransportRepository(familyRepository: _familyRepository, useDemoFallback: false);
+    _circularRepository = widget.circularRepository ?? CircularRepository(familyRepository: _familyRepository, useDemoFallback: false);
     _academicRepository = widget.academicRepository ?? AcademicRepository(useDemoFallback: false);
     _storeRepository = widget.storeRepository ?? StoreRepository(useDemoFallback: false);
     _teacherRepository = widget.teacherRepository ?? TeacherRepository(useDemoFallback: false);
@@ -541,6 +549,8 @@ class _MainShellState extends State<MainShell> {
       case 0:
         return DashboardOverviewScreen(
           familyRepository: _familyRepository,
+          academicRepository: _academicRepository,
+          eventRepository: _eventRepository,
           schoolName: _schoolName,
           colegioId: widget.userProfile.colegioId,
           onEditSchoolLogo: _openEditSchoolLogoDialog,
@@ -555,6 +565,7 @@ class _MainShellState extends State<MainShell> {
         return FinanceOverviewScreen(
           isSuperAdmin: false,
           familyRepository: _familyRepository,
+          colegioId: widget.userProfile.colegioId,
         );
       case 3:
         return AdminAttendanceScreen(
@@ -567,7 +578,11 @@ class _MainShellState extends State<MainShell> {
           colegioId: widget.userProfile.colegioId,
         );
       case 5:
-        return const ServicesManagementScreen(moduleType: ServiceModuleType.cuido);
+        return ServicesManagementScreen(
+          moduleType: ServiceModuleType.cuido,
+          colegioId: widget.userProfile.colegioId,
+          familyRepository: _familyRepository,
+        );
       case 6:
         return AdminEventsScreen(
           repository: _eventRepository,
@@ -1009,6 +1024,7 @@ class _MainShellState extends State<MainShell> {
                           color: isSelected ? role.color : Colors.transparent,
                           borderRadius: BorderRadius.circular(12),
                           child: InkWell(
+                            key: Key('nav_item_$index'),
                             borderRadius: BorderRadius.circular(12),
                             onTap: () => setState(() => _selectedIndex = index),
                             child: Padding(
